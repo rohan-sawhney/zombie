@@ -1,0 +1,5 @@
+numpy==1.25.1
+scipy==1.11.1
+shapely==2.0.1
+svgpathtools==1.6.1
+svgwrite==1.4.3
