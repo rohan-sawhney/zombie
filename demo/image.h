@@ -88,7 +88,7 @@ struct Image {
 		return writePNG(filename);
 	}
 
-	void readPFM(const std::string& filename, bool flipVertically = false) {
+	void readPFM(const std::string& filename) {
 		std::ifstream file;
 		file.open(filename.c_str(), std::ios::in | std::ios::binary);
 		if (!file.is_open()) {
@@ -121,13 +121,12 @@ struct Image {
 		Array3 rgb;
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				int row = flipVertically ? w - i - 1 : i;
 				if (numChannels == 3) {
-					rgb[0] = tmpBuffer[3 * (row * w + j) + 0];
-					rgb[1] = tmpBuffer[3 * (row * w + j) + 1];
-					rgb[2] = tmpBuffer[3 * (row * w + j) + 2];
+					rgb[0] = tmpBuffer[3 * (i * w + j) + 0];
+					rgb[1] = tmpBuffer[3 * (i * w + j) + 1];
+					rgb[2] = tmpBuffer[3 * (i * w + j) + 2];
 				} else {
-					rgb = Array3(tmpBuffer[row * w + j]);
+					rgb = Array3(tmpBuffer[i * w + j]);
 				}
 				rgb = flipByteOrder ? reverseRGBByteOrder(rgb) : rgb;
 				setFromRGB(i, j, rgb);
@@ -136,8 +135,7 @@ struct Image {
 	}
 
 	void readPNG(const std::string& filename) {
-		stbi_set_flip_vertically_on_load(true);
-		int channels, w, h;
+		int channels;
 		unsigned char *tmpBuffer = stbi_load(filename.c_str(), &w, &h, &channels, DIM);
 		if (tmpBuffer == nullptr && stbi_failure_reason()) {
 			stbi_image_free(tmpBuffer);
@@ -146,9 +144,7 @@ struct Image {
 			abort();
 		}
 
-		this->w = w;
-		this->h = h;
-		buffer.resize(this->w * this->h, Array<DIM>(0.0));
+		buffer.resize(w * h, Array<DIM>(0.0));
 
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
@@ -160,7 +156,7 @@ struct Image {
 		stbi_image_free(tmpBuffer);
 	}
 
-	void writePFM(const std::string& filename, bool flipVertically = true) {
+	void writePFM(const std::string& filename) {
 		std::ofstream file(filename, std::ios::binary);
 		if (!file) {
 			std::cerr << "Error opening file: " << filename << std::endl;
@@ -168,24 +164,22 @@ struct Image {
 		}
 		if (DIM == 3) {
 			file << "PF" << std::endl;
-
 		} else {
 			file << "Pf" << std::endl;
 		}
 
-		file << h << " " << w << std::endl;
+		file << w << " " << h << std::endl;
 		file << (machineIsLittleEndian() ? "-1" : "1") << std::endl;
 
 		std::vector<float> tmpBuffer(w * h * DIM);
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
 				for (int c = 0; c < DIM; c++) {
-					int row = flipVertically ? w - i - 1 : i;
-					tmpBuffer[DIM*(row * w + j) + c] = this->get(i, j, c);
+					int flipped_i = h - i - 1;
+					tmpBuffer[DIM * (flipped_i * w + j) + c] = get(i, j, c);
 				}
 			}
 		}
-
 		file.write(reinterpret_cast<const char*>(tmpBuffer.data()), tmpBuffer.size() * sizeof(float));
 	}
 
