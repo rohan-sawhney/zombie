@@ -89,6 +89,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
 	const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
 	const float normalOffsetForCachedDirichletSamples = getOptional<float>(solverConfig, "normalOffsetForCachedDirichletSamples", 5.0f*epsilonShell);
 	const float radiusClampForKernels = getOptional<float>(solverConfig, "radiusClampForKernels", 1e-3f);
+	const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
 
 	fcpw::BoundingBox<2> bbox = scene.bbox;
 	const zombie::GeometricQueries<2>& queries = scene.queries;
@@ -149,12 +150,12 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
 
 	// splat solution to evaluation points
 	zombie::Splatter<float, 2> splatter(queries, walkOnStars);
-	splatter.splat(pde, boundaryCache, radiusClampForKernels, normalOffsetForCachedDirichletSamples,
-				   evalPts, reportProgress);
-	splatter.splat(pde, boundaryCacheNormalAligned, radiusClampForKernels, normalOffsetForCachedDirichletSamples,
-				   evalPts, reportProgress);
-	splatter.splat(pde, domainCache, radiusClampForKernels, normalOffsetForCachedDirichletSamples,
-				   evalPts, reportProgress);
+	splatter.splat(pde, boundaryCache, radiusClampForKernels, regularizationForKernels,
+				   normalOffsetForCachedDirichletSamples, evalPts, reportProgress);
+	splatter.splat(pde, boundaryCacheNormalAligned, radiusClampForKernels, regularizationForKernels,
+				   normalOffsetForCachedDirichletSamples, evalPts, reportProgress);
+	splatter.splat(pde, domainCache, radiusClampForKernels, regularizationForKernels,
+				   normalOffsetForCachedDirichletSamples, evalPts, reportProgress);
 	splatter.estimatePointwiseNearDirichletBoundary(pde, walkSettings, normalOffsetForCachedDirichletSamples,
 													nWalksForCachedSolutionEstimates, evalPts, false);
 	pb.finish();

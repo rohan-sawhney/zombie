@@ -27,24 +27,43 @@ public:
 		return 0.0f;
 	}
 
-	// evaluates the Green's function
-	virtual float evaluate(const Vector<DIM>& y) const {
-		return 0.0f;
-	}
-
 	// evaluates the gradient of the Green's function
-	virtual Vector<DIM> gradient(const Vector<DIM>& y) const {
+	virtual Vector<DIM> gradient(float r, const Vector<DIM>& y) const {
 		return Vector<DIM>::Zero();
 	}
 
 	// evaluates the Poisson Kernel (normal derivative of the Green's function)
-	virtual float poissonKernel(const Vector<DIM>& y, const Vector<DIM>& n) const {
+	virtual float poissonKernel(float r, const Vector<DIM>& y, const Vector<DIM>& n) const {
 		return 0.0f;
 	}
 
 	// evaluates the gradient of the Poisson Kernel
-	virtual Vector<DIM> poissonKernelGradient(const Vector<DIM>& y, const Vector<DIM>& n) const {
+	virtual Vector<DIM> poissonKernelGradient(float r, const Vector<DIM>& y, const Vector<DIM>& n) const {
 		return Vector<DIM>::Zero();
+	}
+
+	// evaluates the Green's function
+	virtual float evaluate(const Vector<DIM>& y) const {
+		float r = std::max(rClamp, (y - x).norm());
+		return this->evaluate(r);
+	}
+
+	// evaluates the gradient of the Green's function
+	virtual Vector<DIM> gradient(const Vector<DIM>& y) const {
+		float r = std::max(rClamp, (y - x).norm());
+		return this->gradient(r, y);
+	}
+
+	// evaluates the Poisson Kernel (normal derivative of the Green's function)
+	virtual float poissonKernel(const Vector<DIM>& y, const Vector<DIM>& n) const {
+		float r = std::max(rClamp, (y - x).norm());
+		return this->poissonKernel(r, y, n);
+	}
+
+	// evaluates the gradient of the Poisson Kernel
+	virtual Vector<DIM> poissonKernelGradient(const Vector<DIM>& y, const Vector<DIM>& n) const {
+		float r = std::max(rClamp, (y - x).norm());
+		return this->poissonKernelGradient(r, y, n);
 	}
 
 	// member
@@ -73,34 +92,25 @@ public:
 		return -std::log(r)/(2.0f*M_PI);
 	}
 
-	// evaluates the Green's function
-	float evaluate(const Vector2& y) const {
-		float r = std::max(rClamp, (y - x).norm());
-		return evaluate(r);
-	}
-
 	// evaluates the gradient of the Green's function
-	Vector2 gradient(const Vector2& y) const {
+	Vector2 gradient(float r, const Vector2& y) const {
 		Vector2 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r2 = r*r;
 
 		return -xy/(2.0f*M_PI*r2);
 	}
 
 	// evaluates the Poisson Kernel (normal derivative of the Green's function)
-	float poissonKernel(const Vector2& y, const Vector2& n) const {
+	float poissonKernel(float r, const Vector2& y, const Vector2& n) const {
 		Vector2 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r2 = r*r;
 
 		return n.dot(xy)/(2.0f*M_PI*r2);
 	}
 
 	// evaluates the gradient of the Poisson Kernel
-	Vector2 poissonKernelGradient(const Vector2& y, const Vector2& n) const {
+	Vector2 poissonKernelGradient(float r, const Vector2& y, const Vector2& n) const {
 		Vector2 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r2 = r*r;
 
 		return (n - 2.0f*(n.dot(xy)/r2)*xy)/(2.0f*M_PI*r2);
@@ -118,34 +128,25 @@ public:
 		return 1.0f/(4.0f*M_PI*r);
 	}
 
-	// evaluates the Green's function
-	float evaluate(const Vector3& y) const {
-		float r = std::max(rClamp, (y - x).norm());
-		return evaluate(r);
-	}
-
 	// evaluates the gradient of the Green's function
-	Vector3 gradient(const Vector3& y) const {
+	Vector3 gradient(float r, const Vector3& y) const {
 		Vector3 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r3 = r*r*r;
 
 		return -xy/(4.0f*M_PI*r3);
 	}
 
 	// evaluates the Poisson Kernel (normal derivative of the Green's function)
-	float poissonKernel(const Vector3& y, const Vector3& n) const {
+	float poissonKernel(float r, const Vector3& y, const Vector3& n) const {
 		Vector3 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r3 = r*r*r;
 
 		return n.dot(xy)/(4.0f*M_PI*r3);
 	}
 
 	// evaluates the gradient of the Poisson Kernel
-	Vector3 poissonKernelGradient(const Vector3& y, const Vector3& n) const {
+	Vector3 poissonKernelGradient(float r, const Vector3& y, const Vector3& n) const {
 		Vector3 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r2 = r*r;
 		float r3 = r*r*r;
 
@@ -178,16 +179,9 @@ public:
 		return K0mur/(2.0*M_PI);
 	}
 
-	// evaluates the Green's function
-	float evaluate(const Vector2& y) const {
-		float r = std::max(rClamp, (y - x).norm());
-		return evaluate(r);
-	}
-
 	// evaluates the gradient of the Green's function
-	Vector2 gradient(const Vector2& y) const {
+	Vector2 gradient(float r, const Vector2& y) const {
 		Vector2 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float mur = r*sqrtLambda;
 		float K1mur = bessel::bessk1(mur);
 		float Qr = sqrtLambda*K1mur;
@@ -196,9 +190,8 @@ public:
 	}
 
 	// evaluates the Poisson Kernel (normal derivative of the Green's function)
-	float poissonKernel(const Vector2& y, const Vector2& n) const {
+	float poissonKernel(float r, const Vector2& y, const Vector2& n) const {
 		Vector2 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float mur = r*sqrtLambda;
 		float K1mur = bessel::bessk1(mur);
 		float Qr = sqrtLambda*K1mur;
@@ -207,9 +200,8 @@ public:
 	}
 
 	// evaluates the gradient of the Poisson Kernel
-	Vector2 poissonKernelGradient(const Vector2& y, const Vector2& n) const {
+	Vector2 poissonKernelGradient(float r, const Vector2& y, const Vector2& n) const {
 		Vector2 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r2 = r*r;
 		float mur = r*sqrtLambda;
 		float K0mur = bessel::bessk0(mur);
@@ -240,16 +232,9 @@ public:
 		return expmur/(4.0f*M_PI*r);
 	}
 
-	// evaluates the Green's function
-	float evaluate(const Vector3& y) const {
-		float r = std::max(rClamp, (y - x).norm());
-		return evaluate(r);
-	}
-
 	// evaluates the gradient of the Green's function
-	Vector3 gradient(const Vector3& y) const {
+	Vector3 gradient(float r, const Vector3& y) const {
 		Vector3 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r2 = r*r;
 		float mur = r*sqrtLambda;
 		float expmur = std::exp(-mur);
@@ -259,9 +244,8 @@ public:
 	}
 
 	// evaluates the Poisson Kernel (normal derivative of the Green's function)
-	float poissonKernel(const Vector3& y, const Vector3& n) const {
+	float poissonKernel(float r, const Vector3& y, const Vector3& n) const {
 		Vector3 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r2 = r*r;
 		float mur = r*sqrtLambda;
 		float expmur = std::exp(-mur);
@@ -271,9 +255,8 @@ public:
 	}
 
 	// evaluates the gradient of the Poisson Kernel
-	Vector3 poissonKernelGradient(const Vector3& y, const Vector3& n) const {
+	Vector3 poissonKernelGradient(float r, const Vector3& y, const Vector3& n) const {
 		Vector3 xy = x - y;
-		float r = std::max(rClamp, xy.norm());
 		float r2 = r*r;
 		float mur = r*sqrtLambda;
 		float expmur = std::exp(-mur);

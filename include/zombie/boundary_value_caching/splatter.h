@@ -8,6 +8,39 @@ namespace zombie {
 template <typename T, int DIM>
 struct EvaluationPoint;
 
+template <int DIM>
+float computeGreensFnRegularization(float r)
+{
+	return 1.0f;
+}
+
+template <int DIM>
+float computePoissonKernelRegularization(float r)
+{
+	return 1.0f;
+}
+
+template <>
+float computeGreensFnRegularization<3>(float r)
+{
+	// source: https://arxiv.org/pdf/1508.00265.pdf
+	return std::erf(r);
+}
+
+template <>
+float computePoissonKernelRegularization<2>(float r)
+{
+	// source: https://epubs.siam.org/doi/abs/10.1137/S0036142999362845
+	return 1.0f - std::exp(-r*r);
+}
+
+template <>
+float computePoissonKernelRegularization<3>(float r)
+{
+	// source: https://arxiv.org/pdf/1508.00265.pdf
+	return std::erf(r) - 2.0f*r*std::exp(-r*r)/std::sqrt(M_PI);
+}
+
 // FUTURE: bias correction/compensation
 template <typename T, int DIM>
 class Splatter {
@@ -20,7 +53,9 @@ public:
 	// splats sample pt data to the input evaluation pt
 	void splat(const PDE<T, DIM>& pde,
 			   const SamplePoint<T, DIM>& samplePt,
-			   float radiusClamp, float dirichletDistCutoff,
+			   float radiusClamp,
+			   float kernelRegularization,
+			   float dirichletDistCutoff,
 			   EvaluationPoint<T, DIM>& evalPt) const {
 		// don't evaluate if the distance to Dirichlet boundary is smaller than the cutoff distance
 		if (evalPt.dirichletDist < dirichletDistCutoff) return;
@@ -34,22 +69,24 @@ public:
 			greensFn = std::make_unique<HarmonicGreensFnFreeSpace<DIM>>();
 		}
 
-		greensFn->updatePole(evalPt.pt, radiusClamp);
+		greensFn->updatePole(evalPt.pt);
 
 		// evaluate
 		if (samplePt.type == SampleType::OnDirichletBoundary ||
 			samplePt.type == SampleType::OnNeumannBoundary) {
-			splatBoundaryData(samplePt, greensFn, evalPt);
+			splatBoundaryData(samplePt, greensFn, radiusClamp, kernelRegularization, evalPt);
 
 		} else {
-			splatSourceData(samplePt, greensFn, evalPt);
+			splatSourceData(samplePt, greensFn, radiusClamp, kernelRegularization, evalPt);
 		}
 	}
 
 	// splats sample pt data to the input evaluation pt
 	void splat(const PDE<T, DIM>& pde,
 			   const std::vector<SamplePoint<T, DIM>>& samplePts,
-			   float radiusClamp, float dirichletDistCutoff,
+			   float radiusClamp,
+			   float kernelRegularization,
+			   float dirichletDistCutoff,
 			   EvaluationPoint<T, DIM>& evalPt) const {
 		// don't evaluate if the distance to Dirichlet boundary is smaller than the cutoff distance
 		if (evalPt.dirichletDist < dirichletDistCutoff) return;
@@ -63,16 +100,16 @@ public:
 			greensFn = std::make_unique<HarmonicGreensFnFreeSpace<DIM>>();
 		}
 
-		greensFn->updatePole(evalPt.pt, radiusClamp);
+		greensFn->updatePole(evalPt.pt);
 
 		// evaluate
 		for (int i = 0; i < (int)samplePts.size(); i++) {
 			if (samplePts[i].type == SampleType::OnDirichletBoundary ||
 				samplePts[i].type == SampleType::OnNeumannBoundary) {
-				splatBoundaryData(samplePts[i], greensFn, evalPt);
+				splatBoundaryData(samplePts[i], greensFn, radiusClamp, kernelRegularization, evalPt);
 
 			} else {
-				splatSourceData(samplePts[i], greensFn, evalPt);
+				splatSourceData(samplePts[i], greensFn, radiusClamp, kernelRegularization, evalPt);
 			}
 		}
 	}
@@ -80,19 +117,21 @@ public:
 	// splats sample pt data to the input evaluation pts
 	void splat(const PDE<T, DIM>& pde,
 			   const SamplePoint<T, DIM>& samplePt,
-			   float radiusClamp, float dirichletDistCutoff,
+			   float radiusClamp,
+			   float kernelRegularization,
+			   float dirichletDistCutoff,
 			   std::vector<EvaluationPoint<T, DIM>>& evalPts,
 			   bool runSingleThreaded=false) const {
 		int nEvalPoints = (int)evalPts.size();
 		if (runSingleThreaded) {
 			for (int i = 0; i < nEvalPoints; i++) {
-				splat(pde, samplePt, radiusClamp, dirichletDistCutoff, evalPts[i]);
+				splat(pde, samplePt, radiusClamp, kernelRegularization, dirichletDistCutoff, evalPts[i]);
 			}
 
 		} else {
 			auto run = [&](const tbb::blocked_range<int>& range) {
 				for (int i = range.begin(); i < range.end(); ++i) {
-					splat(pde, samplePt, radiusClamp, dirichletDistCutoff, evalPts[i]);
+					splat(pde, samplePt, radiusClamp, kernelRegularization, dirichletDistCutoff, evalPts[i]);
 				}
 			};
 
@@ -104,12 +143,14 @@ public:
 	// splats sample pt data to the input evaluation pts
 	void splat(const PDE<T, DIM>& pde,
 			   const std::vector<SamplePoint<T, DIM>>& samplePts,
-			   float radiusClamp, float dirichletDistCutoff,
+			   float radiusClamp,
+			   float kernelRegularization,
+			   float dirichletDistCutoff,
 			   std::vector<EvaluationPoint<T, DIM>>& evalPts,
 			   std::function<void(int, int)> reportProgress={}) const {
 		const int reportGranularity = 100;
 		for (int i = 0; i < (int)samplePts.size(); i++) {
-			splat(pde, samplePts[i], radiusClamp, dirichletDistCutoff, evalPts);
+			splat(pde, samplePts[i], radiusClamp, kernelRegularization, dirichletDistCutoff, evalPts);
 			if (reportProgress && (i + 1)%reportGranularity == 0) reportProgress(reportGranularity, 0);
 		}
 		if (reportProgress) reportProgress(samplePts.size()%reportGranularity, 0);
@@ -166,6 +207,7 @@ private:
 	// splats boundary sample data
 	void splatBoundaryData(const SamplePoint<T, DIM>& samplePt,
 						   const std::unique_ptr<GreensFnFreeSpace<DIM>>& greensFn,
+						   float radiusClamp, float kernelRegularization,
 						   EvaluationPoint<T, DIM>& evalPt) const {
 		// compute the contribution of the boundary sample
 		const T& solution = samplePt.solution;
@@ -174,16 +216,23 @@ private:
 		Vector<DIM> n = samplePt.normal*(samplePt.estimateBoundaryNormalAligned ? -1.0f : 1.0f);
 		float pdf = samplePt.pdf;
 
-		float G = greensFn->evaluate(pt);
-		float P = greensFn->poissonKernel(pt, n);
-		Vector<DIM> dG = greensFn->gradient(pt);
-		Vector<DIM> dP = greensFn->poissonKernelGradient(pt, n);
+		float r = std::max(radiusClamp, (pt - greensFn->x).norm());
+		float G = greensFn->evaluate(r);
+		float P = greensFn->poissonKernel(r, pt, n);
+		Vector<DIM> dG = greensFn->gradient(r, pt);
+		Vector<DIM> dP = greensFn->poissonKernelGradient(r, pt, n);
 		float dGNorm = dG.norm();
 		float dPNorm = dP.norm();
 
 		if (std::isinf(G) || std::isinf(P) || std::isinf(dGNorm) || std::isinf(dPNorm) ||
 			std::isnan(G) || std::isnan(P) || std::isnan(dGNorm) || std::isnan(dPNorm)) {
 			return;
+		}
+
+		if (kernelRegularization > 0.0f) {
+			r /= kernelRegularization;
+			G *= computeGreensFnRegularization<DIM>(r);
+			P *= computePoissonKernelRegularization<DIM>(r);
 		}
 
 		float alpha = evalPt.type == SampleType::OnDirichletBoundary ||
@@ -211,18 +260,25 @@ private:
 	// splats source sample data
 	void splatSourceData(const SamplePoint<T, DIM>& samplePt,
 						 const std::unique_ptr<GreensFnFreeSpace<DIM>>& greensFn,
+						 float radiusClamp, float kernelRegularization,
 						 EvaluationPoint<T, DIM>& evalPt) const {
 		// compute the contribution of the source sample
 		const T& source = samplePt.source;
 		const Vector<DIM>& pt = samplePt.pt;
 		float pdf = samplePt.pdf;
 
-		float G = greensFn->evaluate(pt);
-		Vector<DIM> dG = greensFn->gradient(pt);
+		float r = std::max(radiusClamp, (pt - greensFn->x).norm());
+		float G = greensFn->evaluate(r);
+		Vector<DIM> dG = greensFn->gradient(r, pt);
 		float dGNorm = dG.norm();
 
 		if (std::isinf(G) || std::isnan(G) || std::isinf(dGNorm) || std::isnan(dGNorm)) {
 			return;
+		}
+
+		if (kernelRegularization > 0.0f) {
+			r /= kernelRegularization;
+			G *= computeGreensFnRegularization<DIM>(r);
 		}
 
 		float alpha = evalPt.type == SampleType::OnDirichletBoundary ||
