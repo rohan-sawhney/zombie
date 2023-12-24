@@ -168,7 +168,7 @@ public:
 	// returns scene aggregate
 	const fcpw::Aggregate<3>* getSceneAggregate() {
 		fcpw::SceneData<3> *sceneData = scene.getSceneData();
-		return sceneData->soups.size() > 0 ? sceneData->aggregateInstancePtrs[0] : nullptr;
+		return sceneData->soups.size() > 0 ? sceneData->aggregate.get() : nullptr;
 	}
 
 	// member
@@ -226,7 +226,7 @@ public:
 	// returns scene aggregate
 	const fcpw::Aggregate<3>* getSceneAggregate() {
 		fcpw::SceneData<3> *sceneData = scene.getSceneData();
-		return sceneData->soups.size() > 0 ? sceneData->aggregateInstancePtrs[0] : nullptr;
+		return sceneData->soups.size() > 0 ? sceneData->aggregate.get() : nullptr;
 	}
 
 	// member
