@@ -42,7 +42,7 @@ make -j4
 
 ```
 @software{Zombie,
-author = {Sawhney, Rohan and Miller, Bailey and Gkioulekas, Ioannis and Crane, Keenan},
+author = {Sawhney, Rohan and Miller, Bailey},
 title = {{Zombie: A Grid-Free Monte Carlo Solver for PDEs}},
 version = {1.0},
 year = {2023}
