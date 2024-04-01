@@ -51,7 +51,7 @@ year = {2023}
 
 # Authors
 
-[Rohan Sawhney](http://www.rohansawhney.io), [Bailey Miller](https://www.bailey-miller.com), [Ioannis Gkioulekas](https://www.cs.cmu.edu/~igkioule/), [Keenan Crane](https://www.cs.cmu.edu/~kmcrane/)
+[Rohan Sawhney](http://www.rohansawhney.io), [Bailey Miller](https://www.bailey-miller.com)
 
 # License
 
