@@ -1,7 +1,7 @@
 #pragma once
 
 #include <zombie/core/pde.h>
-#include <zombie/utils/fcpw_scene_loader.h>
+#include <zombie/utils/fcpw_boundary_handler.h>
 #include <fstream>
 #include <sstream>
 #include "config.h"
@@ -9,200 +9,197 @@
 
 class Scene {
 public:
-	fcpw::BoundingBox<2> bbox;
-	std::vector<Vector2> vertices;
-	std::vector<std::vector<size_t>> segments;
+    std::pair<Vector2, Vector2> bbox;
+    std::vector<Vector2> vertices;
+    std::vector<std::vector<size_t>> segments;
 
-	const bool isWatertight;
-	const bool isDoubleSided;
+    const bool isWatertight;
+    const bool isDoubleSided;
 
-	zombie::GeometricQueries<2> queries;
-	zombie::PDE<float, 2> pde;
+    zombie::GeometricQueries<2> queries;
+    zombie::PDE<float, 2> pde;
 
-	Scene(const json &config):
-		  isWatertight(getOptional<bool>(config, "isWatertight", true)),
-		  isDoubleSided(getOptional<bool>(config, "isDoubleSided", false)),
-		  queries(isWatertight)
-	{
-		const std::string boundaryFile = getRequired<std::string>(config, "boundary");
-		const std::string isNeumannFile = getRequired<std::string>(config, "isNeumann");
-		const std::string dirichletBoundaryValueFile = getRequired<std::string>(config, "dirichletBoundaryValue");
-		const std::string neumannBoundaryValueFile = getRequired<std::string>(config, "neumannBoundaryValue");
-		const std::string sourceValueFile = getRequired<std::string>(config, "sourceValue");
-		bool normalize = getOptional<bool>(config, "normalizeDomain", true);
-		bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
-		absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
+    Scene(const json &config):
+          isWatertight(getOptional<bool>(config, "isWatertight", true)),
+          isDoubleSided(getOptional<bool>(config, "isDoubleSided", false)),
+          queries(isWatertight) {
+        const std::string boundaryFile = getRequired<std::string>(config, "boundary");
+        const std::string isReflectingFile = getRequired<std::string>(config, "isNeumann");
+        const std::string absorbingBoundaryValueFile = getRequired<std::string>(config, "dirichletBoundaryValue");
+        const std::string reflectingBoundaryValueFile = getRequired<std::string>(config, "neumannBoundaryValue");
+        const std::string sourceValueFile = getRequired<std::string>(config, "sourceValue");
+        bool normalize = getOptional<bool>(config, "normalizeDomain", true);
+        bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
+        bool useReflectingRobinBoundaries = getOptional<bool>(config, "useReflectingRobinBoundaries", false);
+        absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
+        robinCoeff = getOptional<float>(config, "robinCoeff", std::numeric_limits<float>::lowest());
 
-		isNeumann = std::make_shared<Image<1>>(isNeumannFile);
-		dirichletBoundaryValue = std::make_shared<Image<1>>(dirichletBoundaryValueFile);
-		neumannBoundaryValue = std::make_shared<Image<1>>(neumannBoundaryValueFile);
-		sourceValue = std::make_shared<Image<1>>(sourceValueFile);
+        isReflecting = std::make_shared<Image<1>>(isReflectingFile);
+        absorbingBoundaryValue = std::make_shared<Image<1>>(absorbingBoundaryValueFile);
+        reflectingBoundaryValue = std::make_shared<Image<1>>(reflectingBoundaryValueFile);
+        sourceValue = std::make_shared<Image<1>>(sourceValueFile);
 
-		loadOBJ(boundaryFile, normalize, flipOrientation);
-		separateBoundaries();
-		populateGeometricQueries();
-		setPDE();
-	}
+        loadOBJ(boundaryFile, normalize, flipOrientation);
+        separateBoundaries(useReflectingRobinBoundaries);
+        populateGeometricQueries(useReflectingRobinBoundaries);
+        setPDE(useReflectingRobinBoundaries);
+    }
 
-	bool onNeumannBoundary(Vector2 x) const {
-		Vector2 uv = (x - bbox.pMin) / bbox.extent().maxCoeff();
-		return isNeumann->get(uv)[0] > 0;
-	}
+    bool onReflectingBoundary(Vector2 x) const {
+        const Vector2& bMin = bbox.first;
+        const Vector2& bMax = bbox.second;
+        Vector2 uv = (x - bMin) / (bMax - bMin).maxCoeff();
+        return isReflecting->get(uv)[0] > 0;
+    }
 
-	bool ignoreCandidateSilhouette(float dihedralAngle, int index) const {
-		// ignore convex vertices/edges for closest silhouette point tests when solving an interior problem;
-		// NOTE: for complex scenes with both open and closed meshes, the primitive index argument
-		// (of an adjacent line segment/triangle in the scene) can be used to determine whether a
-		// vertex/edge should be ignored as a candidate for silhouette tests.
-		return isDoubleSided ? false : dihedralAngle < 1e-3f;
-	}
+    bool ignoreCandidateSilhouette(float dihedralAngle, int index) const {
+        // ignore convex vertices/edges for closest silhouette point tests when solving an interior problem;
+        // NOTE: for complex scenes with both open and closed meshes, the primitive index argument
+        // (of an adjacent line segment/triangle in the scene) can be used to determine whether a
+        // vertex/edge should be ignored as a candidate for silhouette tests.
+        return isDoubleSided ? false : dihedralAngle < 1e-3f;
+    }
 
-	float getSolveRegionVolume() const {
-		if (isDoubleSided) return (bbox.pMax - bbox.pMin).prod();
-		float solveRegionVolume = 0.0f;
-		const fcpw::Aggregate<3> *dirichletAggregate = dirichletSceneLoader->getSceneAggregate();
-		const fcpw::Aggregate<3> *neumannAggregate = neumannSceneLoader->getSceneAggregate();
-		if (dirichletAggregate != nullptr) solveRegionVolume += dirichletAggregate->signedVolume();
-		if (neumannAggregate != nullptr) solveRegionVolume += neumannAggregate->signedVolume();
-		return std::fabs(solveRegionVolume);
-	}
-
+    float getSolveRegionVolume() const {
+        if (isDoubleSided) return (bbox.second - bbox.first).prod();
+        return std::fabs(queries.computeSignedDomainVolume());
+    }
 
 private:
-	void loadOBJ(const std::string &filename, bool normalize, bool flipOrientation) {
-		std::ifstream obj(filename);
-		if (!obj) {
-			std::cerr << "Error opening file: " << filename << std::endl;
-			abort();
-		}
+    void loadOBJ(const std::string &filename, bool normalize, bool flipOrientation) {
+        zombie::loadBoundaryMesh<2>(filename, vertices, segments);
+        if (normalize) zombie::normalize<2>(vertices);
+        if (flipOrientation) zombie::flipOrientation(segments);
+        bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
+    }
 
-		std::string line;
-		while (std::getline(obj, line)) {
-			std::istringstream ss(line);
-			std::string token;
-			ss >> token;
-			if (token == "v") {
-				float x, y;
-				ss >> x >> y;
-				vertices.emplace_back(Vector2(x, y));
-			} else if (token == "l") {
-				size_t i, j;
-				ss >> i >> j;
-				if (flipOrientation) {
-					segments.emplace_back(std::vector<size_t>({j - 1, i - 1}));
-				} else {
-					segments.emplace_back(std::vector<size_t>({i - 1, j - 1}));
-				}
-			}
-		}
-		obj.close();
+    void separateBoundaries(bool useReflectingRobinBoundaries) {
+        std::vector<size_t> indices(2, -1);
+        size_t nAbsorbingBoundaryVerts = 0, nReflectingBoundaryVerts = 0;
+        std::unordered_map<size_t, size_t> absorbingBoundaryIndexMap, reflectingBoundaryIndexMap;
+        for (int i = 0; i < segments.size(); i++) {
+            Vector2 pMid = 0.5f * (vertices[segments[i][0]] + vertices[segments[i][1]]);
+            if (onReflectingBoundary(pMid)) {
+                for (int j = 0; j < 2; j++) {
+                    size_t vIndex = segments[i][j];
+                    if (reflectingBoundaryIndexMap.find(vIndex) == reflectingBoundaryIndexMap.end()) {
+                        const Vector2& p = vertices[vIndex];
+                        reflectingBoundaryVertices.emplace_back(p);
+                        reflectingBoundaryIndexMap[vIndex] = nReflectingBoundaryVerts++;
+                    }
+                    indices[j] = reflectingBoundaryIndexMap[vIndex];
+                }
+                reflectingBoundarySegments.emplace_back(indices);
+            } else {
+                for (int j = 0; j < 2; j++) {
+                    size_t vIndex = segments[i][j];
+                    if (absorbingBoundaryIndexMap.find(vIndex) == absorbingBoundaryIndexMap.end()) {
+                        const Vector2& p = vertices[vIndex];
+                        absorbingBoundaryVertices.emplace_back(p);
+                        absorbingBoundaryIndexMap[vIndex] = nAbsorbingBoundaryVerts++;
+                    }
+                    indices[j] = absorbingBoundaryIndexMap[vIndex];
+                }
+                absorbingBoundarySegments.emplace_back(indices);
+            }
+        }
 
-		if (normalize) {
-			Vector2 cm(0, 0);
-			for (Vector2 v : vertices) cm += v;
-			cm /= vertices.size();
-			float radius = 0.0f;
-			for (Vector2& v : vertices) {
-				v -= cm;
-				radius = std::max(radius, v.norm());
-			}
-			for (Vector2& v : vertices) v /= radius;
-		}
+        absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryVertices, absorbingBoundarySegments);
+        std::function<bool(float, int)> ignoreCandidateSilhouette = [this](float dihedralAngle, int index) -> bool {
+            return this->ignoreCandidateSilhouette(dihedralAngle, index);
+        };
+        if (useReflectingRobinBoundaries) {
+            std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
+            std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
+            reflectingRobinBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices, reflectingBoundarySegments,
+                                                                      ignoreCandidateSilhouette, true, true,
+                                                                      minRobinCoeffValues, maxRobinCoeffValues);
 
-		bbox = zombie::computeBoundingBox(vertices, true, 1.0);
-	}
+        } else {
+            reflectingNeumannBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices, reflectingBoundarySegments,
+                                                                        ignoreCandidateSilhouette, true, true);
+        }
+    }
 
-	void separateBoundaries() {
-		std::vector<size_t> indices(2, -1);
-		size_t vDirichlet = 0, vNeumann = 0;
-		std::unordered_map<size_t, size_t> dirichletIndexMap, neumannIndexMap;
-		for (int i = 0; i < segments.size(); i++) {
-			Vector2 pMid = 0.5f * (vertices[segments[i][0]] + vertices[segments[i][1]]);
-			if (onNeumannBoundary(pMid)) {
-				for (int j = 0; j < 2; j++) {
-					size_t vIndex = segments[i][j];
-					if (neumannIndexMap.find(vIndex) == neumannIndexMap.end()) {
-						const Vector2& p = vertices[vIndex];
-						neumannVertices.emplace_back(p);
-						neumannIndexMap[vIndex] = vNeumann++;
-					}
-					indices[j] = neumannIndexMap[vIndex];
-				}
-				neumannSegments.emplace_back(indices);
-			} else {
-				for (int j = 0; j < 2; j++) {
-					size_t vIndex = segments[i][j];
-					if (dirichletIndexMap.find(vIndex) == dirichletIndexMap.end()) {
-						const Vector2& p = vertices[vIndex];
-						dirichletVertices.emplace_back(p);
-						dirichletIndexMap[vIndex] = vDirichlet++;
-					}
-					indices[j] = dirichletIndexMap[vIndex];
-				}
-				dirichletSegments.emplace_back(indices);
-			}
-		}
+    void populateGeometricQueries(bool useReflectingRobinBoundaries) {
+        branchTraversalWeight = [this](float r2) -> float {
+            float r = std::max(std::sqrt(r2), 1e-2f);
+            return std::fabs(this->harmonicGreensFn.evaluate(r));
+        };
 
-		std::function<bool(float, int)> ignoreCandidateSilhouette = [this](float dihedralAngle, int index) -> bool {
-			return this->ignoreCandidateSilhouette(dihedralAngle, index);
-		};
-		dirichletSceneLoader = new zombie::FcpwSceneLoader<2>(dirichletVertices, dirichletSegments);
-		neumannSceneLoader = new zombie::FcpwSceneLoader<2>(neumannVertices, neumannSegments,
-															ignoreCandidateSilhouette, true);
-	}
+        if (useReflectingRobinBoundaries) {
+            zombie::populateGeometricQueries<2, true>(absorbingBoundaryHandler,
+                                                      reflectingRobinBoundaryHandler,
+                                                      branchTraversalWeight, bbox, queries);
 
-	void populateGeometricQueries() {
-		neumannSamplingTraversalWeight = [this](float r2) -> float {
-			float r = std::max(std::sqrt(r2), 1e-2f);
-			return std::fabs(this->harmonicGreensFn.evaluate(r));
-		};
+        } else {
+            zombie::populateGeometricQueries<2, false>(absorbingBoundaryHandler,
+                                                       reflectingNeumannBoundaryHandler,
+                                                       branchTraversalWeight, bbox, queries);
+        }
+    }
 
-		const fcpw::Aggregate<3> *dirichletAggregate = dirichletSceneLoader->getSceneAggregate();
-		const fcpw::Aggregate<3> *neumannAggregate = neumannSceneLoader->getSceneAggregate();
-		zombie::populateGeometricQueries<2>(queries, bbox, dirichletAggregate, neumannAggregate,
-											neumannSamplingTraversalWeight);
-	}
+    void setPDE(bool useReflectingRobinBoundaries) {
+        const Vector2& bMin = this->bbox.first;
+        const Vector2& bMax = this->bbox.second;
+        float maxLength = (bMax - bMin).maxCoeff();
+        pde.source = [this, &bMin, maxLength](const Vector2& x) -> float {
+            Vector2 uv = (x - bMin) / maxLength;
+            return this->sourceValue->get(uv)[0];
+        };
+        pde.dirichlet = [this, &bMin, maxLength](const Vector2& x) -> float {
+            Vector2 uv = (x - bMin) / maxLength;
+            return this->absorbingBoundaryValue->get(uv)[0];
+        };
+        pde.dirichletDoubleSided = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
+            Vector2 uv = (x - bMin) / maxLength;
+            return this->absorbingBoundaryValue->get(uv)[0];
+        };
+        if (useReflectingRobinBoundaries) {
+            pde.robin = [this, &bMin, maxLength](const Vector2& x) -> float {
+                Vector2 uv = (x - bMin) / maxLength;
+                return this->reflectingBoundaryValue->get(uv)[0];
+            };
+            pde.robinCoeff = [this](const Vector2& x) -> float {
+                return this->robinCoeff;
+            };
+            pde.robinDoubleSided = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
+                Vector2 uv = (x - bMin) / maxLength;
+                return this->reflectingBoundaryValue->get(uv)[0];
+            };
+            pde.robinCoeffDoubleSided = [this](const Vector2& x, bool boundaryNormalAligned) -> float {
+                return this->robinCoeff;
+            };
 
-	void setPDE() {
-		float maxLength = this->bbox.extent().maxCoeff();
-		pde.dirichlet = [this, maxLength](const Vector2& x) -> float {
-			Vector2 uv = (x - this->bbox.pMin) / maxLength;
-			return this->dirichletBoundaryValue->get(uv)[0];
-		};
-		pde.neumann = [this, maxLength](const Vector2& x) -> float {
-			Vector2 uv = (x - this->bbox.pMin) / maxLength;
-			return this->neumannBoundaryValue->get(uv)[0];
-		};
-		pde.dirichletDoubleSided = [this, maxLength](const Vector2& x, bool _) -> float {
-			Vector2 uv = (x - this->bbox.pMin) / maxLength;
-			return this->dirichletBoundaryValue->get(uv)[0];
-		};
-		pde.neumannDoubleSided = [this, maxLength](const Vector2& x, bool _) -> float {
-			Vector2 uv = (x - this->bbox.pMin) / maxLength;
-			return this->neumannBoundaryValue->get(uv)[0];
-		};
-		pde.source = [this, maxLength](const Vector2& x) -> float {
-			Vector2 uv = (x - this->bbox.pMin) / maxLength;
-			return this->sourceValue->get(uv)[0];
-		};
-		pde.absorption = absorptionCoeff;
-	}
+        } else {
+            pde.neumann = [this, &bMin, maxLength](const Vector2& x) -> float {
+                Vector2 uv = (x - bMin) / maxLength;
+                return this->reflectingBoundaryValue->get(uv)[0];
+            };
+            pde.neumannDoubleSided = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
+                Vector2 uv = (x - bMin) / maxLength;
+                return this->reflectingBoundaryValue->get(uv)[0];
+            };
+        }
+        pde.absorption = absorptionCoeff;
+    }
 
-	std::vector<Vector2> dirichletVertices;
-	std::vector<Vector2> neumannVertices;
+    std::vector<Vector2> absorbingBoundaryVertices;
+    std::vector<Vector2> reflectingBoundaryVertices;
 
-	std::vector<std::vector<size_t>> dirichletSegments;
-	std::vector<std::vector<size_t>> neumannSegments;
+    std::vector<std::vector<size_t>> absorbingBoundarySegments;
+    std::vector<std::vector<size_t>> reflectingBoundarySegments;
 
-	zombie::FcpwSceneLoader<2>* dirichletSceneLoader;
-	zombie::FcpwSceneLoader<2>* neumannSceneLoader;
+    zombie::FcpwBoundaryHandler<2, false> absorbingBoundaryHandler;
+    zombie::FcpwBoundaryHandler<2, false> reflectingNeumannBoundaryHandler;
+    zombie::FcpwBoundaryHandler<2, true> reflectingRobinBoundaryHandler;
 
-	std::shared_ptr<Image<1>> isNeumann;
-	std::shared_ptr<Image<1>> dirichletBoundaryValue;
-	std::shared_ptr<Image<1>> neumannBoundaryValue;
-	std::shared_ptr<Image<1>> sourceValue;
-	float absorptionCoeff;
+    std::shared_ptr<Image<1>> isReflecting;
+    std::shared_ptr<Image<1>> absorbingBoundaryValue;
+    std::shared_ptr<Image<1>> reflectingBoundaryValue;
+    std::shared_ptr<Image<1>> sourceValue;
+    float absorptionCoeff, robinCoeff;
 
-	zombie::HarmonicGreensFnFreeSpace<3> harmonicGreensFn;
-	std::function<float(float)> neumannSamplingTraversalWeight;
+    zombie::HarmonicGreensFnFreeSpace<3> harmonicGreensFn;
+    std::function<float(float)> branchTraversalWeight;
 };

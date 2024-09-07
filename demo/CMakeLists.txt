@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.15...3.27)
 project(zombie-demo)
 
 set(ZOMBIE_DEMO_SRC_FILES

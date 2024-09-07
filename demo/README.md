@@ -30,33 +30,33 @@ These scene components are specified along with solver and output options in JSO
 
 ```
 {
-	"solverType": "wost",
-	"solver": {
-		"nWalks": 64,
-		"maxWalkLength": 1024,
-		"epsilonShell": 1e-3,
-		"minStarShapedRadius": 1e-3,
-		"ignoreDirichlet": false,
-		"ignoreNeumann": true,
-		"ignoreSource": true
-	},
-	"scene": {
-		"boundary": "../demo/scenes/engine/geometry.obj",
-		"isNeumann": "../demo/scenes/engine/is_neumann.pfm",
-		"dirichletBoundaryValue": "../demo/scenes/engine/dirichlet_boundary_value.pfm",
-		"neumannBoundaryValue": "../demo/scenes/engine/neumann_boundary_value.pfm",
-		"sourceValue": "../demo/scenes/engine/source_value.pfm"
-	},
-	"output": {
-		"solutionFile": "../demo/scenes/engine/wost.png",
-		"gridRes": 256,
-		"saveDebug": false,
-		"boundaryDistanceMask": 1e-2,
-		"saveColormapped": true,
-		"colormap": "turbo",
-		"colormapMinVal": 0.0,
-		"colormapMaxVal": 1.1
-	}
+    "solverType": "wost",
+    "solver": {
+        "nWalks": 64,
+        "maxWalkLength": 1024,
+        "epsilonShellForDirichlet": 1e-3,
+        "epsilonShellForNeumann": 1e-3,
+        "ignoreDirichlet": false,
+        "ignoreNeumann": true,
+        "ignoreSource": true
+    },
+    "scene": {
+        "boundary": "../demo/scenes/engine/geometry.obj",
+        "isNeumann": "../demo/scenes/engine/is_neumann.pfm",
+        "dirichletBoundaryValue": "../demo/scenes/engine/dirichlet_boundary_value.pfm",
+        "neumannBoundaryValue": "../demo/scenes/engine/neumann_boundary_value.pfm",
+        "sourceValue": "../demo/scenes/engine/source_value.pfm"
+    },
+    "output": {
+        "solutionFile": "../demo/scenes/engine/wost.png",
+        "gridRes": 256,
+        "saveDebug": false,
+        "boundaryDistanceMask": 1e-2,
+        "saveColormapped": true,
+        "colormap": "turbo",
+        "colormapMinVal": 0.0,
+        "colormapMaxVal": 1.1
+    }
 }
 ```
 
