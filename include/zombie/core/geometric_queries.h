@@ -65,7 +65,7 @@ struct GeometricQueries {
                        const Vector<DIM>&, bool, bool)> intersectsWithReflectingBoundary;
     std::function<bool(const Vector<DIM>&, float, const Vector<DIM>&, BoundarySample<DIM>&)> sampleReflectingBoundary;
     std::function<float(const Vector<DIM>&, float, float, float, bool)> computeStarRadiusForReflectingBoundary;
-    std::function<bool(const Vector<DIM>&)> insideDomain; // NOTE: specialized to watertight domains
+    std::function<bool(const Vector<DIM>&, bool)> insideDomain; // NOTE: specialized to watertight domains
     std::function<bool(const Vector<DIM>&)> outsideBoundingDomain;
     std::function<float()> computeSignedDomainVolume;
 };

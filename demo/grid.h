@@ -70,7 +70,7 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
             int idx = i * gridRes + j;
 
             // debug / scene data
-            float inDomain  = queries.insideDomain(samplePts[idx].pt) ? 1 : 0;
+            float inDomain  = queries.insideDomain(samplePts[idx].pt, true) ? 1 : 0;
             float distToAbsorbingBoundary = samplePts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = samplePts[idx].distToReflectingBoundary;
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
@@ -134,7 +134,7 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
             int idx = i * gridRes + j;
 
             // debug / scene data
-            float inDomain  = queries.insideDomain(evalPts[idx].pt) ? 1 : 0;
+            float inDomain  = queries.insideDomain(evalPts[idx].pt, true) ? 1 : 0;
             float distToAbsorbingBoundary = evalPts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = evalPts[idx].distToReflectingBoundary;
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);

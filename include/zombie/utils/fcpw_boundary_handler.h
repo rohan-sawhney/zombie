@@ -995,12 +995,23 @@ void populateGeometricQueries(const AbsorbingBoundaryAggregateType *absorbingBou
 
         return false;
     };
-    geometricQueries.insideDomain = [&geometricQueries](const Vector<DIM>& x) -> bool {
+    geometricQueries.insideDomain = [&geometricQueries](const Vector<DIM>& x, bool useRayIntersections) -> bool {
         if (!geometricQueries.domainIsWatertight) return true;
-        float d1 = geometricQueries.computeDistToAbsorbingBoundary(x, true);
-        float d2 = geometricQueries.computeDistToReflectingBoundary(x, true);
+        if (useRayIntersections) {
+            bool isInside = true;
+            Vector<DIM> zero = Vector<DIM>::Zero();
+            for (size_t i = 0; i < DIM; i++) {
+                Vector<DIM> dir = zero;
+                dir(i) = 1.0f;
+                std::vector<IntersectionPoint<DIM>> is;
+                int hits = geometricQueries.intersectBoundaryAllHits(x, zero, dir, maxFloat, false, false, is);
+                isInside = isInside && (hits%2 == 1);
+            }
 
-        return std::fabs(d1) < std::fabs(d2) ? d1 < 0.0f : d2 < 0.0f;
+            return isInside;
+        }
+
+        return geometricQueries.computeDistToBoundary(x, true) < 0.0f;
     };
     geometricQueries.outsideBoundingDomain = [boundingBox](const Vector<DIM>& x) -> bool {
         return !boundingBox.contains(x);

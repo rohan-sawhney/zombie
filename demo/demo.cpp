@@ -37,7 +37,7 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
     std::vector<zombie::SampleEstimationData<2>> sampleEstimationData(samplePts.size());
     for (int i = 0; i < samplePts.size(); i++) {
         sampleEstimationData[i].nWalks = nWalks;
-        sampleEstimationData[i].estimationQuantity = queries.insideDomain(samplePts[i].pt) || solveDoubleSided ?
+        sampleEstimationData[i].estimationQuantity = queries.insideDomain(samplePts[i].pt, true) || solveDoubleSided ?
                                                      zombie::EstimationQuantity::Solution:
                                                      zombie::EstimationQuantity::None;
     }
@@ -104,7 +104,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
         return !queries.outsideBoundingDomain(x);
     };
     std::function<bool(const Vector2&)> insideSolveRegionDomainSampler = [&queries, solveDoubleSided](const Vector2& x) -> bool {
-        return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x);
+        return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
     };
     std::function<bool(const Vector2&)> onReflectingBoundary = [&scene](const Vector2 &x) -> bool {
         return scene.onReflectingBoundary(x);
