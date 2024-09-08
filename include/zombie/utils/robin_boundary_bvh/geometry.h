@@ -1,3 +1,7 @@
+// This file extends the 'LineSegment' and 'Triangle' primitive structures from
+// the FCPW library to support Robin boundary conditions. Users of Zombie need
+// not interact with this file directly.
+
 #pragma once
 
 #include <fcpw/fcpw.h>

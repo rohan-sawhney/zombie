@@ -1,3 +1,5 @@
+// This file implements a progress bar.
+
 #pragma once
 
 #include <atomic>

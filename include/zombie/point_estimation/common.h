@@ -1,3 +1,11 @@
+// This file provides various convenience structs and enums to specify settings
+// and extract outputs from the algorithms implemented in Zombie. Specifically, in
+// addition to the PDE and GeometricQueries interfaces, the user should populate, via
+// their constructors, the WalkSettings, SamplePoint, and SampleEstimationData structs
+// for the walk-on-spheres and walk-on-stars algorithms. For each SamplePoint where
+// the PDE is to be solved, the SampleStatistics struct can be used to query the
+// estimated solution, gradient, and other statistics.
+
 #pragma once
 
 #include <zombie/core/pde.h>

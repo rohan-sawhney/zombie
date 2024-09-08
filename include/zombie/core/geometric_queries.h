@@ -1,3 +1,13 @@
+// This file defines an interface for performing geometric queries on a domain boundary,
+// such as computing distances to the boundary, projecting points to the boundary, and
+// intersecting rays with the boundary. As part of the problem setup, users of Zombie
+// should populate the callback functions defined by the GeometricQueries interface for
+// the boundary representation used in their application.
+//
+// For surface meshes in 2D and 3D, the FcpwBoundaryHandler class provides a convenient
+// way to populate the GeometricQueries interface; refer to the 'populateGeometricQueries'
+// function in fcpw_boundary_handler.h for details.
+
 #pragma once
 
 #include <functional>

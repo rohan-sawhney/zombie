@@ -1,3 +1,7 @@
+// This file defines Green's functions and their derivatives in free space
+// and on ball domains for 2D and 3D Poisson and screened Poisson equations.
+// These functions are used internally by the algorithms implemented in Zombie.
+
 #pragma once
 
 #include <zombie/core/sampling.h>

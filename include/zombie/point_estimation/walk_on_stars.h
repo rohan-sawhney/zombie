@@ -1,3 +1,12 @@
+// This file implements the Monte Carlo walk-on-stars algorithm for solving
+// Poisson and screened Poisson equations with Dirichlet, Neumann and/or Robin
+// boundary conditions. This algorithm is a strict generalization of walk-on-spheres,
+// and hence can also be used to solve PDEs with pure Dirichlet boundary conditions.
+// The estimated PDE solution, gradient, and other statistics can be queried
+// from the SampleStatistics struct, which is stored in the SamplePoint struct.
+// Each call to solve(...) improves the estimate of the PDE solution at the
+// user-selected set of input points, enabling progressive evaluation.
+
 #pragma once
 
 #include <zombie/point_estimation/common.h>

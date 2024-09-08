@@ -1,3 +1,6 @@
+// This file extends the 'Baseline' structure from the FCPW library to support Robin
+// boundary conditions. Users of Zombie need not interact with this file directly.
+
 #pragma once
 
 #include <zombie/utils/robin_boundary_bvh/geometry.h>

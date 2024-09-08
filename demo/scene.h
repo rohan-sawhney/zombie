@@ -40,7 +40,7 @@ public:
         sourceValue = std::make_shared<Image<1>>(sourceValueFile);
 
         loadOBJ(boundaryFile, normalize, flipOrientation);
-        separateBoundaries(useReflectingRobinBoundaries);
+        buildAccelerationStructures(useReflectingRobinBoundaries);
         populateGeometricQueries(useReflectingRobinBoundaries);
         setPDE(useReflectingRobinBoundaries);
     }
@@ -73,7 +73,7 @@ private:
         bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
     }
 
-    void separateBoundaries(bool useReflectingRobinBoundaries) {
+    void buildAccelerationStructures(bool useReflectingRobinBoundaries) {
         std::vector<size_t> indices(2, -1);
         size_t nAbsorbingBoundaryVerts = 0, nReflectingBoundaryVerts = 0;
         std::unordered_map<size_t, size_t> absorbingBoundaryIndexMap, reflectingBoundaryIndexMap;
@@ -186,7 +186,6 @@ private:
 
     std::vector<Vector2> absorbingBoundaryVertices;
     std::vector<Vector2> reflectingBoundaryVertices;
-
     std::vector<std::vector<size_t>> absorbingBoundarySegments;
     std::vector<std::vector<size_t>> reflectingBoundarySegments;
 

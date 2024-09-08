@@ -1,3 +1,6 @@
+// This file provides various utiiity functions, used internally by the algorithms
+// implemented in Zombie, for generating random samples.
+
 #pragma once
 
 #include <algorithm>

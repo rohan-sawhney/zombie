@@ -1,3 +1,8 @@
+// This file defines an interface for Partial Differential Equations (PDEs),
+// specifically Poisson and screened Poisson equations, with Dirichlet, Neumann,
+// and Robin boundary conditions. As part of the problem setup, users of Zombie
+// should populate the callback functions defined by the PDE interface.
+
 #pragma once
 
 #include <functional>

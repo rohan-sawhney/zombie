@@ -1,3 +1,7 @@
+// This file implements the Boundary Value Caching technique for reducing variance
+// of the walk-on-spheres and walk-on-stars estimators at a set of user-selected
+// evaluation points via sample caching and reuse.
+
 #pragma once
 
 #include <zombie/variance_reduction/boundary_sampler.h>

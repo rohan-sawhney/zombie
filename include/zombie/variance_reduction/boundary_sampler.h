@@ -1,3 +1,9 @@
+// This file defines a BoundarySampler for generating uniformly distributed sample points
+// on a 2D or 3D boundary mesh defined by a set of vertices and indices. These sample points
+// are required by the Boundary Value Caching (BVC) technique for reducing variance of the
+// walk-on-spheres and walk-on-stars estimators. BVC currently requires the sample points on
+// the absorbing boundary to be displaced slightly along the boundary normal.
+
 #pragma once
 
 #include <zombie/point_estimation/walk_on_stars.h>

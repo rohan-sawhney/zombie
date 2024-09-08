@@ -1,3 +1,10 @@
+// This file provides utility functions to load 2D or 3D boundary meshes from OBJ files,
+// normalize mesh positions to lie within a unit sphere, swap mesh indices to flip orientation,
+// and compute the bounding box of the mesh. The FcpwBoundaryHandler class builds an acceleration
+// structure to perform geometric queries against the mesh, while the 'populateGeometricQueries'
+// function populates the GeometricQueries structure using FcpwBoundaryHandler objects for the
+// absorbing (Dirichlet) and reflecting (Neumann or Robin) boundaries.
+
 #pragma once
 
 #include <zombie/core/geometric_queries.h>
