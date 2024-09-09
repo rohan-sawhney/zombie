@@ -111,13 +111,15 @@ private:
         if (useReflectingRobinBoundaries) {
             std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
             std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
-            reflectingRobinBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices, reflectingBoundarySegments,
-                                                                      ignoreCandidateSilhouette, true, true,
+            reflectingRobinBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices,
+                                                                      reflectingBoundarySegments,
+                                                                      ignoreCandidateSilhouette, false,
                                                                       minRobinCoeffValues, maxRobinCoeffValues);
 
         } else {
-            reflectingNeumannBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices, reflectingBoundarySegments,
-                                                                        ignoreCandidateSilhouette, true, true);
+            reflectingNeumannBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices,
+                                                                        reflectingBoundarySegments,
+                                                                        ignoreCandidateSilhouette, true);
         }
     }
 

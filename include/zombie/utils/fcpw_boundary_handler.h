@@ -1,7 +1,7 @@
 // This file provides utility functions to load 2D or 3D boundary meshes from OBJ files,
 // normalize mesh positions to lie within a unit sphere, swap mesh indices to flip orientation,
-// and compute the bounding box of the mesh. The FcpwBoundaryHandler class builds an acceleration
-// structure to perform geometric queries against the mesh, while the 'populateGeometricQueries'
+// and compute the bounding box of a mesh. The FcpwBoundaryHandler class builds an acceleration
+// structure to perform geometric queries against a mesh, while the 'populateGeometricQueries'
 // function populates the GeometricQueries structure using FcpwBoundaryHandler objects for the
 // absorbing (Dirichlet) and reflecting (Neumann or Robin) boundaries.
 
@@ -49,15 +49,16 @@ public:
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
     // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
     // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries. For Robin conditions,
-    // additionally provide min and max Robin coefficients per mesh face. 
+    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
+    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
+    // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
                                     const std::vector<std::vector<size_t>>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false, bool buildBvh=true,
+                                    bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={});
+                                    const std::vector<float>& maxRobinCoeffValues={},
+                                    bool buildBvh=true, bool enableBvhVectorization=false);
 
     // updates the Robin coefficients for the mesh
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
@@ -262,9 +263,10 @@ template <size_t DIM, bool useRobinConditions>
 void FcpwBoundaryHandler<DIM, useRobinConditions>::buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
                                                                               const std::vector<std::vector<size_t>>& indices,
                                                                               std::function<bool(float, int)> ignoreCandidateSilhouette,
-                                                                              bool computeSilhouettes, bool buildBvh,
+                                                                              bool computeSilhouettes,
                                                                               const std::vector<float>& minRobinCoeffValues,
-                                                                              const std::vector<float>& maxRobinCoeffValues)
+                                                                              const std::vector<float>& maxRobinCoeffValues,
+                                                                              bool buildBvh, bool enableBvhVectorization)
 {
     std::cerr << "FcpwBoundaryHandler::buildAccelerationStructure: Unsupported dimension: " << DIM
               << ", useRobinConditions: " << useRobinConditions
@@ -291,15 +293,16 @@ public:
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
     // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
     // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries. For Robin conditions,
-    // additionally provide min and max Robin coefficients per mesh face.
+    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
+    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
+    // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
                                     const std::vector<std::vector<size_t>>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false, bool buildBvh=true,
+                                    bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={}) {
+                                    const std::vector<float>& maxRobinCoeffValues={},
+                                    bool buildBvh=true, bool enableBvhVectorization=false) {
         if (positions.size() > 0) {
             // scene geometry is made up of line segments
             std::vector<std::vector<fcpw::PrimitiveType>> objectTypes(
@@ -332,7 +335,7 @@ public:
             fcpw::AggregateType aggregateType = buildBvh ?
                                                 fcpw::AggregateType::Bvh_SurfaceArea :
                                                 fcpw::AggregateType::Baseline;
-            scene.build(aggregateType, true, true, true);
+            scene.build(aggregateType, enableBvhVectorization, true, true);
         }
     }
 
@@ -356,15 +359,16 @@ public:
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
     // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
     // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries. For Robin conditions,
-    // additionally provide min and max Robin coefficients per mesh face.
+    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
+    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
+    // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
                                     const std::vector<std::vector<size_t>>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false, bool buildBvh=true,
+                                    bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={}) {
+                                    const std::vector<float>& maxRobinCoeffValues={},
+                                    bool buildBvh=true, bool enableBvhVectorization=false) {
         if (positions.size() > 0) {
             // scene geometry is made up of triangles
             std::vector<std::vector<fcpw::PrimitiveType>> objectTypes(
@@ -397,7 +401,7 @@ public:
             fcpw::AggregateType aggregateType = buildBvh ?
                                                 fcpw::AggregateType::Bvh_SurfaceArea :
                                                 fcpw::AggregateType::Baseline;
-            scene.build(aggregateType, true, true, true);
+            scene.build(aggregateType, enableBvhVectorization, true, true);
         }
     }
 
@@ -427,15 +431,16 @@ public:
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
     // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
     // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries. For Robin conditions,
-    // additionally provide min and max Robin coefficients per mesh face.
+    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
+    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
+    // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
                                     const std::vector<std::vector<size_t>>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false, bool buildBvh=true,
+                                    bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={}) {
+                                    const std::vector<float>& maxRobinCoeffValues={},
+                                    bool buildBvh=true, bool enableBvhVectorization=false) {
         if (positions.size() > 0) {
             struct VertexFaceAdjacency {
                 VertexFaceAdjacency(): adjacentFaceIndices{-1, -1} {}
@@ -508,14 +513,18 @@ public:
 
             // build aggregate
             if (buildBvh) {
+                if (enableBvhVectorization) {
 #ifdef FCPW_USE_ENOKI
-                bvh = initializeRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub,
-                                                              true, true, FCPW_SIMD_WIDTH);
-                mbvh = initializeVectorizedRobinBvh<2, RobinLineSegment>(bvh.get(), lineSegmentPtrs,
-                                                                         silhouettePtrsStub, true);
+                    bvh = initializeRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub,
+                                                                  true, true, FCPW_SIMD_WIDTH);
+                    mbvh = initializeVectorizedRobinBvh<2, RobinLineSegment>(bvh.get(), lineSegmentPtrs,
+                                                                             silhouettePtrsStub, true);
 #else
-                bvh = initializeRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub);
+                    bvh = initializeRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub);
 #endif
+                } else {
+                    bvh = initializeRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub);
+                }
 
             } else {
                 baseline = initializeRobinBaseline<2, RobinLineSegment>(lineSegmentPtrs, silhouettePtrsStub);
@@ -568,15 +577,16 @@ public:
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
     // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
     // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries. For Robin conditions,
-    // additionally provide min and max Robin coefficients per mesh face.
+    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
+    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
+    // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
                                     const std::vector<std::vector<size_t>>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false, bool buildBvh=true,
+                                    bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={}) {
+                                    const std::vector<float>& maxRobinCoeffValues={},
+                                    bool buildBvh=true, bool enableBvhVectorization=false) {
         if (positions.size() > 0) {
             struct EdgeFaceAdjacency {
                 EdgeFaceAdjacency(): adjacentFaceIndices{-1, -1} {}
@@ -676,14 +686,18 @@ public:
 
             // build aggregate
             if (buildBvh) {
+                if (enableBvhVectorization) {
 #ifdef FCPW_USE_ENOKI
-                bvh = initializeRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub,
-                                                           true, true, FCPW_SIMD_WIDTH);
-                mbvh = initializeVectorizedRobinBvh<3, RobinTriangle>(bvh.get(), trianglePtrs,
-                                                                      silhouettePtrsStub, true);
+                    bvh = initializeRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub,
+                                                               true, true, FCPW_SIMD_WIDTH);
+                    mbvh = initializeVectorizedRobinBvh<3, RobinTriangle>(bvh.get(), trianglePtrs,
+                                                                          silhouettePtrsStub, true);
 #else
-                bvh = initializeRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub);
+                    bvh = initializeRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub);
 #endif
+                } else {
+                    bvh = initializeRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub);
+                }
 
             } else {
                 baseline = initializeRobinBaseline<3, RobinTriangle>(trianglePtrs, silhouettePtrsStub);
