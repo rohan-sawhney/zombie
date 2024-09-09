@@ -207,27 +207,27 @@ void Scene::populatePDEInputs() {
     float maxLength = (bMax - bMin).maxCoeff();
 
     pde.source = [this, &bMin, maxLength](const Vector2& x) -> float {
-        Vector2 uv = (x - bMin) / maxLength;
+        Vector2 uv = (x - bMin)/maxLength;
         return this->sourceValue->get(uv)[0];
     };
     pde.dirichlet = [this, &bMin, maxLength](const Vector2& x) -> float {
-        Vector2 uv = (x - bMin) / maxLength;
+        Vector2 uv = (x - bMin)/maxLength;
         return this->absorbingBoundaryValue->get(uv)[0];
     };
     pde.dirichletDoubleSided = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
-        Vector2 uv = (x - bMin) / maxLength;
+        Vector2 uv = (x - bMin)/maxLength;
         return this->absorbingBoundaryValue->get(uv)[0];
     };
     if (robinCoeff > 0.0f) {
         pde.robin = [this, &bMin, maxLength](const Vector2& x) -> float {
-            Vector2 uv = (x - bMin) / maxLength;
+            Vector2 uv = (x - bMin)/maxLength;
             return this->reflectingBoundaryValue->get(uv)[0];
         };
         pde.robinCoeff = [this](const Vector2& x) -> float {
             return this->robinCoeff;
         };
         pde.robinDoubleSided = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
-            Vector2 uv = (x - bMin) / maxLength;
+            Vector2 uv = (x - bMin)/maxLength;
             return this->reflectingBoundaryValue->get(uv)[0];
         };
         pde.robinCoeffDoubleSided = [this](const Vector2& x, bool boundaryNormalAligned) -> float {
@@ -236,11 +236,11 @@ void Scene::populatePDEInputs() {
 
     } else {
         pde.neumann = [this, &bMin, maxLength](const Vector2& x) -> float {
-            Vector2 uv = (x - bMin) / maxLength;
+            Vector2 uv = (x - bMin)/maxLength;
             return this->reflectingBoundaryValue->get(uv)[0];
         };
         pde.neumannDoubleSided = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
-            Vector2 uv = (x - bMin) / maxLength;
+            Vector2 uv = (x - bMin)/maxLength;
             return this->reflectingBoundaryValue->get(uv)[0];
         };
     }
