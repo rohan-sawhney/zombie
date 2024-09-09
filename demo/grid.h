@@ -1,3 +1,6 @@
+// This file contains helper functions for creating 2D grids and writing
+// PDE solutions estimated on these grids to disk.
+
 #pragma once
 
 #include <filesystem>
@@ -11,11 +14,12 @@ void writeSolution(const std::string& filename,
                    std::shared_ptr<Image<3>> boundaryData,
                    bool saveDebug, bool saveColormapped,
                    std::string colormap, float minVal, float maxVal) {
+    // write solution to disk
     std::filesystem::path path(filename);
     std::filesystem::create_directories(path.parent_path());
-
     solution->write(filename);
 
+    // write colormapped and debug images to disk
     std::string basePath = (path.parent_path() / path.stem()).string();
     std::string ext = path.extension();
 
@@ -30,16 +34,18 @@ void writeSolution(const std::string& filename,
 }
 
 void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
-                        const zombie::GeometricQueries<2> &queries,
-                        const Vector2 &bMin, const Vector2 &bMax,
+                        const zombie::GeometricQueries<2>& queries,
+                        const Vector2& bMin, const Vector2& bMax,
                         const int gridRes) {
+    // create a grid of sample points
     Vector2 extent = bMax - bMin;
     for (int i = 0; i < gridRes; i++) {
         for (int j = 0; j < gridRes; j++) {
-            Vector2 pt((i / float(gridRes)) * extent.x() + bMin.x(),
-                       (j / float(gridRes)) * extent.y() + bMin.y());
+            Vector2 pt((i/float(gridRes))*extent.x() + bMin.x(),
+                       (j/float(gridRes))*extent.y() + bMin.y());
             float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
             float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
+
             samplePts.emplace_back(zombie::SamplePoint<float, 2>(pt, Vector2::Zero(),
                                                                  zombie::SampleType::InDomain,
                                                                  1.0f, distToAbsorbingBoundary,
@@ -50,35 +56,37 @@ void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
 
 void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePts,
                       const zombie::PDE<float, 2>& pde,
-                      const zombie::GeometricQueries<2> &queries,
-                      const bool isDoubleSided, const json &config) {
+                      const zombie::GeometricQueries<2>& queries,
+                      const bool isDoubleSided, const json& config) {
+    // read settings from config
     const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const int gridRes = getRequired<int>(config, "gridRes");
-    const float boundaryDistanceMask = getOptional<float>(config, "boundaryDistanceMask", 0.0);
+    const float boundaryDistanceMask = getOptional<float>(config, "boundaryDistanceMask", 0.0f);
 
     const bool saveDebug = getOptional<bool>(config, "saveDebug", false);
     const bool saveColormapped = getOptional<bool>(config, "saveColormapped", true);
     const std::string colormap = getOptional<std::string>(config, "colormap", "");
-    const float colormapMinVal = getOptional<float>(config, "colormapMinVal", 0.0);
-    const float colormapMaxVal = getOptional<float>(config, "colormapMaxVal", 1.0);
+    const float colormapMinVal = getOptional<float>(config, "colormapMinVal", 0.0f);
+    const float colormapMaxVal = getOptional<float>(config, "colormapMaxVal", 1.0f);
 
+    // extract solution data
     std::shared_ptr<Image<3>> solution = std::make_shared<Image<3>>(gridRes, gridRes);
     std::shared_ptr<Image<3>> boundaryDistance = std::make_shared<Image<3>>(gridRes, gridRes);
     std::shared_ptr<Image<3>> boundaryData = std::make_shared<Image<3>>(gridRes, gridRes);
     for (int i = 0; i < gridRes; i++) {
         for (int j = 0; j < gridRes; j++) {
-            int idx = i * gridRes + j;
+            int idx = i*gridRes + j;
 
-            // debug / scene data
-            float inDomain  = queries.insideDomain(samplePts[idx].pt, true) ? 1 : 0;
+            // scene data
+            float inDomain = queries.insideDomain(samplePts[idx].pt, true) ? 1 : 0;
             float distToAbsorbingBoundary = samplePts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = samplePts[idx].distToReflectingBoundary;
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
 
             float dirichletVal = pde.dirichlet(samplePts[idx].pt);
-            float neumannVal = pde.neumann(samplePts[idx].pt);
+            float robinVal = pde.robin ? pde.robin(samplePts[idx].pt) : pde.neumann(samplePts[idx].pt);
             float sourceVal = pde.source(samplePts[idx].pt);
-            boundaryData->get(j, i) = Array3(dirichletVal, neumannVal, sourceVal);
+            boundaryData->get(j, i) = Array3(dirichletVal, robinVal, sourceVal);
 
             // solution data
             float value = samplePts[idx].statistics ? samplePts[idx].statistics->getEstimatedSolution(): 0.0f;
@@ -89,21 +97,24 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
         }
     }
 
+    // write to disk
     writeSolution(solutionFile, solution, boundaryDistance, boundaryData, saveDebug,
                   saveColormapped, colormap, colormapMinVal, colormapMaxVal);
 }
 
 void createEvaluationGrid(std::vector<zombie::bvc::EvaluationPoint<float, 2>>& evalPts,
-                          const zombie::GeometricQueries<2> &queries,
-                          const Vector2 &bMin, const Vector2 &bMax,
+                          const zombie::GeometricQueries<2>& queries,
+                          const Vector2& bMin, const Vector2& bMax,
                           const int gridRes) {
+    // create a grid of evaluation points
     Vector2 extent = bMax - bMin;
     for (int i = 0; i < gridRes; i++) {
         for (int j = 0; j < gridRes; j++) {
-            Vector2 pt((i / float(gridRes)) * extent.x() + bMin.x(),
-                       (j / float(gridRes)) * extent.y() + bMin.y());
+            Vector2 pt((i/float(gridRes))*extent.x() + bMin.x(),
+                       (j/float(gridRes))*extent.y() + bMin.y());
             float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
             float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
+
             evalPts.emplace_back(zombie::bvc::EvaluationPoint<float, 2>(pt, Vector2::Zero(),
                                                                         zombie::SampleType::InDomain,
                                                                         distToAbsorbingBoundary,
@@ -114,35 +125,37 @@ void createEvaluationGrid(std::vector<zombie::bvc::EvaluationPoint<float, 2>>& e
 
 void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>>& evalPts,
                         const zombie::PDE<float, 2>& pde,
-                        const zombie::GeometricQueries<2> &queries,
-                        const bool isDoubleSided, const json &config) {
+                        const zombie::GeometricQueries<2>& queries,
+                        const bool isDoubleSided, const json& config) {
+    // read settings from config
     const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const int gridRes = getRequired<int>(config, "gridRes");
-    const float boundaryDistanceMask = getOptional<float>(config, "boundaryDistanceMask", 0.0);
+    const float boundaryDistanceMask = getOptional<float>(config, "boundaryDistanceMask", 0.0f);
 
     const bool saveDebug = getOptional<bool>(config, "saveDebug", false);
     const bool saveColormapped = getOptional<bool>(config, "saveColormapped", true);
     const std::string colormap = getOptional<std::string>(config, "colormap", "");
-    const float colormapMinVal = getOptional<float>(config, "colormapMinVal", 0.0);
-    const float colormapMaxVal = getOptional<float>(config, "colormapMaxVal", 1.0);
+    const float colormapMinVal = getOptional<float>(config, "colormapMinVal", 0.0f);
+    const float colormapMaxVal = getOptional<float>(config, "colormapMaxVal", 1.0f);
 
+    // extract solution data
     std::shared_ptr<Image<3>> solution = std::make_shared<Image<3>>(gridRes, gridRes);
     std::shared_ptr<Image<3>> boundaryDistance = std::make_shared<Image<3>>(gridRes, gridRes);
     std::shared_ptr<Image<3>> boundaryData = std::make_shared<Image<3>>(gridRes, gridRes);
     for (int i = 0; i < gridRes; i++) {
         for (int j = 0; j < gridRes; j++) {
-            int idx = i * gridRes + j;
+            int idx = i*gridRes + j;
 
-            // debug / scene data
-            float inDomain  = queries.insideDomain(evalPts[idx].pt, true) ? 1 : 0;
+            // scene data
+            float inDomain = queries.insideDomain(evalPts[idx].pt, true) ? 1 : 0;
             float distToAbsorbingBoundary = evalPts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = evalPts[idx].distToReflectingBoundary;
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
 
             float dirichletVal = pde.dirichlet(evalPts[idx].pt);
-            float neumannVal = pde.neumann(evalPts[idx].pt);
+            float robinVal = pde.robin ? pde.robin(evalPts[idx].pt) : pde.neumann(evalPts[idx].pt);
             float sourceVal = pde.source(evalPts[idx].pt);
-            boundaryData->get(j, i) = Array3(dirichletVal, neumannVal, sourceVal);
+            boundaryData->get(j, i) = Array3(dirichletVal, robinVal, sourceVal);
 
             // solution data
             float value = evalPts[idx].getEstimatedSolution();
@@ -153,6 +166,7 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
         }
     }
 
+    // write to disk
     writeSolution(solutionFile, solution, boundaryDistance, boundaryData, saveDebug,
                   saveColormapped, colormap, colormapMinVal, colormapMaxVal);
 }

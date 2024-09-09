@@ -9,7 +9,7 @@ typedef std::chrono::high_resolution_clock Clock;
 
 class ProgressBar {
 public:
-    ProgressBar(int totalWork, int displayWidth = 80):
+    ProgressBar(int totalWork, int displayWidth=80):
                 completedWork(0),
                 totalWork(totalWork),
                 displayWidth(displayWidth),
