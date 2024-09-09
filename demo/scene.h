@@ -3,7 +3,7 @@
 // boundary conditions, source term, and robin and absorption coefficients.
 //
 // The boundary mesh is read from an OBJ file, while the input PDE data is read
-// from images for the purposes of this demo. The user may analogously define
+// from images for the purposes of this demo. NOTE: Users may analogously define
 // a Scene class for 3D domains and/or vector-valued PDEs, as all functionality
 // in Zombie is templated on the dimension and value type of the PDE.
 

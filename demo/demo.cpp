@@ -1,6 +1,6 @@
-// This file is the entry point for the 2D demo application. It reads a scene description
-// from a JSON file, runs the WalkOnStars or BoundaryValueCaching solver, and writes the
-// result to a PMF or PNG file.
+// This file is the entry point for the 2D demo application demonstrating how to use Zombie.
+// It reads a 'scene' description from a JSON file, runs the WalkOnStars or BoundaryValueCaching
+// solver, and writes the result to a PMF or PNG file.
 
 #include <zombie/variance_reduction/boundary_value_caching.h>
 #include <zombie/utils/progress.h>
