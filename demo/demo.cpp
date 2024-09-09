@@ -1,4 +1,4 @@
-// This file is the entry point for the demo application. It reads a scene description
+// This file is the entry point for the 2D demo application. It reads a scene description
 // from a JSON file, runs the WalkOnStars or BoundaryValueCaching solver, and writes the
 // result to a PMF or PNG file.
 
