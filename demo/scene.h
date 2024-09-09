@@ -172,9 +172,9 @@ void Scene::buildAccelerationStructures() {
         std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
         std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
         reflectingRobinBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices,
-                                                                    reflectingBoundarySegments,
-                                                                    ignoreCandidateSilhouette, false,
-                                                                    minRobinCoeffValues, maxRobinCoeffValues);
+                                                                  reflectingBoundarySegments,
+                                                                  ignoreCandidateSilhouette, false,
+                                                                  minRobinCoeffValues, maxRobinCoeffValues);
 
     } else {
         reflectingNeumannBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices,
