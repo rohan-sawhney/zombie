@@ -18,7 +18,8 @@ class WalkOnSpheres {
 public:
     // constructor
     WalkOnSpheres(const GeometricQueries<DIM>& queries_,
-                  std::function<void(WalkState<T, DIM>&)> getTerminalContribution_={});
+                  std::function<void(const WalkState<T, DIM>&)> walkStateCallback_={},
+                  std::function<T(const WalkState<T, DIM>&)> terminalContributionCallback_={});
 
     // solves the given PDE at the input point; NOTE: assumes the point does not
     // lie on the boundary when estimating the gradient
@@ -48,10 +49,11 @@ private:
                             float distToAbsorbingBoundary, pcg32& sampler,
                             WalkState<T, DIM>& state) const;
 
-    // sets the terminal contribution from the end of the walk
-    void setTerminalContribution(WalkCompletionCode code, const PDE<T, DIM>& pde,
-                                 const WalkSettings<T>& walkSettings,
-                                 WalkState<T, DIM>& state) const;
+    // returns the terminal contribution from the end of the walk
+    T getTerminalContribution(WalkCompletionCode code,
+                              const PDE<T, DIM>& pde,
+                              const WalkSettings<T>& walkSettings,
+                              WalkState<T, DIM>& state) const;
 
     // estimates only the solution of the given PDE at the input point
     void estimateSolution(const PDE<T, DIM>& pde,
@@ -68,7 +70,8 @@ private:
 
     // members
     const GeometricQueries<DIM>& queries;
-    std::function<void(WalkState<T, DIM>&)> getTerminalContribution;
+    std::function<void(const WalkState<T, DIM>&)> walkStateCallback;
+    std::function<T(const WalkState<T, DIM>&)> terminalContributionCallback;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,8 +79,10 @@ private:
 
 template <typename T, size_t DIM>
 inline WalkOnSpheres<T, DIM>::WalkOnSpheres(const GeometricQueries<DIM>& queries_,
-                                            std::function<void(WalkState<T, DIM>&)> getTerminalContribution_):
-                                            queries(queries_), getTerminalContribution(getTerminalContribution_) {
+                                            std::function<void(const WalkState<T, DIM>&)> walkStateCallback_,
+                                            std::function<T(const WalkState<T, DIM>&)> terminalContributionCallback_):
+                                            queries(queries_), walkStateCallback(walkStateCallback_),
+                                            terminalContributionCallback(terminalContributionCallback_) {
     // do nothing
 }
 
@@ -152,6 +157,11 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         // update the ball center and radius
         state.greensFn->updateBall(state.currentPt, distToAbsorbingBoundary);
 
+        // callback for the current walk state
+        if (walkStateCallback) {
+            walkStateCallback(state);
+        }
+
         // compute the source contribution
         computeSourceContribution(pde, walkSettings, sampler, state);
 
@@ -186,7 +196,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         // update the walk length and break if the max walk length is exceeded
         state.walkLength++;
         if (state.walkLength > walkSettings.maxWalkLength) {
-            if (walkSettings.printLogs && !getTerminalContribution) {
+            if (walkSettings.printLogs && !terminalContributionCallback) {
                 std::cout << "Maximum walk length exceeded!" << std::endl;
             }
 
@@ -206,27 +216,28 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
 }
 
 template <typename T, size_t DIM>
-inline void WalkOnSpheres<T, DIM>::setTerminalContribution(WalkCompletionCode code, const PDE<T, DIM>& pde,
-                                                           const WalkSettings<T>& walkSettings,
-                                                           WalkState<T, DIM>& state) const {
+inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
+                                                        const PDE<T, DIM>& pde,
+                                                        const WalkSettings<T>& walkSettings,
+                                                        WalkState<T, DIM>& state) const {
     if (code == WalkCompletionCode::ReachedAbsorbingBoundary &&
         !walkSettings.ignoreAbsorbingBoundaryContribution) {
         // project the walk position to the absorbing boundary and grab the known boundary value
         float signedDistance;
         queries.projectToAbsorbingBoundary(state.currentPt, state.currentNormal,
                                            signedDistance, walkSettings.solveDoubleSided);
-        state.terminalContribution = walkSettings.solveDoubleSided ?
-                                     pde.dirichletDoubleSided(state.currentPt, signedDistance > 0.0f) :
-                                     pde.dirichlet(state.currentPt);
+        return walkSettings.solveDoubleSided ?
+               pde.dirichletDoubleSided(state.currentPt, signedDistance > 0.0f) :
+               pde.dirichlet(state.currentPt);
 
-    } else if (code == WalkCompletionCode::ExceededMaxWalkLength && getTerminalContribution) {
+    } else if (code == WalkCompletionCode::ExceededMaxWalkLength &&
+               terminalContributionCallback) {
         // get the user-specified terminal contribution
-        getTerminalContribution(state);
-
-    } else {
-        // terminated with russian roulette or ignoring absorbing boundary values
-        state.terminalContribution = walkSettings.initVal;
+        return terminalContributionCallback(state);
     }
+
+    // terminated with russian roulette or ignoring absorbing boundary values
+    return walkSettings.initVal;
 }
 
 template <typename T, size_t DIM>
@@ -288,10 +299,10 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
         if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
              code == WalkCompletionCode::TerminatedWithRussianRoulette) ||
-            (code == WalkCompletionCode::ExceededMaxWalkLength && getTerminalContribution)) {
+            (code == WalkCompletionCode::ExceededMaxWalkLength && terminalContributionCallback)) {
             // compute the walk contribution
-            setTerminalContribution(code, pde, walkSettings, state);
-            T totalContribution = state.throughput*state.terminalContribution +
+            T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
+            T totalContribution = state.throughput*terminalContribution +
                                   state.totalSourceContribution;
 
             // update statistics
@@ -359,6 +370,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
             greensFn->updateBall(state.currentPt, samplePt.firstSphereRadius);
 
             // compute the source contribution inside the ball
+            T firstSourceContribution = walkSettings.initVal;
+            Vector<DIM> sourceGradientDirection = Vector<DIM>::Zero();
             if (!walkSettings.ignoreSourceContribution) {
                 if (antitheticIter == 0) {
                     float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
@@ -374,8 +387,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 float greensFnNorm = greensFn->norm();
                 T sourceContribution = greensFnNorm*pde.source(greensFn->yVol);
                 state.totalSourceContribution += state.throughput*sourceContribution;
-                state.firstSourceContribution = sourceContribution;
-                state.sourceGradientDirection = greensFn->gradient()/(sourcePdf*greensFnNorm);
+                firstSourceContribution = sourceContribution;
+                sourceGradientDirection = greensFn->gradient()/(sourcePdf*greensFnNorm);
             }
 
             // sample a point uniformly on the sphere; update the current position
@@ -404,7 +417,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
 
             state.currentPt = greensFn->ySurf;
             state.throughput *= greensFn->poissonKernel()/boundaryPdf;
-            state.boundaryGradientDirection = greensFn->poissonKernelGradient()/(boundaryPdf*state.throughput);
+            Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient()/(boundaryPdf*state.throughput);
 
             // compute the distance to the absorbing boundary
             float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(state.currentPt, false);
@@ -416,31 +429,28 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
 
             if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                  code == WalkCompletionCode::TerminatedWithRussianRoulette) ||
-                (code == WalkCompletionCode::ExceededMaxWalkLength && getTerminalContribution)) {
+                (code == WalkCompletionCode::ExceededMaxWalkLength && terminalContributionCallback)) {
                 // compute the walk contribution
-                setTerminalContribution(code, pde, walkSettings, state);
-                T totalContribution = state.throughput*state.terminalContribution +
+                T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
+                T totalContribution = state.throughput*terminalContribution +
                                       state.totalSourceContribution;
 
                 // compute the gradient contribution
                 T boundaryGradientEstimate[DIM];
                 T sourceGradientEstimate[DIM];
-                T boundaryContribution = totalContribution - state.firstSourceContribution;
+                T boundaryContribution = totalContribution - firstSourceContribution;
                 T directionalDerivative = walkSettings.initVal;
 
                 for (int i = 0; i < DIM; i++) {
-                    boundaryGradientEstimate[i] =
-                        (boundaryContribution - boundaryGradientControlVariate)*state.boundaryGradientDirection[i];
-                    sourceGradientEstimate[i] =
-                        (state.firstSourceContribution - sourceGradientControlVariate)*state.sourceGradientDirection[i];
-
+                    boundaryGradientEstimate[i] = (boundaryContribution - boundaryGradientControlVariate)*boundaryGradientDirection[i];
+                    sourceGradientEstimate[i] = (firstSourceContribution - sourceGradientControlVariate)*sourceGradientDirection[i];
                     directionalDerivative += boundaryGradientEstimate[i]*directionForDerivative[i];
                     directionalDerivative += sourceGradientEstimate[i]*directionForDerivative[i];
                 }
 
                 // update statistics
                 samplePt.statistics->addSolutionEstimate(totalContribution);
-                samplePt.statistics->addFirstSourceContribution(state.firstSourceContribution);
+                samplePt.statistics->addFirstSourceContribution(firstSourceContribution);
                 samplePt.statistics->addGradientEstimate(boundaryGradientEstimate, sourceGradientEstimate);
                 samplePt.statistics->addDerivativeContribution(directionalDerivative);
                 samplePt.statistics->addWalkLength(state.walkLength);

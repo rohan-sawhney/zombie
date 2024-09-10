@@ -156,7 +156,9 @@ private:
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
-// FUTURE: bias correction/compensation
+// FUTURE:
+// - bias correction/compensation
+// - Barnes-Hut acceleration for splatting
 
 template <typename T, size_t DIM>
 inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,

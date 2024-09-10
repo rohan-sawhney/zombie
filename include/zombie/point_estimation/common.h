@@ -89,35 +89,27 @@ struct WalkState {
     WalkState(const Vector<DIM>& currentPt_, const Vector<DIM>& currentNormal_,
               const Vector<DIM>& prevDirection_, float prevDistance_, float throughput_,
               bool onReflectingBoundary_, int walkLength_, T initVal_):
+              greensFn(nullptr),
               currentPt(currentPt_),
               currentNormal(currentNormal_),
               prevDirection(prevDirection_),
-              sourceGradientDirection(Vector<DIM>::Zero()),
-              boundaryGradientDirection(Vector<DIM>::Zero()),
               prevDistance(prevDistance_),
               throughput(throughput_),
               onReflectingBoundary(onReflectingBoundary_),
-              greensFn(nullptr),
-              terminalContribution(initVal_),
               totalReflectingBoundaryContribution(initVal_),
               totalSourceContribution(initVal_),
-              firstSourceContribution(initVal_),
               walkLength(walkLength_) {}
 
     // members
+    std::unique_ptr<GreensFnBall<DIM>> greensFn;
     Vector<DIM> currentPt;
     Vector<DIM> currentNormal;
     Vector<DIM> prevDirection;
-    Vector<DIM> sourceGradientDirection;
-    Vector<DIM> boundaryGradientDirection;
     float prevDistance;
     float throughput;
     bool onReflectingBoundary;
-    std::unique_ptr<GreensFnBall<DIM>> greensFn;
-    T terminalContribution;
     T totalReflectingBoundaryContribution;
     T totalSourceContribution;
-    T firstSourceContribution;
     int walkLength;
 };
 
