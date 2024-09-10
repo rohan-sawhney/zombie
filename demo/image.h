@@ -61,7 +61,7 @@ struct Image {
     // members
     int h, w;
 
-private:
+protected:
     // check if file has extension
     bool hasExtension(const std::string& filename, const std::string& targetExtension);
 

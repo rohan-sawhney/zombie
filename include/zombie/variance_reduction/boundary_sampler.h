@@ -36,7 +36,7 @@ public:
                          std::vector<SamplePoint<T, DIM>>& samplePts,
                          std::vector<SamplePoint<T, DIM>>& samplePtsNormalAligned);
 
-private:
+protected:
     // computes normals
     void computeNormals(bool computeWeighted);
 

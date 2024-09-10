@@ -116,7 +116,7 @@ public:
                                       std::vector<EvaluationPoint<T, DIM>>& evalPts,
                                       bool runSingleThreaded=false) const;
 
-private:
+protected:
     // sets estimation data for each sample point to compute boundary estimates
     void setEstimationData(const PDE<T, DIM>& pde,
                            const WalkSettings<T>& walkSettings,

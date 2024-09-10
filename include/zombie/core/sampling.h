@@ -380,7 +380,7 @@ public:
         return std::clamp(first - 1, 0, size - 2);
     }
 
-private:
+protected:
     // member
     std::vector<float> table;
 };
@@ -484,7 +484,7 @@ public:
         return u2 >= item.threshold ? item.indexA : item.indexB;
     }
 
-private:
+protected:
     // member
     struct AliasTableItem {
         float threshold; // if rand() < threshold, pick indexB (else pick indexA)

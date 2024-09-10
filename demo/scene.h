@@ -36,7 +36,7 @@ public:
     zombie::GeometricQueries<2> queries;
     zombie::PDE<float, 2> pde;
 
-private:
+protected:
     // loads boundary mesh from OBJ file
     void loadOBJ(const std::string& filename, bool normalize, bool flipOrientation);
 

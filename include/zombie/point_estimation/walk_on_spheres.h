@@ -37,7 +37,7 @@ public:
                bool runSingleThreaded=false,
                std::function<void(int, int)> reportProgress={}) const;
 
-private:
+protected:
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
                                    const WalkSettings<T>& walkSettings,

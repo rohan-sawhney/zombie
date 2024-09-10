@@ -27,7 +27,7 @@ public:
     void generateSamples(const PDE<T, DIM>& pde, int nTotalSamples,
                          std::vector<SamplePoint<T, DIM>>& samplePts);
 
-private:
+protected:
     // members
     pcg32 sampler;
     const GeometricQueries<DIM>& queries;

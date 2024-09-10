@@ -239,7 +239,7 @@ public:
         return (float)totalWalkLength/N;
     }
 
-private:
+protected:
     // updates statistics
     void update(const T& estimate, T& mean, T& M2, int N) {
         T delta = estimate - mean;

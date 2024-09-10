@@ -778,7 +778,7 @@ public:
         return 2.0f*M_PI*poissonKernel();
     }
 
-private:
+protected:
     // members
     float lambda, sqrtLambda; // potential
     float muR, K0muR, I0muR, K1muR, I1muR;
@@ -947,7 +947,7 @@ public:
         return 4.0f*M_PI*poissonKernel();
     }
 
-private:
+protected:
     // members
     float lambda, sqrtLambda; // potential
     float muR, expmuR, sinhmuR, K32muR, I32muR;

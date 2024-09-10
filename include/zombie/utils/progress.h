@@ -28,7 +28,7 @@ public:
         std::cout << "Finished in " <<  nSeconds << " seconds." << std::endl;
     }
 
-private:
+protected:
     void draw() {
         float progress = std::min(completedWork / float(totalWork), 1.0f);
         int pos = displayWidth * progress;

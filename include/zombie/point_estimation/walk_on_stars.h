@@ -39,7 +39,7 @@ public:
                bool runSingleThreaded=false,
                std::function<void(int, int)> reportProgress={}) const;
 
-private:
+protected:
     // computes the contribution from the reflecting boundary at a particular point in the walk
     void computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                const WalkSettings<T>& walkSettings,

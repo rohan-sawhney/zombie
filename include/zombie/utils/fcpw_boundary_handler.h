@@ -554,7 +554,7 @@ public:
     std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, 2, RobinLineSegment, RobinMbvhNode<2>>> mbvh;
 #endif
 
-private:
+protected:
     // members
     PolygonSoup<2> soup;
     std::vector<RobinLineSegment> lineSegments;
@@ -727,7 +727,7 @@ public:
     std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, 3, RobinTriangle, RobinMbvhNode<3>>> mbvh;
 #endif
 
-private:
+protected:
     // members
     PolygonSoup<3> soup;
     std::vector<RobinTriangle> triangles;
