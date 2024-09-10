@@ -42,7 +42,6 @@ private:
     // computes the contribution from the reflecting boundary at a particular point in the walk
     void computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                const WalkSettings<T>& walkSettings,
-                                               const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                float starRadius, bool flipNormalOrientation,
                                                pcg32& sampler, Vector<DIM>& randNumsForBoundarySampling,
                                                WalkState<T, DIM>& state) const;
@@ -50,7 +49,6 @@ private:
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
                                    const WalkSettings<T>& walkSettings,
-                                   const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                    const IntersectionPoint<DIM>& intersectionPt,
                                    const Vector<DIM>& direction, pcg32& sampler,
                                    WalkState<T, DIM>& state) const;
@@ -58,7 +56,6 @@ private:
     // computes the throughput of a single walk step
     float computeWalkStepThroughput(const PDE<T, DIM>& pde,
                                     const WalkSettings<T>& walkSettings,
-                                    const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                     const WalkState<T, DIM>& state) const;
 
     // performs a single reflecting random walk starting at the input point
@@ -66,7 +63,6 @@ private:
                             const WalkSettings<T>& walkSettings,
                             float distToAbsorbingBoundary, float firstSphereRadius,
                             bool flipNormalOrientation, pcg32& sampler,
-                            std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                             WalkState<T, DIM>& state) const;
 
     // sets the terminal contribution from the end of the walk
@@ -153,7 +149,6 @@ inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                                        const WalkSettings<T>& walkSettings,
-                                                                       const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                                        float starRadius, bool flipNormalOrientation,
                                                                        pcg32& sampler, Vector<DIM>& randNumsForBoundarySampling,
                                                                        WalkState<T, DIM>& state) const {
@@ -210,7 +205,7 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                     h = pde.robin ? pde.robin(boundarySample.pt) : pde.neumann(boundarySample.pt);
                 }
 
-                float G = greensFn->evaluate(state.currentPt, boundarySample.pt);
+                float G = state.greensFn->evaluate(state.currentPt, boundarySample.pt);
                 state.totalReflectingBoundaryContribution += state.throughput*alpha*G*h/boundarySample.pdf;
             }
         }
@@ -220,7 +215,6 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pde,
                                                            const WalkSettings<T>& walkSettings,
-                                                           const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                            const IntersectionPoint<DIM>& intersectionPt,
                                                            const Vector<DIM>& direction, pcg32& sampler,
                                                            WalkState<T, DIM>& state) const {
@@ -228,14 +222,14 @@ inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pd
         // compute the source contribution inside the star-shaped region;
         // define the source value to be zero outside this region
         float sourcePdf;
-        Vector<DIM> sourcePt = greensFn->sampleVolume(direction, sampler, sourcePdf);
-        if (greensFn->r <= intersectionPt.dist) {
+        Vector<DIM> sourcePt = state.greensFn->sampleVolume(direction, sampler, sourcePdf);
+        if (state.greensFn->r <= intersectionPt.dist) {
             // NOTE: hemispherical sampling causes the alpha term to cancel when
             // currentPt is on the reflecting boundary; in this case, the green's function
             // norm remains unchanged even though our domain is a hemisphere;
             // for double-sided problems in watertight domains, both the current pt
             // and source pt lie either inside or outside the domain by construction
-            T sourceContribution = greensFn->norm()*pde.source(sourcePt);
+            T sourceContribution = state.greensFn->norm()*pde.source(sourcePt);
             state.totalSourceContribution += state.throughput*sourceContribution;
         }
     }
@@ -244,7 +238,6 @@ inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pd
 template <typename T, size_t DIM>
 inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& pde,
                                                             const WalkSettings<T>& walkSettings,
-                                                            const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                             const WalkState<T, DIM>& state) const {
     if (state.onReflectingBoundary && state.prevDistance > std::numeric_limits<T>::epsilon()) {
         float robinCoeff = 0.0f;
@@ -259,12 +252,12 @@ inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& p
             robinCoeff = pde.robinCoeff(state.currentPt);
         }
 
-        float reflectance = greensFn->reflectance(state.prevDistance, state.prevDirection,
-                                                  normal, robinCoeff);
+        float reflectance = state.greensFn->reflectance(state.prevDistance, state.prevDirection,
+                                                        normal, robinCoeff);
         return std::clamp(reflectance, 0.0f, 1.0f);
     }
 
-    return greensFn->directionSampledPoissonKernel(state.currentPt);
+    return state.greensFn->directionSampledPoissonKernel(state.currentPt);
 }
 
 template <typename T, size_t DIM>
@@ -272,7 +265,6 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
                                                     const WalkSettings<T>& walkSettings,
                                                     float distToAbsorbingBoundary, float firstSphereRadius,
                                                     bool flipNormalOrientation, pcg32& sampler,
-                                                    std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                     WalkState<T, DIM>& state) const {
     // recursively perform a random walk till it reaches the absorbing boundary
     bool firstStep = true;
@@ -321,7 +313,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // update the ball center and radius
-        greensFn->updateBall(state.currentPt, starRadius);
+        state.greensFn->updateBall(state.currentPt, starRadius);
 
         // sample a direction uniformly
         Vector<DIM> direction = sampleUnitSphereUniform<DIM>(sampler);
@@ -353,11 +345,11 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // compute the contribution from the reflecting boundary
-        computeReflectingBoundaryContribution(pde, walkSettings, greensFn, starRadius, flipNormalOrientation,
+        computeReflectingBoundaryContribution(pde, walkSettings, starRadius, flipNormalOrientation,
                                               sampler, randNumsForBoundarySampling, state);
 
         // compute the source contribution
-        computeSourceContribution(pde, walkSettings, greensFn, intersectionPt, direction, sampler, state);
+        computeSourceContribution(pde, walkSettings, intersectionPt, direction, sampler, state);
 
         // update walk position
         state.prevDistance = intersectionPt.dist;
@@ -377,7 +369,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // update the walk throughput and use russian roulette to decide whether to terminate the walk
-        state.throughput *= computeWalkStepThroughput(pde, walkSettings, greensFn, state);
+        state.throughput *= computeWalkStepThroughput(pde, walkSettings, state);
         if (state.throughput < walkSettings.russianRouletteThreshold) {
             float survivalProb = state.throughput/walkSettings.russianRouletteThreshold;
             if (survivalProb < sampler.nextFloat()) {
@@ -400,7 +392,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
 
         // check whether to start applying Tikhonov regularization
         if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
-            greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
         }
 
         // compute the distance to the absorbing boundary
@@ -517,24 +509,23 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
     // perform random walks
     for (int w = 0; w < nWalks; w++) {
-        // initialize the greens function
-        std::unique_ptr<GreensFnBall<DIM>> greensFn = nullptr;
-        if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-            greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
-
-        } else {
-            greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
-        }
-
         // initialize the walk state
         WalkState<T, DIM> state(samplePt.pt, currentNormal, prevDirection, prevDistance,
                                 1.0f, samplePt.type == SampleType::OnReflectingBoundary,
                                 0, walkSettings.initVal);
 
+        // initialize the greens function
+        if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+
+        } else {
+            state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
+        }
+
         // perform walk
         WalkCompletionCode code = walk(pde, walkSettings, samplePt.distToAbsorbingBoundary,
                                        samplePt.firstSphereRadius, flipNormalOrientation,
-                                       samplePt.sampler, greensFn, state);
+                                       samplePt.sampler, state);
 
         if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
              code == WalkCompletionCode::TerminatedWithRussianRoulette) ||
@@ -597,20 +588,20 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
         }
 
         for (int antitheticIter = 0; antitheticIter < nAntitheticIters; antitheticIter++) {
-            // initialize the greens function
-            std::unique_ptr<GreensFnBall<DIM>> greensFn = nullptr;
-            if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
-
-            } else {
-                greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
-            }
-
             // initialize the walk state
             WalkState<T, DIM> state(samplePt.pt, Vector<DIM>::Zero(), Vector<DIM>::Zero(),
                                     0.0f, 1.0f, false, 0, walkSettings.initVal);
 
+            // initialize the greens function
+            if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+                state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+
+            } else {
+                state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
+            }
+
             // update the ball center and radius
+            GreensFnBall<DIM> *greensFn = state.greensFn.get();
             greensFn->updateBall(state.currentPt, samplePt.firstSphereRadius);
 
             // compute the source contribution inside the ball
@@ -669,7 +660,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
             // perform walk
             samplePt.sampler.seed(seed);
             WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary, 0.0f,
-                                           false, samplePt.sampler, greensFn, state);
+                                           false, samplePt.sampler, state);
 
             if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                  code == WalkCompletionCode::TerminatedWithRussianRoulette) ||

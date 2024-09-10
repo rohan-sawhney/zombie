@@ -97,6 +97,7 @@ struct WalkState {
               prevDistance(prevDistance_),
               throughput(throughput_),
               onReflectingBoundary(onReflectingBoundary_),
+              greensFn(nullptr),
               terminalContribution(initVal_),
               totalReflectingBoundaryContribution(initVal_),
               totalSourceContribution(initVal_),
@@ -112,6 +113,7 @@ struct WalkState {
     float prevDistance;
     float throughput;
     bool onReflectingBoundary;
+    std::unique_ptr<GreensFnBall<DIM>> greensFn;
     T terminalContribution;
     T totalReflectingBoundaryContribution;
     T totalSourceContribution;

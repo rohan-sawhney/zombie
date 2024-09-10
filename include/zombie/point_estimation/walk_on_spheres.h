@@ -40,14 +40,12 @@ private:
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
                                    const WalkSettings<T>& walkSettings,
-                                   const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                    pcg32& sampler, WalkState<T, DIM>& state) const;
 
     // performs a single reflecting random walk starting at the input point
     WalkCompletionCode walk(const PDE<T, DIM>& pde,
                             const WalkSettings<T>& walkSettings,
                             float distToAbsorbingBoundary, pcg32& sampler,
-                            std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                             WalkState<T, DIM>& state) const;
 
     // sets the terminal contribution from the end of the walk
@@ -134,13 +132,12 @@ inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pde,
                                                              const WalkSettings<T>& walkSettings,
-                                                             const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                              pcg32& sampler, WalkState<T, DIM>& state) const {
     if (!walkSettings.ignoreSourceContribution) {
         // compute the source contribution inside sphere
         float sourcePdf;
-        Vector<DIM> sourcePt = greensFn->sampleVolume(sampler, sourcePdf);
-        T sourceContribution = greensFn->norm()*pde.source(sourcePt);
+        Vector<DIM> sourcePt = state.greensFn->sampleVolume(sampler, sourcePdf);
+        T sourceContribution = state.greensFn->norm()*pde.source(sourcePt);
         state.totalSourceContribution += state.throughput*sourceContribution;
     }
 }
@@ -149,15 +146,14 @@ template <typename T, size_t DIM>
 inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
                                                       const WalkSettings<T>& walkSettings,
                                                       float distToAbsorbingBoundary, pcg32& sampler,
-                                                      std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                       WalkState<T, DIM>& state) const {
     // recursively perform a random walk till it reaches the absorbing boundary
     while (distToAbsorbingBoundary > walkSettings.epsilonShellForAbsorbingBoundary) {
         // update the ball center and radius
-        greensFn->updateBall(state.currentPt, distToAbsorbingBoundary);
+        state.greensFn->updateBall(state.currentPt, distToAbsorbingBoundary);
 
         // compute the source contribution
-        computeSourceContribution(pde, walkSettings, greensFn, sampler, state);
+        computeSourceContribution(pde, walkSettings, sampler, state);
 
         // sample a direction uniformly
         Vector<DIM> direction = sampleUnitSphereUniform<DIM>(sampler);
@@ -176,7 +172,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // update the walk throughput and use russian roulette to decide whether to terminate the walk
-        state.throughput *= greensFn->directionSampledPoissonKernel(state.currentPt);
+        state.throughput *= state.greensFn->directionSampledPoissonKernel(state.currentPt);
         if (state.throughput < walkSettings.russianRouletteThreshold) {
             float survivalProb = state.throughput/walkSettings.russianRouletteThreshold;
             if (survivalProb < sampler.nextFloat()) {
@@ -199,7 +195,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
 
         // check whether to start applying Tikhonov regularization
         if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
-            greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
         }
 
         // compute the distance to the absorbing boundary
@@ -274,22 +270,21 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
     // perform random walks
     for (int w = 0; w < nWalks; w++) {
-        // initialize the greens function
-        std::unique_ptr<GreensFnBall<DIM>> greensFn = nullptr;
-        if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-            greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
-
-        } else {
-            greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
-        }
-
         // initialize the walk state
         WalkState<T, DIM> state(samplePt.pt, Vector<DIM>::Zero(), Vector<DIM>::Zero(),
                                 0.0f, 1.0f, false, 0, walkSettings.initVal);
 
+        // initialize the greens function
+        if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+
+        } else {
+            state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
+        }
+
         // perform walk
         WalkCompletionCode code = walk(pde, walkSettings, samplePt.firstSphereRadius,
-                                       samplePt.sampler, greensFn, state);
+                                       samplePt.sampler, state);
 
         if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
              code == WalkCompletionCode::TerminatedWithRussianRoulette) ||
@@ -347,20 +342,20 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
         }
 
         for (int antitheticIter = 0; antitheticIter < nAntitheticIters; antitheticIter++) {
-            // initialize the greens function
-            std::unique_ptr<GreensFnBall<DIM>> greensFn = nullptr;
-            if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
-
-            } else {
-                greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
-            }
-
             // initialize the walk state
             WalkState<T, DIM> state(samplePt.pt, Vector<DIM>::Zero(), Vector<DIM>::Zero(),
                                     0.0f, 1.0f, false, 0, walkSettings.initVal);
 
+            // initialize the greens function
+            if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+                state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+
+            } else {
+                state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
+            }
+
             // update the ball center and radius
+            GreensFnBall<DIM> *greensFn = state.greensFn.get();
             greensFn->updateBall(state.currentPt, samplePt.firstSphereRadius);
 
             // compute the source contribution inside the ball
@@ -417,7 +412,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
             // perform walk
             samplePt.sampler.seed(seed);
             WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary,
-                                           samplePt.sampler, greensFn, state);
+                                           samplePt.sampler, state);
 
             if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                  code == WalkCompletionCode::TerminatedWithRussianRoulette) ||
