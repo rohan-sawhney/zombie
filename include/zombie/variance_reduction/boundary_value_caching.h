@@ -36,9 +36,15 @@ struct EvaluationPoint {
     SampleType type;
     float distToAbsorbingBoundary;
     float distToReflectingBoundary;
+
+protected:
+    // members
     std::unique_ptr<SampleStatistics<T, DIM>> boundaryStatistics;
     std::unique_ptr<SampleStatistics<T, DIM>> boundaryNormalAlignedStatistics;
     std::unique_ptr<SampleStatistics<T, DIM>> sourceStatistics;
+
+    template <typename A, size_t B>
+    friend class BoundaryValueCaching;
 };
 
 template <typename T, size_t DIM>
