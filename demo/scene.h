@@ -30,7 +30,11 @@ public:
     // members
     std::pair<Vector2, Vector2> bbox;
     std::vector<Vector2> vertices;
+    std::vector<Vector2> absorbingBoundaryVertices;
+    std::vector<Vector2> reflectingBoundaryVertices;
     std::vector<std::vector<size_t>> segments;
+    std::vector<std::vector<size_t>> absorbingBoundarySegments;
+    std::vector<std::vector<size_t>> reflectingBoundarySegments;
     const bool isWatertight;
     const bool isDoubleSided;
     zombie::GeometricQueries<2> queries;
@@ -50,11 +54,6 @@ protected:
     void populatePDEInputs();
 
     // members
-    std::vector<Vector2> absorbingBoundaryVertices;
-    std::vector<Vector2> reflectingBoundaryVertices;
-    std::vector<std::vector<size_t>> absorbingBoundarySegments;
-    std::vector<std::vector<size_t>> reflectingBoundarySegments;
-
     zombie::FcpwBoundaryHandler<2, false> absorbingBoundaryHandler;
     zombie::FcpwBoundaryHandler<2, false> reflectingNeumannBoundaryHandler;
     zombie::FcpwBoundaryHandler<2, true> reflectingRobinBoundaryHandler;
@@ -202,8 +201,8 @@ void Scene::populateGeometricQueries() {
 }
 
 void Scene::populatePDEInputs() {
-    const Vector2& bMin = this->bbox.first;
-    const Vector2& bMax = this->bbox.second;
+    const Vector2& bMin = bbox.first;
+    const Vector2& bMax = bbox.second;
     float maxLength = (bMax - bMin).maxCoeff();
 
     pde.source = [this, &bMin, maxLength](const Vector2& x) -> float {

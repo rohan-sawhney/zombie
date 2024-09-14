@@ -7,3 +7,6 @@
 [submodule "deps/tbb"]
 	path = deps/tbb
 	url = https://github.com/wjakob/tbb.git
+[submodule "deps/nanoflann"]
+	path = deps/nanoflann
+	url = https://github.com/jlblancoc/nanoflann.git

@@ -121,9 +121,13 @@ inline void BoundarySampler<T, DIM>::generateSamples(int nTotalSamples,
         // generate samples
         generateSamples(cdfTable, nSamples, boundaryArea, -1.0f*normalOffsetForAbsorbingBoundary,
                         -1.0f*normalOffsetForReflectingBoundary, initVal, samplePts);
+
         generateSamples(cdfTableNormalAligned, nSamplesNormalAligned,
                         boundaryAreaNormalAligned, normalOffsetForAbsorbingBoundary,
                         normalOffsetForReflectingBoundary, initVal, samplePtsNormalAligned);
+        for (int i = 0; i < nSamplesNormalAligned; i++) {
+            samplePtsNormalAligned[i].estimateBoundaryNormalAligned = true;
+        }
 
     } else {
         generateSamples(cdfTable, nTotalSamples, boundaryArea, -1.0f*normalOffsetForAbsorbingBoundary,
@@ -324,14 +328,6 @@ inline void BoundarySampler<T, DIM>::generateSamples(const CDFTable& table, int 
                 samplePts.emplace_back(SamplePoint<T, DIM>(pt, normal, sampleType,
                                                            pdf, distToAbsorbingBoundary,
                                                            distToReflectingBoundary, initVal));
-            }
-        }
-
-        if (normalOffsetForAbsorbingBoundary > 0.0f || normalOffsetForReflectingBoundary > 0.0f) {
-            // invert the orientation of the boundary normals during estimation,
-            // with boundary vertices displaced along these normals
-            for (int i = 0; i < nSamples; i++) {
-                samplePts[i].estimateBoundaryNormalAligned = true;
             }
         }
 

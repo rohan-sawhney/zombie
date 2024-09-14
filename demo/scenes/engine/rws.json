@@ -1,0 +1,35 @@
+{
+    "solverType": "rws",
+    "solver": {
+        "absorbingBoundarySampleCount": 614400,
+        "reflectingBoundarySampleCount": 6144,
+        "domainSampleCount": 6144,
+        "maxWalkLength": 1024,
+        "epsilonShellForAbsorbingBoundary": 1e-3,
+        "epsilonShellForReflectingBoundary": 1e-3,
+        "russianRouletteThreshold": 0.99,
+        "radiusClampForKernels": 0.0,
+        "ignoreAbsorbingBoundaryContribution": false,
+        "ignoreReflectingBoundaryContribution": true,
+        "ignoreSourceContribution": true
+    },
+    "scene": {
+        "boundary": "../demo/scenes/engine/data/geometry.obj",
+        "isReflectingBoundary": "../demo/scenes/engine/data/is_reflecting_boundary.pfm",
+        "absorbingBoundaryValue": "../demo/scenes/engine/data/absorbing_boundary_value.pfm",
+        "reflectingBoundaryValue": "../demo/scenes/engine/data/reflecting_boundary_value.pfm",
+        "sourceValue": "../demo/scenes/engine/data/source_value.pfm",
+        "robinCoeff": 0.0,
+        "absorptionCoeff": 0.0
+    },
+    "output": {
+        "solutionFile": "../demo/scenes/engine/solutions/rws.pfm",
+        "gridRes": 256,
+        "boundaryDistanceMask": 1e-2,
+        "saveDebug": false,
+        "saveColormapped": true,
+        "colormap": "turbo",
+        "colormapMinVal": 0.0,
+        "colormapMaxVal": 1.1
+    }
+}

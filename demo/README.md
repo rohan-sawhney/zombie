@@ -13,6 +13,7 @@ Next you can run either [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects
 ```
 ./demo/demo ../demo/scenes/engine/wost.json
 ./demo/demo ../demo/scenes/engine/bvc.json
+./demo/demo ../demo/scenes/engine/rws.json
 ```
 
 The results will be saved to `zombie/scenes/engine/solutions`.
