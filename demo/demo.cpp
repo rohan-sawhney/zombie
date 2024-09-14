@@ -4,6 +4,7 @@
 
 #include <zombie/variance_reduction/boundary_value_caching.h>
 #include <zombie/variance_reduction/reverse_walk_splatter.h>
+#include <zombie/utils/nearest_neighbor_finder.h>
 #include <zombie/utils/progress.h>
 #include "grid.h"
 #include "scene.h"
@@ -279,7 +280,7 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
         domainSampler.generateSamples(pde, domainSampleCount, domainSamplePts);
     }
 
-    // initialize nearest neigbhbor queries for evaluation points and assign
+    // initialize nearest neigbhbor finder for evaluation points and assign
     // solution value to evaluation points on the absorbing boundary
     std::vector<Vector2> evalPtPositions;
     for (auto& evalPt: evalPts) {
@@ -289,13 +290,14 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
             evalPt.totalAbsorbingBoundaryContribution = pde.dirichlet(evalPt.pt);
         }
     }
-    zombie::NearestNeighborQueries<2> nnQueries;
-    nnQueries.buildAccelerationStructure(evalPtPositions);
+    zombie::NearestNeighborFinder<2> nearestNeighborFinder;
+    nearestNeighborFinder.buildAccelerationStructure(evalPtPositions);
 
     // bind splat contribution callback
     zombie::SplatContributionCallback<float, 2> splatContribution =
-        std::bind(&zombie::rws::splatContribution<float, 2>, std::placeholders::_1, std::placeholders::_2,
-        std::cref(queries), std::cref(nnQueries), std::cref(pde), normalOffsetForAbsorbingBoundary,
+        std::bind(&zombie::rws::splatContribution<float, 2, zombie::NearestNeighborFinder<2>>,
+        std::placeholders::_1, std::placeholders::_2, std::cref(queries),
+        std::cref(nearestNeighborFinder), std::cref(pde), normalOffsetForAbsorbingBoundary,
         radiusClampForKernels, regularizationForKernels, std::ref(evalPts));
 
     // estimate solution at evaluation points

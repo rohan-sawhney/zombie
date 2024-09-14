@@ -1,4 +1,4 @@
-// This file implements a nearest neighbor queries class
+// This file implements nearest neighbor search using the nanoflann library.
 
 #pragma once
 
@@ -27,10 +27,10 @@ struct PointCloud {
 
 // Accelerated k nearest neighbor and radius search queries
 template <size_t DIM>
-class NearestNeighborQueries {
+class NearestNeighborFinder {
 public:
     // constructor
-    NearestNeighborQueries();
+    NearestNeighborFinder();
 
     // build acceleration structure
     void buildAccelerationStructure(const std::vector<Vector<DIM>>& points);
@@ -56,21 +56,21 @@ protected:
 // Implementation
 
 template <size_t DIM>
-inline NearestNeighborQueries<DIM>::NearestNeighborQueries():
+inline NearestNeighborFinder<DIM>::NearestNeighborFinder():
 params(10 /* max leaf */, nanoflann::KDTreeSingleIndexAdaptorFlags::SkipInitialBuildIndex),
 tree(DIM, data, params) {
     // do nothing
 }
 
 template <size_t DIM>
-inline void NearestNeighborQueries<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& points) {
+inline void NearestNeighborFinder<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& points) {
     data.points = points;
     tree.buildIndex();
 }
 
 template <size_t DIM>
-inline size_t NearestNeighborQueries<DIM>::kNearest(const Vector<DIM>& queryPt, size_t k,
-                                                    std::vector<size_t>& outIndices) const {
+inline size_t NearestNeighborFinder<DIM>::kNearest(const Vector<DIM>& queryPt, size_t k,
+                                                   std::vector<size_t>& outIndices) const {
     if (k > data.points.size()) {
         std::cerr << "k is greater than number of points" << std::endl;
         exit(EXIT_FAILURE);
@@ -82,8 +82,8 @@ inline size_t NearestNeighborQueries<DIM>::kNearest(const Vector<DIM>& queryPt, 
 }
 
 template <size_t DIM>
-inline size_t NearestNeighborQueries<DIM>::radiusSearch(const Vector<DIM>& queryPt, float radius,
-                                                        std::vector<size_t>& outIndices) const {
+inline size_t NearestNeighborFinder<DIM>::radiusSearch(const Vector<DIM>& queryPt, float radius,
+                                                       std::vector<size_t>& outIndices) const {
     float squaredRadius = radius*radius; // nanoflann wants a SQUARED raidus
     std::vector<nanoflann::ResultItem<uint32_t, float>> resultItems;
     size_t nResultItems = tree.radiusSearch(&queryPt[0], squaredRadius, resultItems);

@@ -7,7 +7,6 @@
 #include <zombie/variance_reduction/boundary_sampler.h>
 #include <zombie/variance_reduction/domain_sampler.h>
 #include <zombie/point_estimation/reverse_walk_on_stars.h>
-#include <zombie/utils/nearest_neighbor_queries.h>
 #include "tbb/mutex.h"
 
 namespace zombie {
@@ -49,11 +48,11 @@ struct EvaluationPoint {
     std::unique_ptr<tbb::mutex> mutex;
 };
 
-template <typename T, size_t DIM>
+template <typename T, size_t DIM, typename NearestNeighborFinder>
 void splatContribution(const WalkState<T, DIM>& state,
                        const SampleContribution<T>& sampleContribution,
                        const GeometricQueries<DIM>& queries,
-                       const NearestNeighborQueries<DIM>& nnQueries,
+                       const NearestNeighborFinder& nearestNeighborFinder,
                        const PDE<T, DIM>& pde,
                        float normalOffsetForAbsorbingBoundary,
                        float radiusClamp, float kernelRegularization,
@@ -131,11 +130,11 @@ void EvaluationPoint<T, DIM>::reset(T initVal) {
     totalSourceContribution = initVal;
 }
 
-template <typename T, size_t DIM>
+template <typename T, size_t DIM, typename NearestNeighborFinder>
 void splatContribution(const WalkState<T, DIM>& state,
                        const SampleContribution<T>& sampleContribution,
                        const GeometricQueries<DIM>& queries,
-                       const NearestNeighborQueries<DIM>& nnQueries,
+                       const NearestNeighborFinder& nearestNeighborFinder,
                        const PDE<T, DIM>& pde,
                        float normalOffsetForAbsorbingBoundary,
                        float radiusClamp, float kernelRegularization,
@@ -143,7 +142,7 @@ void splatContribution(const WalkState<T, DIM>& state,
     // perform nearest neighbor queries to determine evaluation points that lie
     // within the sphere centered at the current random walk position
     std::vector<size_t> nnIndices;
-    size_t nnCount = nnQueries.radiusSearch(state.currentPt, state.greensFn->R, nnIndices);
+    size_t nnCount = nearestNeighborFinder.radiusSearch(state.currentPt, state.greensFn->R, nnIndices);
     bool hasRobinCoeffs = pde.robin || pde.robinDoubleSided;
     bool useSelfNormalization = queries.domainIsWatertight && pde.absorption == 0.0f && !hasRobinCoeffs;
 
