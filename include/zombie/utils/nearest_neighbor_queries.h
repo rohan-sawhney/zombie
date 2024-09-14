@@ -37,13 +37,11 @@ public:
 
     // returns the indices of points in the input set
     size_t kNearest(const Vector<DIM>& queryPt, size_t k,
-                    std::vector<size_t>& outIndices,
-                    std::vector<float>& outSquaredDists) const;
+                    std::vector<size_t>& outIndices) const;
 
     // returns all neighbors within a ball of input radius
     size_t radiusSearch(const Vector<DIM>& queryPt, float radius,
-                        std::vector<size_t>& outIndices,
-                        std::vector<float>& outSquaredDists) const;
+                        std::vector<size_t>& outIndices) const;
 
 protected:
     // members
@@ -72,31 +70,27 @@ inline void NearestNeighborQueries<DIM>::buildAccelerationStructure(const std::v
 
 template <size_t DIM>
 inline size_t NearestNeighborQueries<DIM>::kNearest(const Vector<DIM>& queryPt, size_t k,
-                                                    std::vector<size_t>& outIndices,
-                                                    std::vector<float>& outSquaredDists) const {
+                                                    std::vector<size_t>& outIndices) const {
     if (k > data.points.size()) {
         std::cerr << "k is greater than number of points" << std::endl;
         exit(EXIT_FAILURE);
     }
 
     outIndices.resize(k);
-    outSquaredDists.resize(k);
+    std::vector<float> outSquaredDists(k);
     return tree.knnSearch(&queryPt[0], k, &outIndices[0], &outSquaredDists[0]);
 }
 
 template <size_t DIM>
 inline size_t NearestNeighborQueries<DIM>::radiusSearch(const Vector<DIM>& queryPt, float radius,
-                                                        std::vector<size_t>& outIndices,
-                                                        std::vector<float>& outSquaredDists) const {
+                                                        std::vector<size_t>& outIndices) const {
     float squaredRadius = radius*radius; // nanoflann wants a SQUARED raidus
     std::vector<nanoflann::ResultItem<uint32_t, float>> resultItems;
     size_t nResultItems = tree.radiusSearch(&queryPt[0], squaredRadius, resultItems);
 
     outIndices.resize(nResultItems);
-    outSquaredDists.resize(nResultItems);
     for (size_t i = 0; i < nResultItems; i++) {
         outIndices[i] = resultItems[i].first;
-        outSquaredDists[i] = resultItems[i].second;
     }
 
     return nResultItems;

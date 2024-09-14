@@ -143,14 +143,12 @@ void splatContribution(const WalkState<T, DIM>& state,
     // perform nearest neighbor queries to determine evaluation points that lie
     // within the sphere centered at the current random walk position
     std::vector<size_t> nnIndices;
-    std::vector<float> nnSquaredDists;
-    size_t nnCount = nnQueries.radiusSearch(state.currentPt, state.greensFn->R, nnIndices, nnSquaredDists);
+    size_t nnCount = nnQueries.radiusSearch(state.currentPt, state.greensFn->R, nnIndices);
     bool hasRobinCoeffs = pde.robin || pde.robinDoubleSided;
     bool useSelfNormalization = queries.domainIsWatertight && pde.absorption == 0.0f && !hasRobinCoeffs;
 
     for (size_t i = 0; i < nnCount; i++) {
         EvaluationPoint<T, DIM>& evalPt = evalPts[nnIndices[i]];
-        float squaredDist = nnSquaredDists[nnIndices[i]];
 
         // ignore evaluation points on the absorbing boundary
         if (evalPt.type == SampleType::OnAbsorbingBoundary) continue;
@@ -164,7 +162,7 @@ void splatContribution(const WalkState<T, DIM>& state,
             state.greensFn->rClamp = radiusClamp;
             float G = state.greensFn->evaluate(state.currentPt, evalPt.pt);
             if (kernelRegularization > 0.0f) {
-                float r = std::max(radiusClamp, std::sqrt(squaredDist));
+                float r = std::max(radiusClamp, (state.currentPt - evalPt.pt).norm());
                 r /= kernelRegularization;
                 G *= regularizationForGreensFn<DIM>(r);
             }
