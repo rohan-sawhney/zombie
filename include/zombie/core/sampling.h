@@ -497,7 +497,7 @@ protected:
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 // source: https://pbr-book.org/3ed-2018/Sampling_and_Reconstruction/Stratified_Sampling#LatinHypercube
-// NOTE: sample quality reduces with increasing dimenson
+// NOTE: sample quality reduces with increasing dimension
 template <size_t DIM>
 inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples, pcg32& sampler)
 {
@@ -514,7 +514,7 @@ inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples,
         }
     }
 
-    // generate LHS samples in each dimenson
+    // generate LHS samples in each dimension
     for (int i = 0; i < DIM; ++i) {
         for (int j = 0; j < nSamples; ++j) {
             int other = j + sampler.nextUInt(nSamples - j);
