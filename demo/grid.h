@@ -21,7 +21,7 @@ void writeSolution(const std::string& filename,
 
     // write colormapped and debug images to disk
     std::string basePath = (path.parent_path() / path.stem()).string();
-    std::string ext = path.extension();
+    std::string ext = path.extension().string();
 
     if (saveColormapped) {
         getColormappedImage(solution, colormap, minVal, maxVal)->write(basePath + "_color" + ext);

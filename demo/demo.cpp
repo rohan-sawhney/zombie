@@ -20,7 +20,7 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
 
     const int nWalks = getOptional<int>(solverConfig, "nWalks", 128);
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
-    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", maxWalkLength);
+    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", 0);
     const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "setpsBeforeUsingMaximalSpheres", maxWalkLength);
     const int gridRes = getRequired<int>(outputConfig, "gridRes");
 
@@ -81,7 +81,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
 
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
-    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", maxWalkLength);
+    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", 0);
     const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "setpsBeforeUsingMaximalSpheres", maxWalkLength);
     const int gridRes = getRequired<int>(outputConfig, "gridRes");
 
@@ -204,7 +204,7 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
     const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
 
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
-    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", maxWalkLength);
+    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", 0);
     const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "setpsBeforeUsingMaximalSpheres", maxWalkLength);
     const int gridRes = getRequired<int>(outputConfig, "gridRes");
 
