@@ -19,22 +19,7 @@ using Vector3 = Vector<3>;
 template <typename T, size_t DIM>
 struct PDE {
     // constructor
-    PDE(): absorption(0.0f), source({}), dirichlet({}),
-           neumann({}), robin({}), robinCoeff({}), 
-           dirichletDoubleSided({}), neumannDoubleSided({}),
-           robinDoubleSided({}), robinCoeffDoubleSided({}) {
-        hasNonZeroRobinCoeff = [this](const Vector<DIM>& x) {
-            if (robinCoeffDoubleSided) {
-                return robinCoeffDoubleSided(x, true) > 0.0f ||
-                       robinCoeffDoubleSided(x, false) > 0.0f;
-
-            } else if (robinCoeff) {
-                return robinCoeff(x) > 0.0f;
-            }
-
-            return false;
-        };
-    }
+    PDE();
 
     // members
     float absorption;
@@ -47,7 +32,35 @@ struct PDE {
     std::function<T(const Vector<DIM>&, bool)> neumannDoubleSided;
     std::function<T(const Vector<DIM>&, bool)> robinDoubleSided;
     std::function<float(const Vector<DIM>&, bool)> robinCoeffDoubleSided;
-    std::function<bool(const Vector<DIM>&)> hasNonZeroRobinCoeff;
+    std::function<bool(const Vector<DIM>&)> hasNonZeroRobinCoeff; // set automatically
 };
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Implementation
+
+template <typename T, size_t DIM>
+inline PDE<T, DIM>::PDE():
+absorption(0.0f),
+source({}),
+dirichlet({}),
+neumann({}),
+robin({}),
+robinCoeff({}),
+dirichletDoubleSided({}),
+neumannDoubleSided({}),
+robinDoubleSided({}),
+robinCoeffDoubleSided({}) {
+    hasNonZeroRobinCoeff = [this](const Vector<DIM>& x) {
+        if (robinCoeffDoubleSided) {
+            return robinCoeffDoubleSided(x, true) > 0.0f ||
+                   robinCoeffDoubleSided(x, false) > 0.0f;
+
+        } else if (robinCoeff) {
+            return robinCoeff(x) > 0.0f;
+        }
+
+        return false;
+    };
+}
 
 } // zombie
