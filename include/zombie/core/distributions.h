@@ -180,7 +180,7 @@ public:
         float mur = r*sqrtLambda;
         float K0mur = bessel::bessk0(mur);
 
-        return K0mur/(2.0*M_PI);
+        return K0mur/(2.0f*M_PI);
     }
 
     // evaluates the gradient of the Green's function
@@ -667,7 +667,7 @@ public:
         float K0mur = bessel::bessk0(mur);
         float I0mur = bessel::bessi0(mur);
 
-        return (K0mur - I0mur*K0muR/I0muR)/(2.0*M_PI);
+        return (K0mur - I0mur*K0muR/I0muR)/(2.0f*M_PI);
     }
 
     // evaluates the off-centered Green's function
@@ -690,7 +690,7 @@ public:
 
     // evaluates the norm of the Green's function
     float norm() const {
-        return (1.0f - 2.0*M_PI*poissonKernel())/lambda;
+        return (1.0f - 2.0f*M_PI*poissonKernel())/lambda;
     }
 
     // evaluates the gradient norm of the Green's function
@@ -848,7 +848,7 @@ public:
 
     // evaluates the norm of the Green's function
     float norm() const {
-        return (1.0f - 4.0*M_PI*poissonKernel())/lambda;
+        return (1.0f - 4.0f*M_PI*poissonKernel())/lambda;
     }
 
     // evaluates the gradient norm of the Green's function
@@ -952,5 +952,38 @@ protected:
     float lambda, sqrtLambda; // potential
     float muR, expmuR, sinhmuR, K32muR, I32muR;
 };
+
+template <size_t DIM>
+float regularizationForGreensFn(float r)
+{
+    return 1.0f;
+}
+
+template <size_t DIM>
+float regularizationForPoissonKernel(float r)
+{
+    return 1.0f;
+}
+
+template <>
+float regularizationForGreensFn<3>(float r)
+{
+    // source: https://arxiv.org/pdf/1508.00265.pdf
+    return std::erf(r);
+}
+
+template <>
+float regularizationForPoissonKernel<2>(float r)
+{
+    // source: https://epubs.siam.org/doi/abs/10.1137/S0036142999362845
+    return 1.0f - std::exp(-r*r);
+}
+
+template <>
+float regularizationForPoissonKernel<3>(float r)
+{
+    // source: https://arxiv.org/pdf/1508.00265.pdf
+    return std::erf(r) - 2.0f*r*std::exp(-r*r)/std::sqrt(M_PI);
+}
 
 } // zombie

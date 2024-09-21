@@ -544,37 +544,4 @@ inline Vector3 sampleUnitSphereUniform<3>(pcg32& sampler)
     return sampleUnitSphereUniform<3>(u);
 }
 
-template <size_t DIM>
-float regularizationForGreensFn(float r)
-{
-    return 1.0f;
-}
-
-template <size_t DIM>
-float regularizationForPoissonKernel(float r)
-{
-    return 1.0f;
-}
-
-template <>
-float regularizationForGreensFn<3>(float r)
-{
-    // source: https://arxiv.org/pdf/1508.00265.pdf
-    return std::erf(r);
-}
-
-template <>
-float regularizationForPoissonKernel<2>(float r)
-{
-    // source: https://epubs.siam.org/doi/abs/10.1137/S0036142999362845
-    return 1.0f - std::exp(-r*r);
-}
-
-template <>
-float regularizationForPoissonKernel<3>(float r)
-{
-    // source: https://arxiv.org/pdf/1508.00265.pdf
-    return std::erf(r) - 2.0f*r*std::exp(-r*r)/std::sqrt(M_PI);
-}
-
 } // zombie
