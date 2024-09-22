@@ -287,7 +287,7 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
         evalPtPositions.push_back(evalPt.pt);
 
         if (evalPt.type == zombie::SampleType::OnAbsorbingBoundary) {
-            evalPt.totalAbsorbingBoundaryContribution = pde.dirichlet(evalPt.pt);
+            evalPt.totalAbsorbingBoundaryContribution = pde.dirichlet(evalPt.pt, false);
         }
     }
     zombie::NearestNeighborFinder<2> nearestNeighborFinder;

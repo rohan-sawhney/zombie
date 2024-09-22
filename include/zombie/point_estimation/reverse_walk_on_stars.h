@@ -86,12 +86,11 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
     sampleContribution.pdf = samplePt.pdf;
     sampleContribution.type = samplePt.type;
     sampleContribution.boundaryNormalAligned = samplePt.estimateBoundaryNormalAligned;
-    bool didSetContribution = false;
+    bool didSetContribution = true;
 
     if (samplePt.type == SampleType::InDomain &&
         !walkSettings.ignoreSourceContribution) {
         sampleContribution.contribution = pde.source(samplePt.pt);
-        didSetContribution = true;
 
     } else if (samplePt.type == SampleType::OnAbsorbingBoundary &&
                !walkSettings.ignoreAbsorbingBoundaryContribution) {
@@ -101,23 +100,21 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
         Vector<DIM> pt = samplePt.pt;
         Vector<DIM> normal = Vector<DIM>::Zero(); // stub
         queries.projectToAbsorbingBoundary(pt, normal, signedDistance, walkSettings.solveDoubleSided);
-        sampleContribution.contribution = walkSettings.solveDoubleSided ?
-                                          pde.dirichletDoubleSided(pt, signedDistance > 0.0f) :
-                                          pde.dirichlet(pt);
-        didSetContribution = true;
+
+        bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                signedDistance > 0.0f;
+        sampleContribution.contribution = pde.dirichlet(pt, returnBoundaryNormalAlignedValue);
 
     } else if (samplePt.type == SampleType::OnReflectingBoundary &&
                !walkSettings.ignoreReflectingBoundaryContribution) {
-        if (walkSettings.solveDoubleSided) {
-            sampleContribution.contribution = pde.robinDoubleSided ?
-                                              pde.robinDoubleSided(samplePt.pt, samplePt.estimateBoundaryNormalAligned) :
-                                              pde.neumannDoubleSided(samplePt.pt, samplePt.estimateBoundaryNormalAligned);
+        bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                samplePt.estimateBoundaryNormalAligned;
+        sampleContribution.contribution = pde.robin ?
+                                          pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue) :
+                                          pde.neumann(samplePt.pt, returnBoundaryNormalAlignedValue);
 
-        } else {
-            sampleContribution.contribution = pde.robin ? pde.robin(samplePt.pt) : pde.neumann(samplePt.pt);
-        }
-
-        didSetContribution = true;
+    } else {
+        didSetContribution = false;
     }
 
     if (didSetContribution) {
@@ -189,13 +186,15 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
         float robinCoeff = 0.0f;
         Vector<DIM> normal = state.currentNormal;
 
-        if (walkSettings.solveDoubleSided && pde.robinCoeffDoubleSided) {
-            bool flipNormalOrientation = state.prevDirection.dot(state.currentNormal) < 0.0f;
-            normal *= flipNormalOrientation ? -1.0f : 1.0f;
-            robinCoeff = pde.robinCoeffDoubleSided(state.currentPt, flipNormalOrientation);
+        if (pde.robinCoeff) {
+            bool flipNormalOrientation = false;
+            if (walkSettings.solveDoubleSided) {
+                flipNormalOrientation = state.prevDirection.dot(state.currentNormal) < 0.0f;
+                normal *= flipNormalOrientation ? -1.0f : 1.0f;
+            }
 
-        } else if (pde.robinCoeff) {
-            robinCoeff = pde.robinCoeff(state.currentPt);
+            bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided && flipNormalOrientation;
+            robinCoeff = pde.robinCoeff(state.currentPt, returnBoundaryNormalAlignedValue);
         }
 
         float reflectance = state.greensFn->reflectance(state.prevDistance, state.prevDirection,

@@ -24,14 +24,10 @@ struct PDE {
     // members
     float absorption;
     std::function<T(const Vector<DIM>&)> source;
-    std::function<T(const Vector<DIM>&)> dirichlet;
-    std::function<T(const Vector<DIM>&)> neumann;
-    std::function<T(const Vector<DIM>&)> robin;
-    std::function<float(const Vector<DIM>&)> robinCoeff;
-    std::function<T(const Vector<DIM>&, bool)> dirichletDoubleSided;
-    std::function<T(const Vector<DIM>&, bool)> neumannDoubleSided;
-    std::function<T(const Vector<DIM>&, bool)> robinDoubleSided;
-    std::function<float(const Vector<DIM>&, bool)> robinCoeffDoubleSided;
+    std::function<T(const Vector<DIM>&, bool)> dirichlet;
+    std::function<T(const Vector<DIM>&, bool)> neumann;
+    std::function<T(const Vector<DIM>&, bool)> robin;
+    std::function<float(const Vector<DIM>&, bool)> robinCoeff;
     std::function<bool(const Vector<DIM>&)> hasNonZeroRobinCoeff; // set automatically
 };
 
@@ -45,18 +41,11 @@ source({}),
 dirichlet({}),
 neumann({}),
 robin({}),
-robinCoeff({}),
-dirichletDoubleSided({}),
-neumannDoubleSided({}),
-robinDoubleSided({}),
-robinCoeffDoubleSided({}) {
+robinCoeff({}) {
     hasNonZeroRobinCoeff = [this](const Vector<DIM>& x) {
-        if (robinCoeffDoubleSided) {
-            return robinCoeffDoubleSided(x, true) > 0.0f ||
-                   robinCoeffDoubleSided(x, false) > 0.0f;
-
-        } else if (robinCoeff) {
-            return robinCoeff(x) > 0.0f;
+        if (robinCoeff) {
+            return robinCoeff(x, true) > 0.0f ||
+                   robinCoeff(x, false) > 0.0f;
         }
 
         return false;

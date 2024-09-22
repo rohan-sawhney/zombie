@@ -143,7 +143,7 @@ void splatContribution(const WalkState<T, DIM>& state,
     // within the sphere centered at the current random walk position
     std::vector<size_t> nnIndices;
     size_t nnCount = nearestNeighborFinder.radiusSearch(state.currentPt, state.greensFn->R, nnIndices);
-    bool hasRobinCoeffs = pde.robin || pde.robinDoubleSided;
+    bool hasRobinCoeffs = pde.robin ? true : false;
     bool useSelfNormalization = queries.domainIsWatertight && pde.absorption == 0.0f && !hasRobinCoeffs;
 
     for (size_t i = 0; i < nnCount; i++) {

@@ -200,15 +200,10 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                 !queries.intersectsWithReflectingBoundary(state.currentPt, boundarySample.pt,
                                                           state.currentNormal, boundarySample.normal,
                                                           state.onReflectingBoundary, true)) {
-                T h = walkSettings.initVal;
-                if (walkSettings.solveDoubleSided) {
-                    h = pde.robinDoubleSided ?
-                        pde.robinDoubleSided(boundarySample.pt, estimateBoundaryNormalAligned):
-                        pde.neumannDoubleSided(boundarySample.pt, estimateBoundaryNormalAligned);
-
-                } else {
-                    h = pde.robin ? pde.robin(boundarySample.pt) : pde.neumann(boundarySample.pt);
-                }
+                bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                        estimateBoundaryNormalAligned;
+                T h = pde.robin ? pde.robin(boundarySample.pt, returnBoundaryNormalAlignedValue) :
+                                  pde.neumann(boundarySample.pt, returnBoundaryNormalAlignedValue);
 
                 float G = state.greensFn->evaluate(state.currentPt, boundarySample.pt);
                 state.totalReflectingBoundaryContribution += state.throughput*alpha*G*h/boundarySample.pdf;
@@ -248,13 +243,15 @@ inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& p
         float robinCoeff = 0.0f;
         Vector<DIM> normal = state.currentNormal;
 
-        if (walkSettings.solveDoubleSided && pde.robinCoeffDoubleSided) {
-            bool flipNormalOrientation = state.prevDirection.dot(state.currentNormal) < 0.0f;
-            normal *= flipNormalOrientation ? -1.0f : 1.0f;
-            robinCoeff = pde.robinCoeffDoubleSided(state.currentPt, flipNormalOrientation);
+        if (pde.robinCoeff) {
+            bool flipNormalOrientation = false;
+            if (walkSettings.solveDoubleSided) {
+                flipNormalOrientation = state.prevDirection.dot(state.currentNormal) < 0.0f;
+                normal *= flipNormalOrientation ? -1.0f : 1.0f;
+            }
 
-        } else if (pde.robinCoeff) {
-            robinCoeff = pde.robinCoeff(state.currentPt);
+            bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided && flipNormalOrientation;
+            robinCoeff = pde.robinCoeff(state.currentPt, returnBoundaryNormalAlignedValue);
         }
 
         float reflectance = state.greensFn->reflectance(state.prevDistance, state.prevDirection,
@@ -424,9 +421,9 @@ inline T WalkOnStars<T, DIM>::getTerminalContribution(WalkCompletionCode code,
         float signedDistance;
         queries.projectToAbsorbingBoundary(state.currentPt, state.currentNormal,
                                            signedDistance, walkSettings.solveDoubleSided);
-        return walkSettings.solveDoubleSided ?
-               pde.dirichletDoubleSided(state.currentPt, signedDistance > 0.0f) :
-               pde.dirichlet(state.currentPt);
+        bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                signedDistance > 0.0f;
+        return pde.dirichlet(state.currentPt, returnBoundaryNormalAlignedValue);
 
     } else if (code == WalkCompletionCode::ExceededMaxWalkLength &&
                terminalContributionCallback) {
@@ -454,9 +451,9 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             // record the known boundary value
             T totalContribution = walkSettings.initVal;
             if (!walkSettings.ignoreAbsorbingBoundaryContribution) {
-                totalContribution = walkSettings.solveDoubleSided ?
-                                    pde.dirichletDoubleSided(samplePt.pt, samplePt.estimateBoundaryNormalAligned) :
-                                    pde.dirichlet(samplePt.pt);
+                bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                        samplePt.estimateBoundaryNormalAligned;
+                totalContribution = pde.dirichlet(samplePt.pt, returnBoundaryNormalAlignedValue);
             }
 
             // update statistics and set the first sphere radius to 0

@@ -455,10 +455,10 @@ inline void BoundaryValueCaching<T, DIM>::setEstimationData(const PDE<T, DIM>& p
             estimationData[i].nWalks = nWalksForGradientEstimates;
 
         } else if (samplePt.type == SampleType::OnReflectingBoundary) {
-            if (pde.robinCoeff || pde.robinCoeffDoubleSided) {
-                samplePt.robinCoeff = walkSettings.solveDoubleSided ?
-                                      pde.robinCoeffDoubleSided(samplePt.pt, samplePt.estimateBoundaryNormalAligned) :
-                                      pde.robinCoeff(samplePt.pt);
+            if (pde.robinCoeff) {
+                bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                        samplePt.estimateBoundaryNormalAligned;
+                samplePt.robinCoeff = pde.robinCoeff(samplePt.pt, returnBoundaryNormalAlignedValue);
             }
 
             if (samplePt.robinCoeff > robinCoeffCutoffForNormalDerivative) {
@@ -495,18 +495,19 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
 
         if (samplePt.type == SampleType::OnReflectingBoundary) {
             if (!walkSettings.ignoreReflectingBoundaryContribution) {
-                if (pde.robin || pde.robinDoubleSided) {
-                    samplePt.robin = walkSettings.solveDoubleSided ?
-                                     pde.robinDoubleSided(samplePt.pt, samplePt.estimateBoundaryNormalAligned) :
-                                     pde.robin(samplePt.pt);
+                if (pde.robin) {
+                    bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                            samplePt.estimateBoundaryNormalAligned;
+                    samplePt.robin = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
+
                     if (samplePt.robinCoeff > robinCoeffCutoffForNormalDerivative) {
                         samplePt.normalDerivative = samplePt.statistics->getEstimatedDerivative();
                     }
 
-                } else if (pde.neumann || pde.neumannDoubleSided) {
-                    samplePt.normalDerivative = walkSettings.solveDoubleSided ?
-                                                pde.neumannDoubleSided(samplePt.pt, samplePt.estimateBoundaryNormalAligned) :
-                                                pde.neumann(samplePt.pt);
+                } else if (pde.neumann) {
+                    bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                            samplePt.estimateBoundaryNormalAligned;
+                    samplePt.normalDerivative = pde.neumann(samplePt.pt, returnBoundaryNormalAlignedValue);
                 }
             }
 
@@ -517,9 +518,10 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
                 Vector<DIM> normal;
                 Vector<DIM> pt = samplePt.pt;
                 queries.projectToAbsorbingBoundary(pt, normal, signedDistance, walkSettings.solveDoubleSided);
-                T dirichlet = walkSettings.solveDoubleSided ?
-                              pde.dirichletDoubleSided(pt, signedDistance > 0.0f) :
-                              pde.dirichlet(pt);
+
+                bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                        signedDistance > 0.0f;
+                T dirichlet = pde.dirichlet(pt, returnBoundaryNormalAlignedValue);
 
                 samplePt.normalDerivative = dirichlet - samplePt.solution;
                 samplePt.normalDerivative /= std::fabs(signedDistance);

@@ -226,9 +226,9 @@ inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
         float signedDistance;
         queries.projectToAbsorbingBoundary(state.currentPt, state.currentNormal,
                                            signedDistance, walkSettings.solveDoubleSided);
-        return walkSettings.solveDoubleSided ?
-               pde.dirichletDoubleSided(state.currentPt, signedDistance > 0.0f) :
-               pde.dirichlet(state.currentPt);
+        bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                signedDistance > 0.0f;
+        return pde.dirichlet(state.currentPt, returnBoundaryNormalAlignedValue);
 
     } else if (code == WalkCompletionCode::ExceededMaxWalkLength &&
                terminalContributionCallback) {
@@ -256,9 +256,9 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             // record the known boundary value
             T totalContribution = walkSettings.initVal;
             if (!walkSettings.ignoreAbsorbingBoundaryContribution) {
-                totalContribution = walkSettings.solveDoubleSided ?
-                                    pde.dirichletDoubleSided(samplePt.pt, samplePt.estimateBoundaryNormalAligned) :
-                                    pde.dirichlet(samplePt.pt);
+                bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                        samplePt.estimateBoundaryNormalAligned;
+                totalContribution = pde.dirichlet(samplePt.pt, returnBoundaryNormalAlignedValue);
             }
 
             // update statistics and set the first sphere radius to 0
