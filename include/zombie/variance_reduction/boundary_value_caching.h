@@ -255,8 +255,8 @@ inline void BoundaryValueCaching<T, DIM>::splat(const PDE<T, DIM>& pde,
 
     // initialize the greens function
     std::unique_ptr<GreensFnFreeSpace<DIM>> greensFn = nullptr;
-    if (pde.absorption > 0.0f) {
-        greensFn = std::make_unique<YukawaGreensFnFreeSpace<DIM>>(pde.absorption);
+    if (pde.absorptionCoeff > 0.0f) {
+        greensFn = std::make_unique<YukawaGreensFnFreeSpace<DIM>>(pde.absorptionCoeff);
 
     } else {
         greensFn = std::make_unique<HarmonicGreensFnFreeSpace<DIM>>();
@@ -290,8 +290,8 @@ inline void BoundaryValueCaching<T, DIM>::splat(const PDE<T, DIM>& pde,
 
     // initialize the greens function
     std::unique_ptr<GreensFnFreeSpace<DIM>> greensFn = nullptr;
-    if (pde.absorption > 0.0f) {
-        greensFn = std::make_unique<YukawaGreensFnFreeSpace<DIM>>(pde.absorption);
+    if (pde.absorptionCoeff > 0.0f) {
+        greensFn = std::make_unique<YukawaGreensFnFreeSpace<DIM>>(pde.absorptionCoeff);
 
     } else {
         greensFn = std::make_unique<HarmonicGreensFnFreeSpace<DIM>>();

@@ -228,5 +228,5 @@ void Scene::populatePDEInputs() {
             return this->reflectingBoundaryValue->get(uv)[0];
         };
     }
-    pde.absorption = absorptionCoeff;
+    pde.absorptionCoeff = absorptionCoeff;
 }

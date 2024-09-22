@@ -398,8 +398,8 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // check whether to start applying Tikhonov regularization
-        if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
-            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
+            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
         }
 
         // compute the distance to the absorbing boundary
@@ -523,8 +523,8 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
                                 0, walkSettings.initVal);
 
         // initialize the greens function
-        if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
 
         } else {
             state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
@@ -601,8 +601,8 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                                     0.0f, 1.0f, false, 0, walkSettings.initVal);
 
             // initialize the greens function
-            if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+            if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+                state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
 
             } else {
                 state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();

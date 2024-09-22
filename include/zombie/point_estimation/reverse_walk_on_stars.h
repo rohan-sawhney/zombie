@@ -133,8 +133,8 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                                 1.0f, onReflectingBoundary, 0, walkSettings.initVal);
 
         // initialize the greens function
-        if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
 
         } else {
             state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
@@ -323,8 +323,8 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
         }
 
         // check whether to start applying Tikhonov regularization
-        if (pde.absorption > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
-            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorption);
+        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
+            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
         }
 
         // compute the distance to the absorbing boundary

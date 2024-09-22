@@ -22,7 +22,7 @@ struct PDE {
     PDE();
 
     // members
-    float absorption;
+    float absorptionCoeff;
     std::function<T(const Vector<DIM>&)> source;
     std::function<T(const Vector<DIM>&, bool)> dirichlet;
     std::function<T(const Vector<DIM>&, bool)> neumann;
@@ -36,7 +36,7 @@ struct PDE {
 
 template <typename T, size_t DIM>
 inline PDE<T, DIM>::PDE():
-absorption(0.0f),
+absorptionCoeff(0.0f),
 source({}),
 dirichlet({}),
 neumann({}),
