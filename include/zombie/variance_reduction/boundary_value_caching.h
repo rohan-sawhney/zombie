@@ -455,7 +455,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimationData(const PDE<T, DIM>& p
             estimationData[i].nWalks = nWalksForGradientEstimates;
 
         } else if (samplePt.type == SampleType::OnReflectingBoundary) {
-            if (pde.robinCoeff) {
+            if (!pde.robinConditionsArePureNeumann) {
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         samplePt.estimateBoundaryNormalAligned;
                 samplePt.robinCoeff = pde.robinCoeff(samplePt.pt, returnBoundaryNormalAlignedValue);
@@ -495,19 +495,16 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
 
         if (samplePt.type == SampleType::OnReflectingBoundary) {
             if (!walkSettings.ignoreReflectingBoundaryContribution) {
-                if (pde.robin) {
-                    bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
-                                                            samplePt.estimateBoundaryNormalAligned;
-                    samplePt.robin = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
+                bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                        samplePt.estimateBoundaryNormalAligned;
+                if (pde.robinConditionsArePureNeumann) {
+                    samplePt.normalDerivative = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
 
+                } else {
+                    samplePt.robin = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
                     if (samplePt.robinCoeff > robinCoeffCutoffForNormalDerivative) {
                         samplePt.normalDerivative = samplePt.statistics->getEstimatedDerivative();
                     }
-
-                } else if (pde.neumann) {
-                    bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
-                                                            samplePt.estimateBoundaryNormalAligned;
-                    samplePt.normalDerivative = pde.neumann(samplePt.pt, returnBoundaryNormalAlignedValue);
                 }
             }
 
@@ -584,7 +581,7 @@ inline void BoundaryValueCaching<T, DIM>::splatBoundaryData(const SamplePoint<T,
             gradientEstimate[i] = alpha*((dG[i] + dP[i]/robinCoeff)*normalDerivative - dP[i]*robin/robinCoeff)/pdf;
         }
 
-    } else if (robinCoeff >= 0.0f) {
+    } else if (robinCoeff > 0.0f) {
         solutionEstimate = alpha*(G*robin - (P + robinCoeff*G)*solution)/pdf;
 
         if (alpha > 1.0f) alpha = 0.0f; // FUTURE: estimate gradient on the boundary

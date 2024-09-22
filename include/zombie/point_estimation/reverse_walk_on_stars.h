@@ -109,8 +109,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                !walkSettings.ignoreReflectingBoundaryContribution) {
         bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                 samplePt.estimateBoundaryNormalAligned;
-        sampleContribution.contribution = pde.robin ? pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue) :
-                                                      pde.neumann(samplePt.pt, returnBoundaryNormalAlignedValue);
+        sampleContribution.contribution = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
 
     } else {
         didSetContribution = false;
@@ -185,7 +184,7 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
         float robinCoeff = 0.0f;
         Vector<DIM> normal = state.currentNormal;
 
-        if (pde.robinCoeff) {
+        if (!pde.robinConditionsArePureNeumann) {
             bool flipNormalOrientation = false;
             if (walkSettings.solveDoubleSided) {
                 flipNormalOrientation = state.prevDirection.dot(state.currentNormal) < 0.0f;

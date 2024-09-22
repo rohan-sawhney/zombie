@@ -213,20 +213,13 @@ void Scene::populatePDEInputs() {
         Vector2 uv = (x - bMin)/maxLength;
         return this->absorbingBoundaryValue->get(uv)[0];
     };
-    if (robinCoeff > 0.0f) {
-        pde.robin = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
-            Vector2 uv = (x - bMin)/maxLength;
-            return this->reflectingBoundaryValue->get(uv)[0];
-        };
-        pde.robinCoeff = [this](const Vector2& x, bool _) -> float {
-            return this->robinCoeff;
-        };
-
-    } else {
-        pde.neumann = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
-            Vector2 uv = (x - bMin)/maxLength;
-            return this->reflectingBoundaryValue->get(uv)[0];
-        };
-    }
+    pde.robin = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
+        Vector2 uv = (x - bMin)/maxLength;
+        return this->reflectingBoundaryValue->get(uv)[0];
+    };
+    pde.robinCoeff = [this](const Vector2& x, bool _) -> float {
+        return this->robinCoeff;
+    };
+    pde.robinConditionsArePureNeumann = robinCoeff == 0.0f;
     pde.absorptionCoeff = absorptionCoeff;
 }

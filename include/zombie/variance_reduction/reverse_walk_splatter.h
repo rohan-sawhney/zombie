@@ -144,9 +144,8 @@ void splatContribution(const WalkState<T, DIM>& state,
     std::vector<size_t> nnIndices;
     size_t nnCount = nearestNeighborFinder.radiusSearch(state.currentPt, state.greensFn->R, nnIndices);
     bool hasRobinCoeffs = pde.robin ? true : false;
-    bool useSelfNormalization = queries.domainIsWatertight &&
-                                pde.absorptionCoeff == 0.0f &&
-                                !hasRobinCoeffs;
+    bool useSelfNormalization = queries.domainIsWatertight && pde.absorptionCoeff == 0.0f;
+    if (pde.robin && useSelfNormalization) useSelfNormalization = pde.robinConditionsArePureNeumann;
 
     for (size_t i = 0; i < nnCount; i++) {
         EvaluationPoint<T, DIM>& evalPt = evalPts[nnIndices[i]];

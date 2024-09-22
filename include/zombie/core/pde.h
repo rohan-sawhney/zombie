@@ -22,12 +22,12 @@ struct PDE {
     PDE();
 
     // members
-    float absorptionCoeff;
+    float absorptionCoeff; // must be positive or equal to zero
+    bool robinConditionsArePureNeumann; // set to false if Robin coefficients are non-zero anywhere
     std::function<T(const Vector<DIM>&)> source;
     std::function<T(const Vector<DIM>&, bool)> dirichlet;
-    std::function<T(const Vector<DIM>&, bool)> neumann;
-    std::function<T(const Vector<DIM>&, bool)> robin;
-    std::function<float(const Vector<DIM>&, bool)> robinCoeff;
+    std::function<T(const Vector<DIM>&, bool)> robin; // dual purposes as values for Neuamnn BCs
+    std::function<float(const Vector<DIM>&, bool)> robinCoeff; // must be positive or equal to zero
     std::function<bool(const Vector<DIM>&)> hasNonZeroRobinCoeff; // set automatically
 };
 
@@ -37,9 +37,9 @@ struct PDE {
 template <typename T, size_t DIM>
 inline PDE<T, DIM>::PDE():
 absorptionCoeff(0.0f),
+robinConditionsArePureNeumann(true),
 source({}),
 dirichlet({}),
-neumann({}),
 robin({}),
 robinCoeff({}) {
     hasNonZeroRobinCoeff = [this](const Vector<DIM>& x) {

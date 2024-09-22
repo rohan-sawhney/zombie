@@ -285,7 +285,7 @@ struct SamplePoint {
         normalDerivative = initVal;
         source = initVal;
         robin = initVal;
-        robinCoeff = std::numeric_limits<float>::lowest();
+        robinCoeff = 0.0f;
     }
 
     // members

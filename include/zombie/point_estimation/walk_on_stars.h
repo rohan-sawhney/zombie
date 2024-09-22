@@ -200,12 +200,11 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                 !queries.intersectsWithReflectingBoundary(state.currentPt, boundarySample.pt,
                                                           state.currentNormal, boundarySample.normal,
                                                           state.onReflectingBoundary, true)) {
+                float G = state.greensFn->evaluate(state.currentPt, boundarySample.pt);
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         estimateBoundaryNormalAligned;
-                T h = pde.robin ? pde.robin(boundarySample.pt, returnBoundaryNormalAlignedValue) :
-                                  pde.neumann(boundarySample.pt, returnBoundaryNormalAlignedValue);
+                T h = pde.robin(boundarySample.pt, returnBoundaryNormalAlignedValue);
 
-                float G = state.greensFn->evaluate(state.currentPt, boundarySample.pt);
                 state.totalReflectingBoundaryContribution += state.throughput*alpha*G*h/boundarySample.pdf;
             }
         }
@@ -243,7 +242,7 @@ inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& p
         float robinCoeff = 0.0f;
         Vector<DIM> normal = state.currentNormal;
 
-        if (pde.robinCoeff) {
+        if (!pde.robinConditionsArePureNeumann) {
             bool flipNormalOrientation = false;
             if (walkSettings.solveDoubleSided) {
                 flipNormalOrientation = state.prevDirection.dot(state.currentNormal) < 0.0f;

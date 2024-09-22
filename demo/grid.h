@@ -84,7 +84,7 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
 
             float dirichletVal = pde.dirichlet(samplePts[idx].pt, false);
-            float robinVal = pde.robin ? pde.robin(samplePts[idx].pt, false) : pde.neumann(samplePts[idx].pt, false);
+            float robinVal = pde.robin(samplePts[idx].pt, false);
             float sourceVal = pde.source(samplePts[idx].pt);
             boundaryData->get(j, i) = Array3(dirichletVal, robinVal, sourceVal);
 
@@ -154,7 +154,7 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
 
             float dirichletVal = pde.dirichlet(evalPts[idx].pt, false);
-            float robinVal = pde.robin ? pde.robin(evalPts[idx].pt, false) : pde.neumann(evalPts[idx].pt, false);
+            float robinVal = pde.robin(evalPts[idx].pt, false);
             float sourceVal = pde.source(evalPts[idx].pt);
             boundaryData->get(j, i) = Array3(dirichletVal, robinVal, sourceVal);
 
@@ -204,7 +204,7 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
 
             float dirichletVal = pde.dirichlet(evalPts[idx].pt, false);
-            float robinVal = pde.robin ? pde.robin(evalPts[idx].pt, false) : pde.neumann(evalPts[idx].pt, false);
+            float robinVal = pde.robin(evalPts[idx].pt, false);
             float sourceVal = pde.source(evalPts[idx].pt);
             boundaryData->get(j, i) = Array3(dirichletVal, robinVal, sourceVal);
 
