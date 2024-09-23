@@ -7,6 +7,10 @@
 // inside the domain or on the boundary. This algorithm is useful when the user wants to
 // solve PDEs with localized sources or boundary conditions. Each call to solve(...)
 // improves the estimate of the PDE solution, enabling progressive evaluation.
+//
+// Resources:
+// - A Bidirectional Formulation for Walk on Spheres [2022]
+// - Walkin’ Robin: Walk on Stars with Robin Boundary Conditions [2024]
 
 #pragma once
 

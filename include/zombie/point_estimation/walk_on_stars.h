@@ -6,6 +6,10 @@
 // from the SampleStatistics struct, which is stored in the SamplePoint struct.
 // Each call to solve(...) improves the estimate of the PDE solution at the
 // user-selected set of input points, enabling progressive evaluation.
+//
+// Resources:
+// - Walk on Stars: Grid-Free Monte Carlo for PDEs with Neumann Conditions [2023]
+// - Walkin’ Robin: Walk on Stars with Robin Boundary Conditions [2024]
 
 #pragma once
 

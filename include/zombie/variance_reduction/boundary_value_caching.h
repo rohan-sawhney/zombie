@@ -1,6 +1,9 @@
 // This file implements the Boundary Value Caching technique for reducing variance
 // of the walk-on-spheres and walk-on-stars estimators at a set of user-selected
 // evaluation points via sample caching and reuse.
+//
+// Resources:
+// - Boundary Value Caching for Walk on Spheres [2023]
 
 #pragma once
 

@@ -1,6 +1,10 @@
 // This file implements a "reverse walk" splatting technique for reducing variance
 // of the walk-on-spheres and walk-on-stars estimators at a set of user-selected
 // evaluation points.
+//
+// Resources:
+// - A Bidirectional Formulation for Walk on Spheres [2022]
+// - Walkin’ Robin: Walk on Stars with Robin Boundary Conditions [2024]
 
 #pragma once
 

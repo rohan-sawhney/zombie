@@ -4,6 +4,10 @@
 // from the SampleStatistics struct, which is stored in the SamplePoint struct.
 // Each call to solve(...) improves the estimate of the PDE solution at the
 // user-selected set of input points, enabling progressive evaluation.
+//
+// Resources:
+// - Some Continuous Monte Carlo Methods for the Dirichlet Problem [1956]
+// - Monte Carlo Geometry Processing: A Grid-Free Approach to PDE-Based Methods on Volumetric Domains [2020]
 
 #pragma once
 
