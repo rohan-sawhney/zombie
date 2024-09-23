@@ -54,7 +54,7 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
     ProgressBar pb(gridRes*gridRes);
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
 
-    zombie::WalkSettings<float> walkSettings(0.0f, epsilonShellForAbsorbingBoundary,
+    zombie::WalkSettings<float> walkSettings(epsilonShellForAbsorbingBoundary,
                                              epsilonShellForReflectingBoundary,
                                              silhouettePrecision, russianRouletteThreshold,
                                              maxWalkLength, stepsBeforeApplyingTikhonov,
@@ -140,7 +140,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
                                solveDoubleSided);
     boundarySampler.generateSamples(boundaryCacheSize, normalOffsetForAbsorbingBoundary,
                                     normalOffsetForReflectingBoundary, solveDoubleSided,
-                                    0.0f, boundaryCache, boundaryCacheNormalAligned);
+                                    boundaryCache, boundaryCacheNormalAligned);
 
     if (!ignoreSourceContribution) {
         zombie::DomainSampler<float, 2> domainSampler(queries, insideSolveRegionDomainSampler,
@@ -156,7 +156,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
 
     zombie::WalkOnStars<float, 2> walkOnStars(queries);
     zombie::bvc::BoundaryValueCaching<float, 2> bvc(queries, walkOnStars);
-    zombie::WalkSettings<float> walkSettings(0.0f, epsilonShellForAbsorbingBoundary,
+    zombie::WalkSettings<float> walkSettings(epsilonShellForAbsorbingBoundary,
                                              epsilonShellForReflectingBoundary,
                                              silhouettePrecision, russianRouletteThreshold,
                                              maxWalkLength, stepsBeforeApplyingTikhonov,
@@ -259,7 +259,7 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
         absorbingBoundarySampler.initialize(normalOffsetForAbsorbingBoundary, 0.0f, solveDoubleSided);
         absorbingBoundarySampler.generateSamples(absorbingBoundarySampleCount,
                                                  normalOffsetForAbsorbingBoundary, 0.0f,
-                                                 solveDoubleSided, 0.0f, absorbingBoundarySamplePts,
+                                                 solveDoubleSided, absorbingBoundarySamplePts,
                                                  absorbingBoundaryNormalAlignedSamplePts);
     }
 
@@ -269,7 +269,7 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
             queries, insideSolveRegionBoundarySampler, returnTrue);
         reflectingBoundarySampler.initialize(0.0f, 0.0f, solveDoubleSided);
         reflectingBoundarySampler.generateSamples(reflectingBoundarySampleCount, 0.0f, 0.0f,
-                                                  solveDoubleSided, 0.0f, reflectingBoundarySamplePts,
+                                                  solveDoubleSided, reflectingBoundarySamplePts,
                                                   reflectingBoundaryNormalAlignedSamplePts);
     }
 
@@ -309,7 +309,7 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
 
-    zombie::WalkSettings<float> walkSettings(0.0f, epsilonShellForAbsorbingBoundary,
+    zombie::WalkSettings<float> walkSettings(epsilonShellForAbsorbingBoundary,
                                              epsilonShellForReflectingBoundary,
                                              silhouettePrecision, russianRouletteThreshold,
                                              maxWalkLength, stepsBeforeApplyingTikhonov,

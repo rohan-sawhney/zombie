@@ -49,7 +49,7 @@ void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
             samplePts.emplace_back(zombie::SamplePoint<float, 2>(pt, Vector2::Zero(),
                                                                  zombie::SampleType::InDomain,
                                                                  1.0f, distToAbsorbingBoundary,
-                                                                 distToReflectingBoundary, 0.0f));
+                                                                 distToReflectingBoundary));
         }
     }
 }
@@ -119,7 +119,7 @@ void createEvaluationGrid(std::vector<EvaluationPointType>& evalPts,
             evalPts.emplace_back(EvaluationPointType(pt, Vector2::Zero(),
                                                      zombie::SampleType::InDomain,
                                                      distToAbsorbingBoundary,
-                                                     distToReflectingBoundary, 0.0f));
+                                                     distToReflectingBoundary));
         }
     }
 }
@@ -213,7 +213,7 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
                                                             nAbsorbingBoundaryNormalAlignedSamples,
                                                             nReflectingBoundarySamples,
                                                             nReflectingBoundaryNormalAlignedSamples,
-                                                            nSourceSamples, 0.0f);
+                                                            nSourceSamples);
             bool maskOutValue = (!inDomain && !isDoubleSided) || std::min(std::abs(distToAbsorbingBoundary),
                                                                           std::abs(distToReflectingBoundary))
                                                                           < boundaryDistanceMask;

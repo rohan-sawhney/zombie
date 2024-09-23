@@ -237,7 +237,7 @@ inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
     }
 
     // terminated with russian roulette or ignoring absorbing boundary values
-    return walkSettings.initVal;
+    return T(0.0f);
 }
 
 template <typename T, size_t DIM>
@@ -247,14 +247,14 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
     // initialize statistics if there are no previous estimates
     bool hasPrevEstimates = samplePt.statistics != nullptr;
     if (!hasPrevEstimates) {
-        samplePt.statistics = std::make_shared<SampleStatistics<T, DIM>>(walkSettings.initVal);
+        samplePt.statistics = std::make_shared<SampleStatistics<T, DIM>>();
     }
 
     // check if the sample pt is on the absorbing boundary
     if (samplePt.type == SampleType::OnAbsorbingBoundary) {
         if (!hasPrevEstimates) {
             // record the known boundary value
-            T totalContribution = walkSettings.initVal;
+            T totalContribution(0.0f);
             if (!walkSettings.ignoreAbsorbingBoundaryContribution) {
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         samplePt.estimateBoundaryNormalAligned;
@@ -283,7 +283,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
     for (int w = 0; w < nWalks; w++) {
         // initialize the walk state
         WalkState<T, DIM> state(samplePt.pt, Vector<DIM>::Zero(), Vector<DIM>::Zero(),
-                                0.0f, 1.0f, false, 0, walkSettings.initVal);
+                                0.0f, 1.0f, false, 0);
 
         // initialize the greens function
         if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
@@ -320,7 +320,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
     // initialize statistics if there are no previous estimates
     bool hasPrevEstimates = samplePt.statistics != nullptr;
     if (!hasPrevEstimates) {
-        samplePt.statistics = std::make_shared<SampleStatistics<T, DIM>>(walkSettings.initVal);
+        samplePt.statistics = std::make_shared<SampleStatistics<T, DIM>>();
     }
 
     // reduce nWalks by 2 if using antithetic sampling
@@ -345,8 +345,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
         // compute control variates for the gradient estimate
-        T boundaryGradientControlVariate = walkSettings.initVal;
-        T sourceGradientControlVariate = walkSettings.initVal;
+        T boundaryGradientControlVariate(0.0f);
+        T sourceGradientControlVariate(0.0f);
         if (walkSettings.useGradientControlVariates) {
             boundaryGradientControlVariate = samplePt.statistics->getEstimatedSolution();
             sourceGradientControlVariate = samplePt.statistics->getMeanFirstSourceContribution();
@@ -355,7 +355,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
         for (int antitheticIter = 0; antitheticIter < nAntitheticIters; antitheticIter++) {
             // initialize the walk state
             WalkState<T, DIM> state(samplePt.pt, Vector<DIM>::Zero(), Vector<DIM>::Zero(),
-                                    0.0f, 1.0f, false, 0, walkSettings.initVal);
+                                    0.0f, 1.0f, false, 0);
 
             // initialize the greens function
             if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
@@ -370,7 +370,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
             greensFn->updateBall(state.currentPt, samplePt.firstSphereRadius);
 
             // compute the source contribution inside the ball
-            T firstSourceContribution = walkSettings.initVal;
+            T firstSourceContribution(0.0f);
             Vector<DIM> sourceGradientDirection = Vector<DIM>::Zero();
             if (!walkSettings.ignoreSourceContribution) {
                 if (antitheticIter == 0) {
@@ -439,7 +439,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 T boundaryGradientEstimate[DIM];
                 T sourceGradientEstimate[DIM];
                 T boundaryContribution = totalContribution - firstSourceContribution;
-                T directionalDerivative = walkSettings.initVal;
+                T directionalDerivative(0.0f);
 
                 for (int i = 0; i < DIM; i++) {
                     boundaryGradientEstimate[i] = (boundaryContribution - boundaryGradientControlVariate)*boundaryGradientDirection[i];

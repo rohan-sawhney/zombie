@@ -19,10 +19,9 @@ namespace zombie {
 template <typename T>
 struct WalkSettings {
     // constructors
-    WalkSettings(T initVal_, float epsilonShellForAbsorbingBoundary_,
+    WalkSettings(float epsilonShellForAbsorbingBoundary_,
                  float epsilonShellForReflectingBoundary_,
                  int maxWalkLength_, bool solveDoubleSided_):
-                 initVal(initVal_),
                  epsilonShellForAbsorbingBoundary(epsilonShellForAbsorbingBoundary_),
                  epsilonShellForReflectingBoundary(epsilonShellForReflectingBoundary_),
                  silhouettePrecision(1e-3f),
@@ -38,7 +37,7 @@ struct WalkSettings {
                  ignoreReflectingBoundaryContribution(false),
                  ignoreSourceContribution(false),
                  printLogs(false) {}
-    WalkSettings(T initVal_, float epsilonShellForAbsorbingBoundary_,
+    WalkSettings(float epsilonShellForAbsorbingBoundary_,
                  float epsilonShellForReflectingBoundary_,
                  float silhouettePrecision_, float russianRouletteThreshold_,
                  int maxWalkLength_, int stepsBeforeApplyingTikhonov_,
@@ -47,7 +46,6 @@ struct WalkSettings {
                  bool useCosineSamplingForDerivatives_, bool ignoreAbsorbingBoundaryContribution_,
                  bool ignoreReflectingBoundaryContribution_, bool ignoreSourceContribution_,
                  bool printLogs_):
-                 initVal(initVal_),
                  epsilonShellForAbsorbingBoundary(epsilonShellForAbsorbingBoundary_),
                  epsilonShellForReflectingBoundary(epsilonShellForReflectingBoundary_),
                  silhouettePrecision(silhouettePrecision_),
@@ -65,7 +63,6 @@ struct WalkSettings {
                  printLogs(printLogs_) {}
 
     // members
-    T initVal;
     float epsilonShellForAbsorbingBoundary;
     float epsilonShellForReflectingBoundary;
     float silhouettePrecision;
@@ -88,7 +85,7 @@ struct WalkState {
     // constructor
     WalkState(const Vector<DIM>& currentPt_, const Vector<DIM>& currentNormal_,
               const Vector<DIM>& prevDirection_, float prevDistance_, float throughput_,
-              bool onReflectingBoundary_, int walkLength_, T initVal_):
+              bool onReflectingBoundary_, int walkLength_):
               greensFn(nullptr),
               currentPt(currentPt_),
               currentNormal(currentNormal_),
@@ -96,8 +93,8 @@ struct WalkState {
               prevDistance(prevDistance_),
               throughput(throughput_),
               onReflectingBoundary(onReflectingBoundary_),
-              totalReflectingBoundaryContribution(initVal_),
-              totalSourceContribution(initVal_),
+              totalReflectingBoundaryContribution(0.0f),
+              totalSourceContribution(0.0f),
               walkLength(walkLength_) {}
 
     // members
@@ -126,20 +123,20 @@ template <typename T, size_t DIM>
 class SampleStatistics {
 public:
     // constructor
-    SampleStatistics(T initVal) {
-        reset(initVal);
+    SampleStatistics() {
+        reset();
     }
 
     // resets statistics
-    void reset(T initVal) {
-        solutionMean = initVal;
-        solutionM2 = initVal;
+    void reset() {
+        solutionMean = T(0.0f);
+        solutionM2 = T(0.0f);
         for (int i = 0; i < DIM; i++) {
-            gradientMean[i] = initVal;
-            gradientM2[i] = initVal;
+            gradientMean[i] = T(0.0f);
+            gradientM2[i] = T(0.0f);
         }
-        totalFirstSourceContribution = initVal;
-        totalDerivativeContribution = initVal;
+        totalFirstSourceContribution = T(0.0f);
+        totalDerivativeContribution = T(0.0f);
         nSolutionEstimates = 0;
         nGradientEstimates = 0;
         totalWalkLength = 0;
@@ -268,23 +265,23 @@ struct SamplePoint {
     // constructor
     SamplePoint(const Vector<DIM>& pt_, const Vector<DIM>& normal_,
                 SampleType type_, float pdf_, float distToAbsorbingBoundary_,
-                float distToReflectingBoundary_, T initVal_):
+                float distToReflectingBoundary_):
                 pt(pt_), normal(normal_), type(type_), pdf(pdf_),
                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
                 distToReflectingBoundary(distToReflectingBoundary_),
                 firstSphereRadius(0.0f), estimateBoundaryNormalAligned(false) {
-        reset(initVal_);
+        reset();
     }
 
     // resets solution data
-    void reset(T initVal) {
+    void reset() {
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         sampler = pcg32(seed);
         statistics = nullptr;
-        solution = initVal;
-        normalDerivative = initVal;
-        source = initVal;
-        robin = initVal;
+        solution = T(0.0f);
+        normalDerivative = T(0.0f);
+        source = T(0.0f);
+        robin = T(0.0f);
         robinCoeff = 0.0f;
     }
 

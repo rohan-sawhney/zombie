@@ -32,7 +32,7 @@ public:
     void generateSamples(int nTotalSamples,
                          float normalOffsetForAbsorbingBoundary,
                          float normalOffsetForReflectingBoundary,
-                         bool solveDoubleSided, T initVal,
+                         bool solveDoubleSided,
                          std::vector<SamplePoint<T, DIM>>& samplePts,
                          std::vector<SamplePoint<T, DIM>>& samplePtsNormalAligned);
 
@@ -50,7 +50,7 @@ protected:
     // generates uniformly distributed sample points on the boundary
     void generateSamples(const CDFTable& table, int nSamples, float totalArea,
                          float normalOffsetForAbsorbingBoundary,
-                         float normalOffsetForReflectingBoundary, T initVal,
+                         float normalOffsetForReflectingBoundary,
                          std::vector<SamplePoint<T, DIM>>& samplePts);
 
     // members
@@ -109,7 +109,7 @@ template <typename T, size_t DIM>
 inline void BoundarySampler<T, DIM>::generateSamples(int nTotalSamples,
                                                      float normalOffsetForAbsorbingBoundary,
                                                      float normalOffsetForReflectingBoundary,
-                                                     bool solveDoubleSided, T initVal,
+                                                     bool solveDoubleSided,
                                                      std::vector<SamplePoint<T, DIM>>& samplePts,
                                                      std::vector<SamplePoint<T, DIM>>& samplePtsNormalAligned) {
     if (solveDoubleSided) {
@@ -120,18 +120,18 @@ inline void BoundarySampler<T, DIM>::generateSamples(int nTotalSamples,
 
         // generate samples
         generateSamples(cdfTable, nSamples, boundaryArea, -1.0f*normalOffsetForAbsorbingBoundary,
-                        -1.0f*normalOffsetForReflectingBoundary, initVal, samplePts);
+                        -1.0f*normalOffsetForReflectingBoundary, samplePts);
 
         generateSamples(cdfTableNormalAligned, nSamplesNormalAligned,
                         boundaryAreaNormalAligned, normalOffsetForAbsorbingBoundary,
-                        normalOffsetForReflectingBoundary, initVal, samplePtsNormalAligned);
+                        normalOffsetForReflectingBoundary, samplePtsNormalAligned);
         for (int i = 0; i < nSamplesNormalAligned; i++) {
             samplePtsNormalAligned[i].estimateBoundaryNormalAligned = true;
         }
 
     } else {
         generateSamples(cdfTable, nTotalSamples, boundaryArea, -1.0f*normalOffsetForAbsorbingBoundary,
-                        -1.0f*normalOffsetForReflectingBoundary, initVal, samplePts);
+                        -1.0f*normalOffsetForReflectingBoundary, samplePts);
     }
 }
 
@@ -240,7 +240,7 @@ inline void BoundarySampler<T, DIM>::buildCDFTable(CDFTable& table, float& total
 template <typename T, size_t DIM>
 inline void BoundarySampler<T, DIM>::generateSamples(const CDFTable& table, int nSamples, float totalArea,
                                                      float normalOffsetForAbsorbingBoundary,
-                                                     float normalOffsetForReflectingBoundary, T initVal,
+                                                     float normalOffsetForReflectingBoundary,
                                                      std::vector<SamplePoint<T, DIM>>& samplePts) {
     samplePts.clear();
     float pdf = 1.0f/totalArea;
@@ -327,7 +327,7 @@ inline void BoundarySampler<T, DIM>::generateSamples(const CDFTable& table, int 
                 float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
                 samplePts.emplace_back(SamplePoint<T, DIM>(pt, normal, sampleType,
                                                            pdf, distToAbsorbingBoundary,
-                                                           distToReflectingBoundary, initVal));
+                                                           distToReflectingBoundary));
             }
         }
 

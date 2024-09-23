@@ -82,8 +82,10 @@ inline void DomainSampler<T, DIM>::generateSamples(const PDE<T, DIM>& pde, int n
         T source = pde.source(pt);
         float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
         float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
-        samplePts.emplace_back(SamplePoint<T, DIM>(pt, Vector<DIM>::Zero(), SampleType::InDomain, pdf,
-                                                   distToAbsorbingBoundary, distToReflectingBoundary, source));
+        SamplePoint<T, DIM> samplePt(pt, Vector<DIM>::Zero(), SampleType::InDomain, pdf,
+                                     distToAbsorbingBoundary, distToReflectingBoundary);
+        samplePt.source = source;
+        samplePts.emplace_back(samplePt);
     }
 }
 

@@ -129,7 +129,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
         // initialize the walk state
         WalkState<T, DIM> state(samplePt.pt, samplePt.normal, prevDirection, prevDistance,
-                                1.0f, onReflectingBoundary, 0, walkSettings.initVal);
+                                1.0f, onReflectingBoundary, 0);
 
         // initialize the greens function
         if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {

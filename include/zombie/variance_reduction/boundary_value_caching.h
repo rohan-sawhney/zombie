@@ -18,8 +18,7 @@ struct EvaluationPoint {
                     const Vector<DIM>& normal_,
                     SampleType type_,
                     float distToAbsorbingBoundary_,
-                    float distToReflectingBoundary_,
-                    T initVal_);
+                    float distToReflectingBoundary_);
 
     // returns estimated solution
     T getEstimatedSolution() const;
@@ -28,7 +27,7 @@ struct EvaluationPoint {
     void getEstimatedGradient(std::vector<T>& gradient) const;
 
     // resets statistics
-    void reset(T initVal);
+    void reset();
 
     // members
     Vector<DIM> pt;
@@ -172,14 +171,13 @@ inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
                                                 const Vector<DIM>& normal_,
                                                 SampleType type_,
                                                 float distToAbsorbingBoundary_,
-                                                float distToReflectingBoundary_,
-                                                T initVal_):
+                                                float distToReflectingBoundary_):
                                                 pt(pt_), normal(normal_), type(type_),
                                                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
                                                 distToReflectingBoundary(distToReflectingBoundary_) {
-    boundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>(initVal_);
-    boundaryNormalAlignedStatistics = std::make_unique<SampleStatistics<T, DIM>>(initVal_);
-    sourceStatistics = std::make_unique<SampleStatistics<T, DIM>>(initVal_);
+    boundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>();
+    boundaryNormalAlignedStatistics = std::make_unique<SampleStatistics<T, DIM>>();
+    sourceStatistics = std::make_unique<SampleStatistics<T, DIM>>();
 }
 
 template <typename T, size_t DIM>
@@ -202,10 +200,10 @@ inline void EvaluationPoint<T, DIM>::getEstimatedGradient(std::vector<T>& gradie
 }
 
 template <typename T, size_t DIM>
-inline void EvaluationPoint<T, DIM>::reset(T initVal) {
-    boundaryStatistics->reset(initVal);
-    boundaryNormalAlignedStatistics->reset(initVal);
-    sourceStatistics->reset(initVal);
+inline void EvaluationPoint<T, DIM>::reset() {
+    boundaryStatistics->reset();
+    boundaryNormalAlignedStatistics->reset();
+    sourceStatistics->reset();
 }
 
 template <typename T, size_t DIM>
@@ -384,13 +382,12 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
         // evaluates the inward boundary normal aligned solution
         SamplePoint<T, DIM> samplePt(evalPt.pt, evalPt.normal, evalPt.type, 1.0f,
                                      evalPt.distToAbsorbingBoundary,
-                                     evalPt.distToReflectingBoundary,
-                                     walkSettings.initVal);
+                                     evalPt.distToReflectingBoundary);
         SampleEstimationData<DIM> estimationData(nWalks, EstimationQuantity::Solution);
         walkOnStars.solve(pde, walkSettings, estimationData, samplePt);
 
         // update statistics
-        evalPt.reset(walkSettings.initVal);
+        evalPt.reset();
         T solutionEstimate = samplePt.statistics->getEstimatedSolution();
         evalPt.boundaryStatistics->addSolutionEstimate(solutionEstimate);
     }

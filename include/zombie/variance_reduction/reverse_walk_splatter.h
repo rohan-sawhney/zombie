@@ -20,18 +20,17 @@ struct EvaluationPoint {
                     const Vector<DIM>& normal_,
                     SampleType type_,
                     float distToAbsorbingBoundary_,
-                    float distToReflectingBoundary_,
-                    T initVal_);
+                    float distToReflectingBoundary_);
 
     // returns estimated solution
     T getEstimatedSolution(int nAbsorbingBoundarySamples,
                            int nAbsorbingBoundaryNormalAlignedSamples,
                            int nReflectingBoundarySamples,
                            int nReflectingBoundaryNormalAlignedSamples,
-                           int nSourceSamples, T initVal) const;
+                           int nSourceSamples) const;
 
     // resets statistics
-    void reset(T initVal);
+    void reset();
 
     // members
     Vector<DIM> pt;
@@ -72,13 +71,12 @@ inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
                                                 const Vector<DIM>& normal_,
                                                 SampleType type_,
                                                 float distToAbsorbingBoundary_,
-                                                float distToReflectingBoundary_,
-                                                T initVal_):
+                                                float distToReflectingBoundary_):
                                                 pt(pt_), normal(normal_), type(type_),
                                                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
                                                 distToReflectingBoundary(distToReflectingBoundary_) {
     mutex = std::make_unique<tbb::mutex>();
-    reset(initVal_);
+    reset();
 }
 
 template <typename T, size_t DIM>
@@ -86,12 +84,12 @@ T EvaluationPoint<T, DIM>::getEstimatedSolution(int nAbsorbingBoundarySamples,
                                                 int nAbsorbingBoundaryNormalAlignedSamples,
                                                 int nReflectingBoundarySamples,
                                                 int nReflectingBoundaryNormalAlignedSamples,
-                                                int nSourceSamples, T initVal) const {
+                                                int nSourceSamples) const {
     if (type == SampleType::OnAbsorbingBoundary) {
         return totalAbsorbingBoundaryContribution;
     }
 
-    T solution = initVal;
+    T solution(0.0f);
     if (nAbsorbingBoundarySamples > 0) {
         if (totalPoissonKernelContribution > 0.0f) {
             solution += totalAbsorbingBoundaryContribution/totalPoissonKernelContribution;
@@ -121,13 +119,13 @@ T EvaluationPoint<T, DIM>::getEstimatedSolution(int nAbsorbingBoundarySamples,
 }
 
 template <typename T, size_t DIM>
-void EvaluationPoint<T, DIM>::reset(T initVal) {
+void EvaluationPoint<T, DIM>::reset() {
     totalPoissonKernelContribution = 0.0f;
-    totalAbsorbingBoundaryContribution = initVal;
-    totalAbsorbingBoundaryNormalAlignedContribution = initVal;
-    totalReflectingBoundaryContribution = initVal;
-    totalReflectingBoundaryNormalAlignedContribution = initVal;
-    totalSourceContribution = initVal;
+    totalAbsorbingBoundaryContribution = T(0.0f);
+    totalAbsorbingBoundaryNormalAlignedContribution = T(0.0f);
+    totalReflectingBoundaryContribution = T(0.0f);
+    totalReflectingBoundaryNormalAlignedContribution = T(0.0f);
+    totalSourceContribution = T(0.0f);
 }
 
 template <typename T, size_t DIM, typename NearestNeighborFinder>
