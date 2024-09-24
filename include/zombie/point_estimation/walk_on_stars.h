@@ -30,14 +30,14 @@ public:
     // solves the given PDE at the input point; NOTE: assumes the point does not
     // lie on the boundary when estimating the gradient
     void solve(const PDE<T, DIM>& pde,
-               const WalkSettings<T>& walkSettings,
+               const WalkSettings& walkSettings,
                const SampleEstimationData<DIM>& estimationData,
                SamplePoint<T, DIM>& samplePt) const;
 
     // solves the given PDE at the input points (in parallel by default); NOTE:
     // assumes points do not lie on the boundary when estimating gradients
     void solve(const PDE<T, DIM>& pde,
-               const WalkSettings<T>& walkSettings,
+               const WalkSettings& walkSettings,
                const std::vector<SampleEstimationData<DIM>>& estimationData,
                std::vector<SamplePoint<T, DIM>>& samplePts,
                bool runSingleThreaded=false,
@@ -46,26 +46,25 @@ public:
 protected:
     // computes the contribution from the reflecting boundary at a particular point in the walk
     void computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
-                                               const WalkSettings<T>& walkSettings,
+                                               const WalkSettings& walkSettings,
                                                float starRadius, bool flipNormalOrientation,
-                                               pcg32& sampler, Vector<DIM>& randNumsForBoundarySampling,
-                                               WalkState<T, DIM>& state) const;
+                                               pcg32& sampler, WalkState<T, DIM>& state) const;
 
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
-                                   const WalkSettings<T>& walkSettings,
+                                   const WalkSettings& walkSettings,
                                    const IntersectionPoint<DIM>& intersectionPt,
                                    const Vector<DIM>& direction, pcg32& sampler,
                                    WalkState<T, DIM>& state) const;
 
     // computes the throughput of a single walk step
     float computeWalkStepThroughput(const PDE<T, DIM>& pde,
-                                    const WalkSettings<T>& walkSettings,
+                                    const WalkSettings& walkSettings,
                                     const WalkState<T, DIM>& state) const;
 
     // performs a single reflecting random walk starting at the input point
     WalkCompletionCode walk(const PDE<T, DIM>& pde,
-                            const WalkSettings<T>& walkSettings,
+                            const WalkSettings& walkSettings,
                             float distToAbsorbingBoundary, float firstSphereRadius,
                             bool flipNormalOrientation, pcg32& sampler,
                             WalkState<T, DIM>& state) const;
@@ -73,19 +72,19 @@ protected:
     // returns the terminal contribution from the end of the walk
     T getTerminalContribution(WalkCompletionCode code,
                               const PDE<T, DIM>& pde,
-                              const WalkSettings<T>& walkSettings,
+                              const WalkSettings& walkSettings,
                               WalkState<T, DIM>& state) const;
 
     // estimates only the solution of the given PDE at the input point
     void estimateSolution(const PDE<T, DIM>& pde,
-                          const WalkSettings<T>& walkSettings,
+                          const WalkSettings& walkSettings,
                           int nWalks, SamplePoint<T, DIM>& samplePt) const;
 
     // estimates the solution and gradient of the given PDE at the input point;
     // NOTE: assumes the point does not lie on the boundary; the directional derivative
     // can be accessed through samplePt.statistics->getEstimatedDerivative()
     void estimateSolutionAndGradient(const PDE<T, DIM>& pde,
-                                     const WalkSettings<T>& walkSettings,
+                                     const WalkSettings& walkSettings,
                                      const Vector<DIM>& directionForDerivative,
                                      int nWalks, SamplePoint<T, DIM>& samplePt) const;
 
@@ -109,7 +108,7 @@ inline WalkOnStars<T, DIM>::WalkOnStars(const GeometricQueries<DIM>& queries_,
 
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
-                                       const WalkSettings<T>& walkSettings,
+                                       const WalkSettings& walkSettings,
                                        const SampleEstimationData<DIM>& estimationData,
                                        SamplePoint<T, DIM>& samplePt) const {
     if (estimationData.estimationQuantity != EstimationQuantity::None) {
@@ -126,7 +125,7 @@ inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
-                                       const WalkSettings<T>& walkSettings,
+                                       const WalkSettings& walkSettings,
                                        const std::vector<SampleEstimationData<DIM>>& estimationData,
                                        std::vector<SamplePoint<T, DIM>>& samplePts, bool runSingleThreaded,
                                        std::function<void(int, int)> reportProgress) const {
@@ -157,14 +156,14 @@ inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
-                                                                       const WalkSettings<T>& walkSettings,
+                                                                       const WalkSettings& walkSettings,
                                                                        float starRadius, bool flipNormalOrientation,
-                                                                       pcg32& sampler, Vector<DIM>& randNumsForBoundarySampling,
-                                                                       WalkState<T, DIM>& state) const {
+                                                                       pcg32& sampler, WalkState<T, DIM>& state) const {
     if (!walkSettings.ignoreReflectingBoundaryContribution) {
         // compute the non-zero reflecting boundary contribution inside the star-shaped region
         // (defined to be zero outside this region)
         BoundarySample<DIM> boundarySample;
+        Vector<DIM> randNumsForBoundarySampling;
         for (int i = 0; i < DIM; i++) randNumsForBoundarySampling[i] = sampler.nextFloat();
         if (queries.sampleReflectingBoundary(
             state.currentPt, starRadius, randNumsForBoundarySampling, boundarySample)) {
@@ -217,7 +216,7 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
 
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pde,
-                                                           const WalkSettings<T>& walkSettings,
+                                                           const WalkSettings& walkSettings,
                                                            const IntersectionPoint<DIM>& intersectionPt,
                                                            const Vector<DIM>& direction, pcg32& sampler,
                                                            WalkState<T, DIM>& state) const {
@@ -240,7 +239,7 @@ inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pd
 
 template <typename T, size_t DIM>
 inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& pde,
-                                                            const WalkSettings<T>& walkSettings,
+                                                            const WalkSettings& walkSettings,
                                                             const WalkState<T, DIM>& state) const {
     if (state.onReflectingBoundary && state.prevDistance > std::numeric_limits<T>::epsilon()) {
         float robinCoeff = 0.0f;
@@ -267,14 +266,12 @@ inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& p
 
 template <typename T, size_t DIM>
 inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
-                                                    const WalkSettings<T>& walkSettings,
+                                                    const WalkSettings& walkSettings,
                                                     float distToAbsorbingBoundary, float firstSphereRadius,
                                                     bool flipNormalOrientation, pcg32& sampler,
                                                     WalkState<T, DIM>& state) const {
     // recursively perform a random walk till it reaches the absorbing boundary
     bool firstStep = true;
-    Vector<DIM> randNumsForBoundarySampling;
-
     while (distToAbsorbingBoundary > walkSettings.epsilonShellForAbsorbingBoundary) {
         // compute the star radius
         float starRadius;
@@ -355,11 +352,12 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // compute the contribution from the reflecting boundary
-        computeReflectingBoundaryContribution(pde, walkSettings, starRadius, flipNormalOrientation,
-                                              sampler, randNumsForBoundarySampling, state);
+        computeReflectingBoundaryContribution(
+            pde, walkSettings, starRadius, flipNormalOrientation, sampler, state);
 
         // compute the source contribution
-        computeSourceContribution(pde, walkSettings, intersectionPt, direction, sampler, state);
+        computeSourceContribution(
+            pde, walkSettings, intersectionPt, direction, sampler, state);
 
         // update walk position
         state.prevDistance = intersectionPt.dist;
@@ -416,7 +414,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline T WalkOnStars<T, DIM>::getTerminalContribution(WalkCompletionCode code,
                                                       const PDE<T, DIM>& pde,
-                                                      const WalkSettings<T>& walkSettings,
+                                                      const WalkSettings& walkSettings,
                                                       WalkState<T, DIM>& state) const {
     if (code == WalkCompletionCode::ReachedAbsorbingBoundary &&
         !walkSettings.ignoreAbsorbingBoundaryContribution) {
@@ -440,7 +438,7 @@ inline T WalkOnStars<T, DIM>::getTerminalContribution(WalkCompletionCode code,
 
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
-                                                  const WalkSettings<T>& walkSettings,
+                                                  const WalkSettings& walkSettings,
                                                   int nWalks, SamplePoint<T, DIM>& samplePt) const {
     // initialize statistics if there are no previous estimates
     bool hasPrevEstimates = samplePt.statistics != nullptr;
@@ -555,7 +553,7 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& pde,
-                                                             const WalkSettings<T>& walkSettings,
+                                                             const WalkSettings& walkSettings,
                                                              const Vector<DIM>& directionForDerivative,
                                                              int nWalks, SamplePoint<T, DIM>& samplePt) const {
     // initialize statistics if there are no previous estimates

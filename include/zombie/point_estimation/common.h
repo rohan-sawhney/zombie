@@ -16,7 +16,6 @@
 
 namespace zombie {
 
-template <typename T>
 struct WalkSettings {
     // constructors
     WalkSettings(float epsilonShellForAbsorbingBoundary_,

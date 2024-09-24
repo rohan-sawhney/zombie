@@ -54,17 +54,17 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
     ProgressBar pb(gridRes*gridRes);
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
 
-    zombie::WalkSettings<float> walkSettings(epsilonShellForAbsorbingBoundary,
-                                             epsilonShellForReflectingBoundary,
-                                             silhouettePrecision, russianRouletteThreshold,
-                                             maxWalkLength, stepsBeforeApplyingTikhonov,
-                                             stepsBeforeUsingMaximalSpheres, solveDoubleSided,
-                                             !disableGradientControlVariates,
-                                             !disableGradientAntitheticVariates,
-                                             useCosineSamplingForDirectionalDerivatives,
-                                             ignoreAbsorbingBoundaryContribution,
-                                             ignoreReflectingBoundaryContribution,
-                                             ignoreSourceContribution, printLogs);
+    zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
+                                      epsilonShellForReflectingBoundary,
+                                      silhouettePrecision, russianRouletteThreshold,
+                                      maxWalkLength, stepsBeforeApplyingTikhonov,
+                                      stepsBeforeUsingMaximalSpheres, solveDoubleSided,
+                                      !disableGradientControlVariates,
+                                      !disableGradientAntitheticVariates,
+                                      useCosineSamplingForDirectionalDerivatives,
+                                      ignoreAbsorbingBoundaryContribution,
+                                      ignoreReflectingBoundaryContribution,
+                                      ignoreSourceContribution, printLogs);
     zombie::WalkOnStars<float, 2> walkOnStars(queries);
     walkOnStars.solve(pde, walkSettings, sampleEstimationData, samplePts, runSingleThreaded, reportProgress);
     pb.finish();
@@ -156,17 +156,17 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
 
     zombie::WalkOnStars<float, 2> walkOnStars(queries);
     zombie::bvc::BoundaryValueCaching<float, 2> bvc(queries, walkOnStars);
-    zombie::WalkSettings<float> walkSettings(epsilonShellForAbsorbingBoundary,
-                                             epsilonShellForReflectingBoundary,
-                                             silhouettePrecision, russianRouletteThreshold,
-                                             maxWalkLength, stepsBeforeApplyingTikhonov,
-                                             stepsBeforeUsingMaximalSpheres, solveDoubleSided,
-                                             !disableGradientControlVariates,
-                                             !disableGradientAntitheticVariates,
-                                             useCosineSamplingForDirectionalDerivatives,
-                                             ignoreAbsorbingBoundaryContribution,
-                                             ignoreReflectingBoundaryContribution,
-                                             ignoreSourceContribution, printLogs);
+    zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
+                                      epsilonShellForReflectingBoundary,
+                                      silhouettePrecision, russianRouletteThreshold,
+                                      maxWalkLength, stepsBeforeApplyingTikhonov,
+                                      stepsBeforeUsingMaximalSpheres, solveDoubleSided,
+                                      !disableGradientControlVariates,
+                                      !disableGradientAntitheticVariates,
+                                      useCosineSamplingForDirectionalDerivatives,
+                                      ignoreAbsorbingBoundaryContribution,
+                                      ignoreReflectingBoundaryContribution,
+                                      ignoreSourceContribution, printLogs);
     bvc.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
                                  nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
                                  boundaryCache, useFiniteDifferencesForBoundaryDerivatives,
@@ -309,15 +309,15 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
 
-    zombie::WalkSettings<float> walkSettings(epsilonShellForAbsorbingBoundary,
-                                             epsilonShellForReflectingBoundary,
-                                             silhouettePrecision, russianRouletteThreshold,
-                                             maxWalkLength, stepsBeforeApplyingTikhonov,
-                                             stepsBeforeUsingMaximalSpheres,
-                                             solveDoubleSided, false, false, false,
-                                             ignoreAbsorbingBoundaryContribution,
-                                             ignoreReflectingBoundaryContribution,
-                                             ignoreSourceContribution, printLogs);
+    zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
+                                      epsilonShellForReflectingBoundary,
+                                      silhouettePrecision, russianRouletteThreshold,
+                                      maxWalkLength, stepsBeforeApplyingTikhonov,
+                                      stepsBeforeUsingMaximalSpheres,
+                                      solveDoubleSided, false, false, false,
+                                      ignoreAbsorbingBoundaryContribution,
+                                      ignoreReflectingBoundaryContribution,
+                                      ignoreSourceContribution, printLogs);
     zombie::ReverseWalkOnStars<float, 2> reverseWalkOnStars(queries, splatContribution);
     reverseWalkOnStars.solve(pde, walkSettings, absorbingBoundarySamplePts,
                              runSingleThreaded, reportProgress);

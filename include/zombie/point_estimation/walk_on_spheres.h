@@ -28,14 +28,14 @@ public:
     // solves the given PDE at the input point; NOTE: assumes the point does not
     // lie on the boundary when estimating the gradient
     void solve(const PDE<T, DIM>& pde,
-               const WalkSettings<T>& walkSettings,
+               const WalkSettings& walkSettings,
                const SampleEstimationData<DIM>& estimationData,
                SamplePoint<T, DIM>& samplePt) const;
 
     // solves the given PDE at the input points (in parallel by default); NOTE:
     // assumes points do not lie on the boundary when estimating gradients
     void solve(const PDE<T, DIM>& pde,
-               const WalkSettings<T>& walkSettings,
+               const WalkSettings& walkSettings,
                const std::vector<SampleEstimationData<DIM>>& estimationData,
                std::vector<SamplePoint<T, DIM>>& samplePts,
                bool runSingleThreaded=false,
@@ -44,31 +44,31 @@ public:
 protected:
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
-                                   const WalkSettings<T>& walkSettings,
+                                   const WalkSettings& walkSettings,
                                    pcg32& sampler, WalkState<T, DIM>& state) const;
 
     // performs a single reflecting random walk starting at the input point
     WalkCompletionCode walk(const PDE<T, DIM>& pde,
-                            const WalkSettings<T>& walkSettings,
+                            const WalkSettings& walkSettings,
                             float distToAbsorbingBoundary, pcg32& sampler,
                             WalkState<T, DIM>& state) const;
 
     // returns the terminal contribution from the end of the walk
     T getTerminalContribution(WalkCompletionCode code,
                               const PDE<T, DIM>& pde,
-                              const WalkSettings<T>& walkSettings,
+                              const WalkSettings& walkSettings,
                               WalkState<T, DIM>& state) const;
 
     // estimates only the solution of the given PDE at the input point
     void estimateSolution(const PDE<T, DIM>& pde,
-                          const WalkSettings<T>& walkSettings,
+                          const WalkSettings& walkSettings,
                           int nWalks, SamplePoint<T, DIM>& samplePt) const;
 
     // estimates the solution and gradient of the given PDE at the input point;
     // NOTE: assumes the point does not lie on the boundary; the directional derivative
     // can be accessed through samplePt.statistics->getEstimatedDerivative()
     void estimateSolutionAndGradient(const PDE<T, DIM>& pde,
-                                     const WalkSettings<T>& walkSettings,
+                                     const WalkSettings& walkSettings,
                                      const Vector<DIM>& directionForDerivative,
                                      int nWalks, SamplePoint<T, DIM>& samplePt) const;
 
@@ -92,7 +92,7 @@ inline WalkOnSpheres<T, DIM>::WalkOnSpheres(const GeometricQueries<DIM>& queries
 
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
-                                         const WalkSettings<T>& walkSettings,
+                                         const WalkSettings& walkSettings,
                                          const SampleEstimationData<DIM>& estimationData,
                                          SamplePoint<T, DIM>& samplePt) const {
     if (estimationData.estimationQuantity != EstimationQuantity::None) {
@@ -109,7 +109,7 @@ inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
-                                         const WalkSettings<T>& walkSettings,
+                                         const WalkSettings& walkSettings,
                                          const std::vector<SampleEstimationData<DIM>>& estimationData,
                                          std::vector<SamplePoint<T, DIM>>& samplePts, bool runSingleThreaded,
                                          std::function<void(int, int)> reportProgress) const {
@@ -140,7 +140,7 @@ inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pde,
-                                                             const WalkSettings<T>& walkSettings,
+                                                             const WalkSettings& walkSettings,
                                                              pcg32& sampler, WalkState<T, DIM>& state) const {
     if (!walkSettings.ignoreSourceContribution) {
         // compute the source contribution inside sphere
@@ -153,7 +153,7 @@ inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& 
 
 template <typename T, size_t DIM>
 inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
-                                                      const WalkSettings<T>& walkSettings,
+                                                      const WalkSettings& walkSettings,
                                                       float distToAbsorbingBoundary, pcg32& sampler,
                                                       WalkState<T, DIM>& state) const {
     // recursively perform a random walk till it reaches the absorbing boundary
@@ -222,7 +222,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
                                                         const PDE<T, DIM>& pde,
-                                                        const WalkSettings<T>& walkSettings,
+                                                        const WalkSettings& walkSettings,
                                                         WalkState<T, DIM>& state) const {
     if (code == WalkCompletionCode::ReachedAbsorbingBoundary &&
         !walkSettings.ignoreAbsorbingBoundaryContribution) {
@@ -246,7 +246,7 @@ inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
 
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
-                                                    const WalkSettings<T>& walkSettings,
+                                                    const WalkSettings& walkSettings,
                                                     int nWalks, SamplePoint<T, DIM>& samplePt) const {
     // initialize statistics if there are no previous estimates
     bool hasPrevEstimates = samplePt.statistics != nullptr;
@@ -318,7 +318,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& pde,
-                                                               const WalkSettings<T>& walkSettings,
+                                                               const WalkSettings& walkSettings,
                                                                const Vector<DIM>& directionForDerivative,
                                                                int nWalks, SamplePoint<T, DIM>& samplePt) const {
     // initialize statistics if there are no previous estimates

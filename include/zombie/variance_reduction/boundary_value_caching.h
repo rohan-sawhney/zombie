@@ -58,7 +58,7 @@ public:
 
     // solves the given PDE at the provided sample points
     void computeBoundaryEstimates(const PDE<T, DIM>& pde,
-                                  const WalkSettings<T>& walkSettings,
+                                  const WalkSettings& walkSettings,
                                   int nWalksForSolutionEstimates,
                                   int nWalksForGradientEstimates,
                                   float robinCoeffCutoffForNormalDerivative,
@@ -111,14 +111,14 @@ public:
 
     // estimates the solution at the input evaluation pt near the boundary
     void estimateSolutionNearBoundary(const PDE<T, DIM>& pde,
-                                      const WalkSettings<T>& walkSettings,
+                                      const WalkSettings& walkSettings,
                                       bool useDistanceToAbsorbingBoundary,
                                       float cutoffDistToBoundary, int nWalks,
                                       EvaluationPoint<T, DIM>& evalPt) const;
 
     // estimates the solution at the input evaluation pts near the boundary
     void estimateSolutionNearBoundary(const PDE<T, DIM>& pde,
-                                      const WalkSettings<T>& walkSettings,
+                                      const WalkSettings& walkSettings,
                                       bool useDistanceToAbsorbingBoundary,
                                       float cutoffDistToBoundary, int nWalks,
                                       std::vector<EvaluationPoint<T, DIM>>& evalPts,
@@ -127,7 +127,7 @@ public:
 protected:
     // sets estimation data for each sample point to compute boundary estimates
     void setEstimationData(const PDE<T, DIM>& pde,
-                           const WalkSettings<T>& walkSettings,
+                           const WalkSettings& walkSettings,
                            int nWalksForSolutionEstimates,
                            int nWalksForGradientEstimates,
                            float robinCoeffCutoffForNormalDerivative,
@@ -137,7 +137,7 @@ protected:
 
     // sets the estimated boundary data for each sample point
     void setEstimatedBoundaryData(const PDE<T, DIM>& pde,
-                                  const WalkSettings<T>& walkSettings,
+                                  const WalkSettings& walkSettings,
                                   float robinCoeffCutoffForNormalDerivative,
                                   bool useFiniteDifferences,
                                   std::vector<SamplePoint<T, DIM>>& samplePts) const;
@@ -218,7 +218,7 @@ inline BoundaryValueCaching<T, DIM>::BoundaryValueCaching(const GeometricQueries
 
 template <typename T, size_t DIM>
 inline void BoundaryValueCaching<T, DIM>::computeBoundaryEstimates(const PDE<T, DIM>& pde,
-                                                                   const WalkSettings<T>& walkSettings,
+                                                                   const WalkSettings& walkSettings,
                                                                    int nWalksForSolutionEstimates,
                                                                    int nWalksForGradientEstimates,
                                                                    float robinCoeffCutoffForNormalDerivative,
@@ -373,7 +373,7 @@ inline void BoundaryValueCaching<T, DIM>::splat(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE<T, DIM>& pde,
-                                                                       const WalkSettings<T>& walkSettings,
+                                                                       const WalkSettings& walkSettings,
                                                                        bool useDistanceToAbsorbingBoundary,
                                                                        float cutoffDistToBoundary, int nWalks,
                                                                        EvaluationPoint<T, DIM>& evalPt) const {
@@ -398,7 +398,7 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
 
 template <typename T, size_t DIM>
 inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE<T, DIM>& pde,
-                                                                       const WalkSettings<T>& walkSettings,
+                                                                       const WalkSettings& walkSettings,
                                                                        bool useDistanceToAbsorbingBoundary,
                                                                        float cutoffDistToBoundary, int nWalks,
                                                                        std::vector<EvaluationPoint<T, DIM>>& evalPts,
@@ -425,7 +425,7 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
 
 template <typename T, size_t DIM>
 inline void BoundaryValueCaching<T, DIM>::setEstimationData(const PDE<T, DIM>& pde,
-                                                            const WalkSettings<T>& walkSettings,
+                                                            const WalkSettings& walkSettings,
                                                             int nWalksForSolutionEstimates,
                                                             int nWalksForGradientEstimates,
                                                             float robinCoeffCutoffForNormalDerivative,
@@ -485,7 +485,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimationData(const PDE<T, DIM>& p
 
 template <typename T, size_t DIM>
 inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, DIM>& pde,
-                                                                   const WalkSettings<T>& walkSettings,
+                                                                   const WalkSettings& walkSettings,
                                                                    float robinCoeffCutoffForNormalDerivative,
                                                                    bool useFiniteDifferences,
                                                                    std::vector<SamplePoint<T, DIM>>& samplePts) const {

@@ -42,13 +42,13 @@ public:
     // solves the given PDE by splatting contributions (dirichlet/neumann/robin/source)
     // from a walk starting at the input sample point
     void solve(const PDE<T, DIM>& pde,
-               const WalkSettings<T>& walkSettings,
+               const WalkSettings& walkSettings,
                SamplePoint<T, DIM>& samplePt) const;
 
     // solves the given PDE by splatting contributions (dirichlet/neumann/robin/source)
     // from walks starting at the input sample points
     void solve(const PDE<T, DIM>& pde,
-               const WalkSettings<T>& walkSettings,
+               const WalkSettings& walkSettings,
                std::vector<SamplePoint<T, DIM>>& samplePts,
                bool runSingleThreaded=false,
                std::function<void(int, int)> reportProgress={}) const;
@@ -56,12 +56,12 @@ public:
 protected:
     // computes the throughput of a single walk step
     float computeWalkStepThroughput(const PDE<T, DIM>& pde,
-                                    const WalkSettings<T>& walkSettings,
+                                    const WalkSettings& walkSettings,
                                     const WalkState<T, DIM>& state) const;
 
     // performs a single reflecting random walk starting at the input point
     WalkCompletionCode walk(const PDE<T, DIM>& pde,
-                            const WalkSettings<T>& walkSettings,
+                            const WalkSettings& walkSettings,
                             const SampleContribution<T>& contribution,
                             float distToAbsorbingBoundary,
                             pcg32& sampler, WalkState<T, DIM>& state) const;
@@ -83,7 +83,7 @@ inline ReverseWalkOnStars<T, DIM>::ReverseWalkOnStars(const GeometricQueries<DIM
 
 template <typename T, size_t DIM>
 inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
-                                              const WalkSettings<T>& walkSettings,
+                                              const WalkSettings& walkSettings,
                                               SamplePoint<T, DIM>& samplePt) const {
     // set the sample contribution
     SampleContribution<T> sampleContribution;
@@ -152,7 +152,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
-                                              const WalkSettings<T>& walkSettings,
+                                              const WalkSettings& walkSettings,
                                               std::vector<SamplePoint<T, DIM>>& samplePts,
                                               bool runSingleThreaded,
                                               std::function<void(int, int)> reportProgress) const {
@@ -182,7 +182,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
 template <typename T, size_t DIM>
 inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& pde,
-                                                                   const WalkSettings<T>& walkSettings,
+                                                                   const WalkSettings& walkSettings,
                                                                    const WalkState<T, DIM>& state) const {
     if (state.onReflectingBoundary && state.prevDistance > std::numeric_limits<T>::epsilon()) {
         float robinCoeff = 0.0f;
@@ -209,7 +209,7 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
 
 template <typename T, size_t DIM>
 inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
-                                                           const WalkSettings<T>& walkSettings,
+                                                           const WalkSettings& walkSettings,
                                                            const SampleContribution<T>& contribution,
                                                            float distToAbsorbingBoundary,
                                                            pcg32& sampler, WalkState<T, DIM>& state) const {
