@@ -36,7 +36,7 @@ public:
              SortPositionsFunc<DIM, RobinBvhNode<DIM>, PrimitiveType, SilhouettePrimitive<DIM>> sortPositions_={},
              bool packLeaves_=false, int leafSize_=4, int nBuckets_=8);
 
-    // updates robin coefficient for each triangle
+    // updates robin coefficient for each primitive and node
     void updateRobinCoefficients(const std::vector<float>& minCoeffValues,
                                  const std::vector<float>& maxCoeffValues);
 
