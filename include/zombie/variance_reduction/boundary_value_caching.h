@@ -377,9 +377,9 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
                                                                        bool useDistanceToAbsorbingBoundary,
                                                                        float cutoffDistToBoundary, int nWalks,
                                                                        EvaluationPoint<T, DIM>& evalPt) const {
-    bool distToBoundary = useDistanceToAbsorbingBoundary ?
-                          evalPt.distToAbsorbingBoundary :
-                          evalPt.distToReflectingBoundary;
+    float distToBoundary = useDistanceToAbsorbingBoundary ?
+                           evalPt.distToAbsorbingBoundary :
+                           evalPt.distToReflectingBoundary;
     if (distToBoundary < cutoffDistToBoundary) {
         // NOTE: When the evaluation pt is on the boundary, this setup
         // evaluates the inward boundary normal aligned solution
