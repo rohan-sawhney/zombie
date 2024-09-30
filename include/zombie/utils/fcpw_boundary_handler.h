@@ -825,8 +825,9 @@ void populateGeometricQueries(const AbsorbingBoundaryAggregateType *absorbingBou
         distance = fcpw::maxFloat;
         bool didProject = false;
 
+        Vector<DIM> absorbingBoundaryPt = x;
+        Vector<DIM> absorbingBoundaryNormal;
         float distanceToAbsorbingBoundary;
-        Vector<DIM> absorbingBoundaryPt, absorbingBoundaryNormal;
         if (geometricQueries.projectToAbsorbingBoundary(absorbingBoundaryPt, absorbingBoundaryNormal,
                                                         distanceToAbsorbingBoundary, computeSignedDistance)) {
             x = absorbingBoundaryPt;
@@ -835,8 +836,9 @@ void populateGeometricQueries(const AbsorbingBoundaryAggregateType *absorbingBou
             didProject = true;
         }
 
+        Vector<DIM> reflectingBoundaryPt = x;
+        Vector<DIM> reflectingBoundaryNormal;
         float distanceToReflectingBoundary;
-        Vector<DIM> reflectingBoundaryPt, reflectingBoundaryNormal;
         if (geometricQueries.projectToReflectingBoundary(reflectingBoundaryPt, reflectingBoundaryNormal,
                                                          distanceToReflectingBoundary, computeSignedDistance)) {
             if (std::fabs(distanceToReflectingBoundary) < std::fabs(distance)) {
