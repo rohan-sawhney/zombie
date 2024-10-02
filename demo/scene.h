@@ -21,9 +21,6 @@ public:
     // constructor
     Scene(const json& config);
 
-    // check if a point is on a reflecting boundary
-    bool onReflectingBoundary(const Vector2& x) const;
-
     // returns the volume of the solve region
     float getSolveRegionVolume() const;
 
@@ -44,14 +41,14 @@ protected:
     // loads boundary mesh from OBJ file
     void loadOBJ(const std::string& filename, bool normalize, bool flipOrientation);
 
+    // populates PDE inputs
+    void populatePDEInputs();
+
     // builds acceleration structures for boundary mesh
     void buildAccelerationStructures();
 
     // populates geometric queries for boundary mesh
     void populateGeometricQueries();
-
-    // populates PDE inputs
-    void populatePDEInputs();
 
     // members
     zombie::FcpwBoundaryHandler<2, false> absorbingBoundaryHandler;
@@ -95,17 +92,9 @@ queries(isWatertight) {
 
     // load boundary mesh, build acceleration structures and set geometric queries and PDE inputs
     loadOBJ(boundaryFile, normalize, flipOrientation);
+    populatePDEInputs();
     buildAccelerationStructures();
     populateGeometricQueries();
-    populatePDEInputs();
-}
-
-bool Scene::onReflectingBoundary(const Vector2& x) const {
-    const Vector2& bMin = bbox.first;
-    const Vector2& bMax = bbox.second;
-    Vector2 uv = (x - bMin)/(bMax - bMin).maxCoeff();
-
-    return isReflectingBoundary->get(uv)[0] > 0;
 }
 
 float Scene::getSolveRegionVolume() const {
@@ -120,6 +109,34 @@ void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrient
     bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
 }
 
+void Scene::populatePDEInputs() {
+    const Vector2& bMin = bbox.first;
+    const Vector2& bMax = bbox.second;
+    float maxLength = (bMax - bMin).maxCoeff();
+
+    pde.source = [this, &bMin, maxLength](const Vector2& x) -> float {
+        Vector2 uv = (x - bMin)/maxLength;
+        return this->sourceValue->get(uv)[0];
+    };
+    pde.dirichlet = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
+        Vector2 uv = (x - bMin)/maxLength;
+        return this->absorbingBoundaryValue->get(uv)[0];
+    };
+    pde.robin = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
+        Vector2 uv = (x - bMin)/maxLength;
+        return this->reflectingBoundaryValue->get(uv)[0];
+    };
+    pde.robinCoeff = [this](const Vector2& x, bool _) -> float {
+        return this->robinCoeff;
+    };
+    pde.hasReflectingBoundaryConditions = [this, &bMin, maxLength](const Vector2& x) -> bool {
+        Vector2 uv = (x - bMin)/maxLength;
+        return this->isReflectingBoundary->get(uv)[0] > 0;
+    };
+    pde.robinConditionsArePureNeumann = robinCoeff == 0.0f;
+    pde.absorptionCoeff = absorptionCoeff;
+}
+
 void Scene::buildAccelerationStructures() {
     // separate boundary vertices and indices into absorbing and reflecting parts
     std::vector<size_t> indices(2, -1);
@@ -128,7 +145,7 @@ void Scene::buildAccelerationStructures() {
 
     for (int i = 0; i < segments.size(); i++) {
         Vector2 pMid = 0.5f * (vertices[segments[i][0]] + vertices[segments[i][1]]);
-        if (onReflectingBoundary(pMid)) {
+        if (pde.hasReflectingBoundaryConditions(pMid)) {
             for (int j = 0; j < 2; j++) {
                 size_t vIndex = segments[i][j];
                 if (reflectingBoundaryIndexMap.find(vIndex) == reflectingBoundaryIndexMap.end()) {
@@ -198,28 +215,4 @@ void Scene::populateGeometricQueries() {
                                                    reflectingNeumannBoundaryHandler,
                                                    branchTraversalWeight, bbox, queries);
     }
-}
-
-void Scene::populatePDEInputs() {
-    const Vector2& bMin = bbox.first;
-    const Vector2& bMax = bbox.second;
-    float maxLength = (bMax - bMin).maxCoeff();
-
-    pde.source = [this, &bMin, maxLength](const Vector2& x) -> float {
-        Vector2 uv = (x - bMin)/maxLength;
-        return this->sourceValue->get(uv)[0];
-    };
-    pde.dirichlet = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
-        Vector2 uv = (x - bMin)/maxLength;
-        return this->absorbingBoundaryValue->get(uv)[0];
-    };
-    pde.robin = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
-        Vector2 uv = (x - bMin)/maxLength;
-        return this->reflectingBoundaryValue->get(uv)[0];
-    };
-    pde.robinCoeff = [this](const Vector2& x, bool _) -> float {
-        return this->robinCoeff;
-    };
-    pde.robinConditionsArePureNeumann = robinCoeff == 0.0f;
-    pde.absorptionCoeff = absorptionCoeff;
 }

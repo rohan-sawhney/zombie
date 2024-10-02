@@ -120,9 +120,6 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     std::function<bool(const Vector2&)> insideSolveRegionDomainSampler = [&queries, solveDoubleSided](const Vector2& x) -> bool {
         return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
     };
-    std::function<bool(const Vector2&)> onReflectingBoundary = [&scene](const Vector2& x) -> bool {
-        return scene.onReflectingBoundary(x);
-    };
 
     std::vector<zombie::bvc::EvaluationPoint<float, 2>> evalPts;
     createEvaluationGrid<zombie::bvc::EvaluationPoint<float, 2>>(evalPts, queries, bbox.first, bbox.second, gridRes);
@@ -134,7 +131,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
 
     zombie::BoundarySampler<float, 2> boundarySampler(scene.vertices, scene.segments, queries,
                                                       insideSolveRegionBoundarySampler,
-                                                      onReflectingBoundary);
+                                                      pde.hasReflectingBoundaryConditions);
     boundarySampler.initialize(normalOffsetForAbsorbingBoundary,
                                normalOffsetForReflectingBoundary,
                                solveDoubleSided);

@@ -28,6 +28,7 @@ struct PDE {
     std::function<T(const Vector<DIM>&, bool)> dirichlet;
     std::function<T(const Vector<DIM>&, bool)> robin; // dual purposes as values for Neuamnn BCs
     std::function<float(const Vector<DIM>&, bool)> robinCoeff; // must be positive or equal to zero
+    std::function<bool(const Vector<DIM>&)> hasReflectingBoundaryConditions;
     std::function<bool(const Vector<DIM>&)> hasNonZeroRobinCoeff; // set automatically
 };
 
