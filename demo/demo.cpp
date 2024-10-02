@@ -2,12 +2,8 @@
 // It reads a 'scene' description from a JSON file, runs the WalkOnStars or BoundaryValueCaching
 // solver, and writes the result to a PMF or PNG file.
 
-#include <zombie/variance_reduction/boundary_value_caching.h>
-#include <zombie/variance_reduction/reverse_walk_splatter.h>
-#include <zombie/utils/nearest_neighbor_finder.h>
-#include <zombie/utils/progress.h>
-#include "grid.h"
 #include "scene.h"
+#include "grid.h"
 
 using json = nlohmann::json;
 

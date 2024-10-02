@@ -9,8 +9,7 @@
 
 #pragma once
 
-#include <zombie/core/pde.h>
-#include <zombie/utils/fcpw_boundary_handler.h>
+#include <zombie/zombie.h>
 #include <fstream>
 #include <sstream>
 #include "config.h"

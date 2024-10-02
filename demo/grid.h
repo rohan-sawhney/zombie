@@ -4,7 +4,7 @@
 #pragma once
 
 #include <filesystem>
-#include <zombie/core/pde.h>
+#include <zombie/zombie.h>
 #include "config.h"
 #include "colormap.h"
 
