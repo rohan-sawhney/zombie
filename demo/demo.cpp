@@ -148,7 +148,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
 
     zombie::WalkOnStars<float, 2> walkOnStars(queries);
-    zombie::bvc::BoundaryValueCaching<float, 2> bvc(queries, walkOnStars);
+    zombie::bvc::BoundaryValueCaching<float, 2> boundaryValueCaching(queries, walkOnStars);
     zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
                                       epsilonShellForReflectingBoundary,
                                       silhouettePrecision, russianRouletteThreshold,
@@ -160,29 +160,29 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
                                       ignoreAbsorbingBoundaryContribution,
                                       ignoreReflectingBoundaryContribution,
                                       ignoreSourceContribution, printLogs);
-    bvc.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
-                                 nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
-                                 boundaryCache, useFiniteDifferencesForBoundaryDerivatives,
-                                 runSingleThreaded, reportProgress);
-    bvc.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
-                                 nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
-                                 boundaryCacheNormalAligned, useFiniteDifferencesForBoundaryDerivatives,
-                                 runSingleThreaded, reportProgress);
+    boundaryValueCaching.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
+                                                  nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
+                                                  boundaryCache, useFiniteDifferencesForBoundaryDerivatives,
+                                                  runSingleThreaded, reportProgress);
+    boundaryValueCaching.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
+                                                  nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
+                                                  boundaryCacheNormalAligned, useFiniteDifferencesForBoundaryDerivatives,
+                                                  runSingleThreaded, reportProgress);
 
     // splat solution to evaluation points
-    bvc.splat(pde, boundaryCache, radiusClampForKernels, regularizationForKernels,
-              robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
-              normalOffsetForReflectingBoundary, evalPts, reportProgress);
-    bvc.splat(pde, boundaryCacheNormalAligned, radiusClampForKernels, regularizationForKernels,
-              robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
-              normalOffsetForReflectingBoundary, evalPts, reportProgress);
-    bvc.splat(pde, domainCache, radiusClampForKernels, regularizationForKernels,
-              robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
-              normalOffsetForReflectingBoundary, evalPts, reportProgress);
-    bvc.estimateSolutionNearBoundary(pde, walkSettings, true, normalOffsetForAbsorbingBoundary,
-                                     nWalksForCachedSolutionEstimates, evalPts, runSingleThreaded);
-    bvc.estimateSolutionNearBoundary(pde, walkSettings, false, normalOffsetForReflectingBoundary,
-                                     nWalksForCachedSolutionEstimates, evalPts, runSingleThreaded);
+    boundaryValueCaching.splat(pde, boundaryCache, radiusClampForKernels, regularizationForKernels,
+                               robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
+                               normalOffsetForReflectingBoundary, evalPts, reportProgress);
+    boundaryValueCaching.splat(pde, boundaryCacheNormalAligned, radiusClampForKernels, regularizationForKernels,
+                               robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
+                               normalOffsetForReflectingBoundary, evalPts, reportProgress);
+    boundaryValueCaching.splat(pde, domainCache, radiusClampForKernels, regularizationForKernels,
+                               robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
+                               normalOffsetForReflectingBoundary, evalPts, reportProgress);
+    boundaryValueCaching.estimateSolutionNearBoundary(pde, walkSettings, true, normalOffsetForAbsorbingBoundary,
+                                                      nWalksForCachedSolutionEstimates, evalPts, runSingleThreaded);
+    boundaryValueCaching.estimateSolutionNearBoundary(pde, walkSettings, false, normalOffsetForReflectingBoundary,
+                                                      nWalksForCachedSolutionEstimates, evalPts, runSingleThreaded);
     pb.finish();
 
     // save to file

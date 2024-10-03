@@ -31,7 +31,6 @@ public:
     std::vector<std::vector<size_t>> segments;
     std::vector<std::vector<size_t>> absorbingBoundarySegments;
     std::vector<std::vector<size_t>> reflectingBoundarySegments;
-    const bool isWatertight;
     const bool isDoubleSided;
     zombie::GeometricQueries<2> queries;
     zombie::PDE<float, 2> pde;
@@ -40,11 +39,8 @@ protected:
     // loads boundary mesh from OBJ file
     void loadOBJ(const std::string& filename, bool normalize, bool flipOrientation);
 
-    // populates PDE inputs
-    void populatePDEInputs();
-
-    // builds acceleration structures for boundary mesh
-    void buildAccelerationStructures();
+    // populates PDE
+    void populatePDE();
 
     // populates geometric queries for boundary mesh
     void populateGeometricQueries();
@@ -69,9 +65,8 @@ protected:
 // Implementation
 
 Scene::Scene(const json& config):
-isWatertight(getOptional<bool>(config, "isWatertight", true)),
 isDoubleSided(getOptional<bool>(config, "isDoubleSided", false)),
-queries(isWatertight) {
+queries(getOptional<bool>(config, "isWatertight", true)) {
     // load config settings
     const std::string boundaryFile = getRequired<std::string>(config, "boundary");
     const std::string isReflectingBoundaryFile = getRequired<std::string>(config, "isReflectingBoundary");
@@ -91,8 +86,7 @@ queries(isWatertight) {
 
     // load boundary mesh, build acceleration structures and set geometric queries and PDE inputs
     loadOBJ(boundaryFile, normalize, flipOrientation);
-    populatePDEInputs();
-    buildAccelerationStructures();
+    populatePDE();
     populateGeometricQueries();
 }
 
@@ -108,7 +102,7 @@ void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrient
     bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
 }
 
-void Scene::populatePDEInputs() {
+void Scene::populatePDE() {
     const Vector2& bMin = bbox.first;
     const Vector2& bMax = bbox.second;
     float maxLength = (bMax - bMin).maxCoeff();
@@ -136,7 +130,7 @@ void Scene::populatePDEInputs() {
     pde.absorptionCoeff = absorptionCoeff;
 }
 
-void Scene::buildAccelerationStructures() {
+void Scene::populateGeometricQueries() {
     // separate boundary vertices and indices into absorbing and reflecting parts
     std::vector<size_t> indices(2, -1);
     size_t nAbsorbingBoundaryVerts = 0, nReflectingBoundaryVerts = 0;
@@ -196,14 +190,12 @@ void Scene::buildAccelerationStructures() {
                                                                     reflectingBoundarySegments,
                                                                     ignoreCandidateSilhouette, true);
     }
-}
 
-void Scene::populateGeometricQueries() {
+    // populate geometric queries
     branchTraversalWeight = [this](float r2) -> float {
         float r = std::max(std::sqrt(r2), 1e-2f);
         return std::fabs(this->harmonicGreensFn.evaluate(r));
     };
-
     if (robinCoeff > 0.0f) {
         zombie::populateGeometricQueries<2, true>(absorbingBoundaryHandler,
                                                   reflectingRobinBoundaryHandler,
