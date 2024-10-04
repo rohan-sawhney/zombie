@@ -553,9 +553,6 @@ public:
 #ifdef FCPW_USE_ENOKI
     std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, 2, RobinLineSegment, RobinMbvhNode<2>>> mbvh;
 #endif
-
-protected:
-    // members
     PolygonSoup<2> soup;
     std::vector<RobinLineSegment> lineSegments;
     std::vector<RobinLineSegment *> lineSegmentPtrs;
@@ -726,9 +723,6 @@ public:
 #ifdef FCPW_USE_ENOKI
     std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, 3, RobinTriangle, RobinMbvhNode<3>>> mbvh;
 #endif
-
-protected:
-    // members
     PolygonSoup<3> soup;
     std::vector<RobinTriangle> triangles;
     std::vector<RobinTriangle *> trianglePtrs;
