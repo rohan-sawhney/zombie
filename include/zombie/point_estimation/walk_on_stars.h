@@ -585,7 +585,8 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
         // initialize temporary variables for antithetic sampling
         float boundaryPdf, sourcePdf;
         Vector<DIM> boundaryPt, sourcePt;
-        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        auto now = std::chrono::high_resolution_clock::now();
+        uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
 
         // compute control variates for the gradient estimate
         T boundaryGradientControlVariate(0.0f);

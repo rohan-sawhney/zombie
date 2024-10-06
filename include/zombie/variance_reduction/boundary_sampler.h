@@ -81,7 +81,8 @@ inline BoundarySampler<T, DIM>::BoundarySampler(const std::vector<Vector<DIM>>& 
                                                 insideSolveRegion(insideSolveRegion_),
                                                 onReflectingBoundary(onReflectingBoundary_),
                                                 boundaryArea(0.0f), boundaryAreaNormalAligned(0.0f) {
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    auto now = std::chrono::high_resolution_clock::now();
+    uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sampler = pcg32(seed);
 }
 

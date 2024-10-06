@@ -54,7 +54,8 @@ inline DomainSampler<T, DIM>::DomainSampler(const GeometricQueries<DIM>& queries
                                             solveRegionMin(solveRegionMin_),
                                             solveRegionMax(solveRegionMax_),
                                             solveRegionVolume(solveRegionVolume_) {
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    auto now = std::chrono::high_resolution_clock::now();
+    uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sampler = pcg32(seed);
 }
 
