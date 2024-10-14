@@ -36,6 +36,9 @@ public:
              SortPositionsFunc<DIM, RobinBvhNode<DIM>, PrimitiveType, SilhouettePrimitive<DIM>> sortPositions_={},
              bool packLeaves_=false, int leafSize_=4, int nBuckets_=8);
 
+    // refits the bvh
+    void refit();
+
     // updates robin coefficient for each primitive and node
     void updateRobinCoefficients(const std::vector<float>& minCoeffValues,
                                  const std::vector<float>& maxCoeffValues);
@@ -183,16 +186,17 @@ template<size_t DIM, typename NodeType, typename PrimitiveType>
 inline void RobinBvh<DIM, NodeType, PrimitiveType>::assignGeometricDataToNodes(const std::function<bool(float, int)>& ignoreSilhouette)
 {
     // precompute normals for each primitive
-    int nNodes = (int)Bvh<DIM, NodeType, PrimitiveType>::flatTree.size();
-    int nPrimitives = (int)Bvh<DIM, NodeType, PrimitiveType>::primitives.size();
+    using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
+    int nNodes = (int)BvhBase::flatTree.size();
+    int nPrimitives = (int)BvhBase::primitives.size();
     std::vector<Vector<DIM>> primitiveNormals(nPrimitives, Vector<DIM>::Zero());
 
     for (int i = 0; i < nNodes; i++) {
-        const NodeType& node(Bvh<DIM, NodeType, PrimitiveType>::flatTree[i]);
+        const NodeType& node(BvhBase::flatTree[i]);
 
         for (int j = 0; j < node.nReferences; j++) { // leaf node if nReferences > 0
             int referenceIndex = node.referenceOffset + j;
-            const PrimitiveType *prim = Bvh<DIM, NodeType, PrimitiveType>::primitives[referenceIndex];
+            const PrimitiveType *prim = BvhBase::primitives[referenceIndex];
 
             primitiveNormals[referenceIndex] = prim->normal(true);
         }
@@ -201,8 +205,7 @@ inline void RobinBvh<DIM, NodeType, PrimitiveType>::assignGeometricDataToNodes(c
     // compute bounding cones recursively
     if (nNodes > 0) {
         assignGeometricDataToNodesRecursive<DIM, NodeType, PrimitiveType>(
-            Bvh<DIM, NodeType, PrimitiveType>::primitives, primitiveNormals,
-            Bvh<DIM, NodeType, PrimitiveType>::flatTree, 0, nNodes);
+            BvhBase::primitives, primitiveNormals, BvhBase::flatTree, 0, nNodes);
     }
 }
 
@@ -217,6 +220,109 @@ Bvh<DIM, NodeType, PrimitiveType, SilhouettePrimitive<DIM>>(
 {
     // assigns geometric data (i.e., cones and robin coefficients) to nodes
     assignGeometricDataToNodes({});
+}
+
+template<size_t DIM>
+inline void mergeBoundingCones(const RobinBvhNode<DIM>& left, const RobinBvhNode<DIM>& right, RobinBvhNode<DIM>& node)
+{
+    node.cone = mergeBoundingCones<DIM>(left.cone, right.cone,
+                                        left.box.centroid(),
+                                        right.box.centroid(),
+                                        node.box.centroid());
+}
+
+template<size_t DIM, typename NodeType, typename PrimitiveType>
+inline void refitRecursive(const std::vector<PrimitiveType *>& primitives,
+                           std::vector<NodeType>& flatTree, int nodeIndex)
+{
+    NodeType& node(flatTree[nodeIndex]);
+
+    if (node.nReferences == 0) { // not a leaf
+        refitRecursive<DIM, NodeType, PrimitiveType>(primitives, flatTree, nodeIndex + 1);
+        refitRecursive<DIM, NodeType, PrimitiveType>(primitives, flatTree, nodeIndex + node.secondChildOffset);
+
+        // merge left and right child bounding boxes
+        node.box = flatTree[nodeIndex + 1].box;
+        node.box.expandToInclude(flatTree[nodeIndex + node.secondChildOffset].box);
+
+        // merge left and right child bounding cones
+        mergeBoundingCones(flatTree[nodeIndex + 1], flatTree[nodeIndex + node.secondChildOffset], node);
+
+    } else { // leaf
+        // compute bounding box
+        node.box = BoundingBox<DIM>();
+        for (int p = 0; p < node.nReferences; p++) {
+            int referenceIndex = node.referenceOffset + p;
+            const PrimitiveType *prim = primitives[referenceIndex];
+
+            node.box.expandToInclude(prim->boundingBox());
+        }
+
+        // compute bounding cone
+        node.cone = BoundingCone<DIM>();
+        BoundingCone<DIM>& cone = node.cone;
+        Vector<DIM> centroid = node.box.centroid();
+        bool allPrimitivesHaveAdjacentFaces = true;
+
+        for (int p = 0; p < node.nReferences; p++) {
+            int referenceIndex = node.referenceOffset + p;
+            const PrimitiveType *prim = primitives[referenceIndex];
+
+            cone.axis += prim->normal();
+            for (int k = 0; k < DIM; k++) {
+                Vector<DIM> p = Vector<DIM>::Zero();
+                if (DIM == 2) {
+                    p = prim->soup->positions[prim->indices[k]];
+
+                } else if (DIM == 3) {
+                    int I = prim->indices[k];
+                    int J = prim->indices[(k + 1)%3];
+                    p = 0.5f*(prim->soup->positions[I] + prim->soup->positions[J]);
+                }
+
+                cone.radius = std::max(cone.radius, (p - centroid).norm());
+                allPrimitivesHaveAdjacentFaces = allPrimitivesHaveAdjacentFaces && prim->hasAdjacentFace[k];
+            }
+        }
+
+        // compute bounding cone angle
+        if (!allPrimitivesHaveAdjacentFaces) {
+            cone.halfAngle = M_PI;
+
+        } else {
+            float axisNorm = cone.axis.norm();
+            if (axisNorm > epsilon) {
+                cone.axis /= axisNorm;
+                cone.halfAngle = 0.0f;
+
+                for (int p = 0; p < node.nReferences; p++) {
+                    int referenceIndex = node.referenceOffset + p;
+                    const PrimitiveType *prim = primitives[referenceIndex];
+
+                    Vector<DIM> nj = prim->normal();
+                    float angle = std::acos(std::max(-1.0f, std::min(1.0f, cone.axis.dot(nj))));
+                    cone.halfAngle = std::max(cone.halfAngle, angle);
+
+                    for (int k = 0; k < DIM; k++) {
+                        const Vector<DIM>& nk = prim->n[k];
+                        float angle = std::acos(std::max(-1.0f, std::min(1.0f, cone.axis.dot(nk))));
+                        cone.halfAngle = std::max(cone.halfAngle, angle);
+                    }
+                }
+            }
+        }
+    }
+}
+
+template<size_t DIM, typename NodeType, typename PrimitiveType>
+inline void RobinBvh<DIM, NodeType, PrimitiveType>::refit()
+{
+    using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
+    int nNodes = (int)BvhBase::flatTree.size();
+
+    if (nNodes > 0) {
+        refitRecursive<DIM, NodeType, PrimitiveType>(BvhBase::primitives, BvhBase::flatTree, 0);
+    }
 }
 
 template<size_t DIM, typename NodeType, typename PrimitiveType>
@@ -256,10 +362,11 @@ inline void RobinBvh<DIM, NodeType, PrimitiveType>::updateRobinCoefficients(cons
                                                                             const std::vector<float>& maxCoeffValues)
 {
     // update robin coefficients for primitives
-    int nNodes = (int)Bvh<DIM, NodeType, PrimitiveType>::flatTree.size();
-    int nPrimitives = (int)Bvh<DIM, NodeType, PrimitiveType>::primitives.size();
+    using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
+    int nNodes = (int)BvhBase::flatTree.size();
+    int nPrimitives = (int)BvhBase::primitives.size();
     for (int p = 0; p < nPrimitives; p++) {
-        PrimitiveType *prim = Bvh<DIM, NodeType, PrimitiveType>::primitives[p];
+        PrimitiveType *prim = BvhBase::primitives[p];
 
         prim->minRobinCoeff = minCoeffValues[prim->getIndex()];
         prim->maxRobinCoeff = maxCoeffValues[prim->getIndex()];
@@ -268,8 +375,7 @@ inline void RobinBvh<DIM, NodeType, PrimitiveType>::updateRobinCoefficients(cons
     // update robin coefficients for nodes
     if (nNodes > 0) {
         updateRobinCoefficientsRecursive<DIM, NodeType, PrimitiveType>(
-            Bvh<DIM, NodeType, PrimitiveType>::primitives,
-            Bvh<DIM, NodeType, PrimitiveType>::flatTree, 0);
+            BvhBase::primitives, BvhBase::flatTree, 0);
     }
 }
 
