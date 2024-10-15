@@ -231,6 +231,65 @@ inline void mergeBoundingCones(const RobinBvhNode<DIM>& left, const RobinBvhNode
                                         node.box.centroid());
 }
 
+template<size_t DIM, typename PrimitiveType>
+inline BoundingCone<DIM> computeBoundingConeForPrimitives(const std::vector<PrimitiveType *>& primitives,
+                                                          const Vector<DIM>& centroid,
+                                                          int nReferences, int referenceOffset)
+{
+    BoundingCone<DIM> cone;
+    bool allPrimitivesHaveAdjacentFaces = true;
+
+    for (int p = 0; p < nReferences; p++) {
+        int referenceIndex = referenceOffset + p;
+        const PrimitiveType *prim = primitives[referenceIndex];
+
+        cone.axis += prim->normal();
+        for (int k = 0; k < DIM; k++) {
+            Vector<DIM> p = Vector<DIM>::Zero();
+            if (DIM == 2) {
+                p = prim->soup->positions[prim->indices[k]];
+
+            } else if (DIM == 3) {
+                int I = prim->indices[k];
+                int J = prim->indices[(k + 1)%3];
+                p = 0.5f*(prim->soup->positions[I] + prim->soup->positions[J]);
+            }
+
+            cone.radius = std::max(cone.radius, (p - centroid).norm());
+            allPrimitivesHaveAdjacentFaces = allPrimitivesHaveAdjacentFaces && prim->hasAdjacentFace[k];
+        }
+    }
+
+    // compute bounding cone angle
+    if (!allPrimitivesHaveAdjacentFaces) {
+        cone.halfAngle = M_PI;
+
+    } else {
+        float axisNorm = cone.axis.norm();
+        if (axisNorm > epsilon) {
+            cone.axis /= axisNorm;
+            cone.halfAngle = 0.0f;
+
+            for (int p = 0; p < nReferences; p++) {
+                int referenceIndex = referenceOffset + p;
+                const PrimitiveType *prim = primitives[referenceIndex];
+
+                Vector<DIM> nj = prim->normal();
+                float angle = std::acos(std::max(-1.0f, std::min(1.0f, cone.axis.dot(nj))));
+                cone.halfAngle = std::max(cone.halfAngle, angle);
+
+                for (int k = 0; k < DIM; k++) {
+                    const Vector<DIM>& nk = prim->n[k];
+                    float angle = std::acos(std::max(-1.0f, std::min(1.0f, cone.axis.dot(nk))));
+                    cone.halfAngle = std::max(cone.halfAngle, angle);
+                }
+            }
+        }
+    }
+
+    return cone;
+}
+
 template<size_t DIM, typename NodeType, typename PrimitiveType>
 inline void refitRecursive(const std::vector<PrimitiveType *>& primitives,
                            std::vector<NodeType>& flatTree, int nodeIndex)
@@ -259,58 +318,9 @@ inline void refitRecursive(const std::vector<PrimitiveType *>& primitives,
         }
 
         // compute bounding cone
-        node.cone = BoundingCone<DIM>();
-        BoundingCone<DIM>& cone = node.cone;
         Vector<DIM> centroid = node.box.centroid();
-        bool allPrimitivesHaveAdjacentFaces = true;
-
-        for (int p = 0; p < node.nReferences; p++) {
-            int referenceIndex = node.referenceOffset + p;
-            const PrimitiveType *prim = primitives[referenceIndex];
-
-            cone.axis += prim->normal();
-            for (int k = 0; k < DIM; k++) {
-                Vector<DIM> p = Vector<DIM>::Zero();
-                if (DIM == 2) {
-                    p = prim->soup->positions[prim->indices[k]];
-
-                } else if (DIM == 3) {
-                    int I = prim->indices[k];
-                    int J = prim->indices[(k + 1)%3];
-                    p = 0.5f*(prim->soup->positions[I] + prim->soup->positions[J]);
-                }
-
-                cone.radius = std::max(cone.radius, (p - centroid).norm());
-                allPrimitivesHaveAdjacentFaces = allPrimitivesHaveAdjacentFaces && prim->hasAdjacentFace[k];
-            }
-        }
-
-        // compute bounding cone angle
-        if (!allPrimitivesHaveAdjacentFaces) {
-            cone.halfAngle = M_PI;
-
-        } else {
-            float axisNorm = cone.axis.norm();
-            if (axisNorm > epsilon) {
-                cone.axis /= axisNorm;
-                cone.halfAngle = 0.0f;
-
-                for (int p = 0; p < node.nReferences; p++) {
-                    int referenceIndex = node.referenceOffset + p;
-                    const PrimitiveType *prim = primitives[referenceIndex];
-
-                    Vector<DIM> nj = prim->normal();
-                    float angle = std::acos(std::max(-1.0f, std::min(1.0f, cone.axis.dot(nj))));
-                    cone.halfAngle = std::max(cone.halfAngle, angle);
-
-                    for (int k = 0; k < DIM; k++) {
-                        const Vector<DIM>& nk = prim->n[k];
-                        float angle = std::acos(std::max(-1.0f, std::min(1.0f, cone.axis.dot(nk))));
-                        cone.halfAngle = std::max(cone.halfAngle, angle);
-                    }
-                }
-            }
-        }
+        node.cone = computeBoundingConeForPrimitives<DIM, PrimitiveType>(
+            primitives, centroid, node.nReferences, node.referenceOffset);
     }
 }
 

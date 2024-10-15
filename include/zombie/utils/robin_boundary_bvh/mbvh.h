@@ -64,6 +64,9 @@ public:
     RobinMbvh(std::vector<PrimitiveType *>& primitives_,
               std::vector<SilhouettePrimitive<DIM> *>& silhouettes_);
 
+    // refits the mbvh
+    void refit();
+
     // updates robin coefficient for each triangle
     void updateRobinCoefficients(const std::vector<float>& minCoeffValues,
                                  const std::vector<float>& maxCoeffValues);
@@ -188,6 +191,108 @@ inline void populateLeafNode(const NodeType& node,
             leafNode.hasAdjacentFace[i][w] = triangle->hasAdjacentFace[i];
             leafNode.ignoreAdjacentFace[i][w] = triangle->ignoreAdjacentFace[i];
         }
+    }
+}
+
+template<size_t DIM>
+inline void assignBoundingCone(const BoundingCone<DIM>& cone, RobinMbvhNode<DIM>& node, int index)
+{
+    for (size_t i = 0; i < DIM; i++) {
+        node.coneAxis[i][index] = cone.axis[i];
+    }
+
+    node.coneHalfAngle[index] = cone.halfAngle;
+    node.coneRadius[index] = cone.radius;
+}
+
+template<size_t DIM>
+inline void mergeBoundingCones(const BoundingCone<DIM>& coneA, const BoundingCone<DIM>& coneB,
+                               const BoundingBox<DIM>& boxA, const BoundingBox<DIM>& boxB,
+                               const BoundingBox<DIM>& mergedBox, RobinMbvhNode<DIM>& node,
+                               BoundingCone<DIM>& cone)
+{
+    cone = mergeBoundingCones<DIM>(coneA, coneB,
+                                   boxA.centroid(),
+                                   boxB.centroid(),
+                                   mergedBox.centroid());
+}
+
+template<size_t WIDTH,
+         size_t DIM,
+         typename NodeType,
+         typename PrimitiveType>
+inline std::pair<BoundingBox<DIM>, BoundingCone<DIM>> refitRecursive(const std::vector<PrimitiveType *>& primitives,
+                                                                     std::vector<NodeType>& flatTree, int nodeIndex)
+{
+    BoundingBox<DIM> box;
+    BoundingCone<DIM> cone;
+    cone.halfAngle = -M_PI;
+    NodeType& node(flatTree[nodeIndex]);
+
+    if (node.child[0] < 0) { // leaf
+        // compute bounding box
+        int referenceOffset = node.child[2];
+        int nReferences = node.child[3];
+
+        for (int p = 0; p < nReferences; p++) {
+            int referenceIndex = referenceOffset + p;
+            const PrimitiveType *prim = primitives[referenceIndex];
+
+            box.expandToInclude(prim->boundingBox());
+        }
+
+        // compute bounding cone
+        Vector<DIM> centroid = box.centroid();
+        cone = computeBoundingConeForPrimitives<DIM, PrimitiveType>(
+            primitives, centroid, nReferences, referenceOffset);
+
+    } else { // not a leaf
+        for (int w = 0; w < FCPW_MBVH_BRANCHING_FACTOR; w++) {
+            if (node.child[w] != maxInt) {
+                // refit child
+                std::pair<BoundingBox<DIM>, BoundingCone<DIM>> childBoxCone =
+                    refitRecursive<WIDTH, DIM, NodeType, PrimitiveType>(
+                        primitives, flatTree, node.child[w]);
+
+                // expand bounding box
+                BoundingBox<DIM> currentBox = box;
+                BoundingBox<DIM> childBox = childBoxCone.first;
+                for (size_t i = 0; i < DIM; i++) {
+                    node.boxMin[i][w] = childBox.pMin[i];
+                    node.boxMax[i][w] = childBox.pMax[i];
+                }
+                box.expandToInclude(childBox);
+
+                // expand bounding cone
+                BoundingCone<DIM> childCone = childBoxCone.second;
+                assignBoundingCone(childCone, node, w);
+                mergeBoundingCones(cone, childCone, currentBox, childBox, box, node, cone);
+            }
+        }
+    }
+
+    return std::make_pair(box, cone);
+}
+
+template<size_t WIDTH, size_t DIM,
+         typename PrimitiveType,
+         typename NodeType>
+inline void RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::refit()
+{
+    using MbvhBase = Mbvh<WIDTH, DIM,
+                          PrimitiveType,
+                          SilhouettePrimitive<DIM>,
+                          NodeType,
+                          MbvhLeafNode<WIDTH, DIM>,
+                          MbvhSilhouetteLeafNode<WIDTH, DIM>>;
+
+    // update leaf nodes
+    MbvhBase::populateLeafNodes();
+
+    // update flatTree
+    if (MbvhBase::nNodes > 0) {
+        refitRecursive<WIDTH, DIM, NodeType, PrimitiveType>(
+            MbvhBase::primitives, MbvhBase::flatTree, 0);
     }
 }
 
