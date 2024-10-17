@@ -144,8 +144,8 @@ inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& 
                                                              pcg32& sampler, WalkState<T, DIM>& state) const {
     if (!walkSettings.ignoreSourceContribution) {
         // compute the source contribution inside sphere
-        float sourcePdf;
-        Vector<DIM> sourcePt = state.greensFn->sampleVolume(sampler, sourcePdf);
+        float sourceRadius, sourcePdf;
+        Vector<DIM> sourcePt = state.greensFn->sampleVolume(sampler, sourceRadius, sourcePdf);
         T sourceContribution = state.greensFn->norm()*pde.source(sourcePt);
         state.totalSourceContribution += state.throughput*sourceContribution;
     }
@@ -344,8 +344,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
     // perform random walks
     for (int w = 0; w < nWalks; w++) {
         // initialize temporary variables for antithetic sampling
-        float boundaryPdf, sourcePdf;
-        Vector<DIM> boundaryPt, sourcePt;
+        float sourceRadius, sourcePdf, boundaryPdf;
+        Vector<DIM> sourcePt, boundaryPt;
         auto now = std::chrono::high_resolution_clock::now();
         uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
 
@@ -381,19 +381,18 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 if (antitheticIter == 0) {
                     float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
                     Vector<DIM> sourceDirection = sampleUnitSphereUniform<DIM>(u);
-                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.sampler, sourcePdf);
+                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.sampler, sourceRadius, sourcePdf);
 
                 } else {
                     Vector<DIM> sourceDirection = sourcePt - state.currentPt;
-                    greensFn->yVol = state.currentPt - sourceDirection;
-                    greensFn->r = sourceDirection.norm();
+                    sourcePt = state.currentPt - sourceDirection;
                 }
 
                 float greensFnNorm = greensFn->norm();
-                T sourceContribution = greensFnNorm*pde.source(greensFn->yVol);
+                T sourceContribution = greensFnNorm*pde.source(sourcePt);
                 state.totalSourceContribution += state.throughput*sourceContribution;
                 firstSourceContribution = sourceContribution;
-                sourceGradientDirection = greensFn->gradient()/(sourcePdf*greensFnNorm);
+                sourceGradientDirection = greensFn->gradient(sourceRadius, sourcePt)/(sourcePdf*greensFnNorm);
             }
 
             // sample a point uniformly on the sphere; update the current position
@@ -412,17 +411,16 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                     boundaryPdf = pdfSampleSphereUniform<DIM>(1.0f);
                 }
 
-                greensFn->ySurf = greensFn->c + greensFn->R*boundaryDirection;
-                boundaryPt = greensFn->ySurf;
+                boundaryPt = greensFn->c + greensFn->R*boundaryDirection;
 
             } else {
                 Vector<DIM> boundaryDirection = boundaryPt - state.currentPt;
-                greensFn->ySurf = state.currentPt - boundaryDirection;
+                boundaryPt = state.currentPt - boundaryDirection;
             }
 
-            state.currentPt = greensFn->ySurf;
+            state.currentPt = boundaryPt;
             state.throughput *= greensFn->poissonKernel()/boundaryPdf;
-            Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient()/(boundaryPdf*state.throughput);
+            Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient(boundaryPt)/(boundaryPdf*state.throughput);
 
             // compute the distance to the absorbing boundary
             float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(state.currentPt, false);

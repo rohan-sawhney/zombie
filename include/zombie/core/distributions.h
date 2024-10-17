@@ -288,25 +288,22 @@ public:
     // updates the ball center and radius
     virtual void updateBall(const Vector<DIM>& c_, float R_, float rClamp_=1e-4f) {
         c = c_;
-        yVol = Vector<DIM>::Zero();
-        ySurf = Vector<DIM>::Zero();
         R = R_;
-        r = 0.0f;
         rClamp = rClamp_;
     }
 
     // samples a point inside the ball given the direction along which to sample the point
-    virtual Vector<DIM> sampleVolume(const Vector<DIM>& dir, pcg32& sampler, float& pdf) {
+    virtual Vector<DIM> sampleVolume(const Vector<DIM>& dir, pcg32& sampler, float& r, float& pdf) {
         return Vector<DIM>::Zero();
     }
 
     // samples a point inside the ball
-    virtual Vector<DIM> sampleVolume(pcg32& sampler, float& pdf) {
+    virtual Vector<DIM> sampleVolume(pcg32& sampler, float& r, float& pdf) {
         return Vector<DIM>::Zero();
     }
 
     // evaluates the Green's function
-    virtual float evaluate() const {
+    virtual float evaluate(float r) const {
         return 0.0f;
     }
 
@@ -321,12 +318,12 @@ public:
     }
 
     // evaluates the gradient norm of the Green's function
-    virtual float gradientNorm() const {
+    virtual float gradientNorm(float r) const {
         return 0.0f;
     }
 
     // evaluates the gradient of the Green's function
-    virtual Vector<DIM> gradient() const {
+    virtual Vector<DIM> gradient(float r, const Vector<DIM>& y) const {
         return Vector<DIM>::Zero();
     }
 
@@ -357,7 +354,7 @@ public:
     }
 
     // evaluates the gradient of the Poisson Kernel
-    virtual Vector<DIM> poissonKernelGradient() const {
+    virtual Vector<DIM> poissonKernelGradient(const Vector<DIM>& y) const {
         return Vector<DIM>::Zero();
     }
 
@@ -367,19 +364,19 @@ public:
     }
 
     // members
-    Vector<DIM> c, yVol, ySurf; // ball center, sampled point inside and on the surface of the ball
-    float R, r; // ball radius and distance of the sampled point inside the ball to the ball center
+    Vector<DIM> c; // ball center
+    float R; // ball radius
     float rClamp;
 
 protected:
     // samples a point inside the ball
     virtual Vector<DIM> rejectionSampleGreensFn(const Vector<DIM>& dir, float bound,
-                                                pcg32& sampler, float& pdf) {
+                                                pcg32& sampler, float& r, float& pdf) {
         int iter = 0;
         do {
             float u = sampler.nextFloat();
             r = sampler.nextFloat()*R;
-            pdf = evaluate()/norm();
+            pdf = evaluate(r)/norm();
             float pdfRadius = pdf/pdfSampleSphereUniform<DIM>(r);
             iter++;
 
@@ -391,9 +388,8 @@ protected:
 
         r = std::max(rClamp, r);
         if (r > R) r = R/2.0f;
-        yVol = c + r*dir;
 
-        return yVol;
+        return c + r*dir;
     }
 };
 
@@ -414,21 +410,21 @@ public:
     HarmonicGreensFnBall(): GreensFnBall<2>() {}
 
     // samples a point inside the ball given the direction along which to sample the point
-    Vector2 sampleVolume(const Vector2& dir, pcg32& sampler, float& pdf) {
+    Vector2 sampleVolume(const Vector2& dir, pcg32& sampler, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf 4.0 * r * ln(R / r) / R^2
         float bound = 1.5f/R;
 
-        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, sampler, pdf);
+        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
     }
 
     // samples a point inside the ball
-    Vector2 sampleVolume(pcg32& sampler, float& pdf) {
-        return sampleVolume(sampleUnitSphereUniform<2>(sampler), sampler, pdf);
+    Vector2 sampleVolume(pcg32& sampler, float& r, float& pdf) {
+        return sampleVolume(sampleUnitSphereUniform<2>(sampler), sampler, r, pdf);
     }
 
     // evaluates the Green's function
-    float evaluate() const {
+    float evaluate(float r) const {
         return std::log(R/r)/(2.0f*M_PI);
     }
 
@@ -444,23 +440,23 @@ public:
     }
 
     // evaluates the gradient norm of the Green's function
-    float gradientNorm() const {
+    float gradientNorm(float r) const {
         float r2 = r*r;
         return (1.0f/r2 - 1.0f/(R*R))/(2.0f*M_PI);
     }
 
     // evaluates the gradient of the Green's function
-    Vector2 gradient() const {
-        Vector2 d = yVol - c;
-        return d*gradientNorm();
+    Vector2 gradient(float r, const Vector2& y) const {
+        Vector2 d = y - c;
+        return d*gradientNorm(r);
     }
 
     // samples a point on the surface of the ball
     Vector2 sampleSurface(pcg32& sampler, float& pdf) {
-        ySurf = c + R*sampleUnitSphereUniform<2>(sampler);
+        Vector2 y = c + R*sampleUnitSphereUniform<2>(sampler);
         pdf = 1.0f/(2.0f*M_PI);
 
-        return ySurf;
+        return y;
     }
 
     // evaluates the Poisson Kernel (normal derivative of the Green's function)
@@ -496,8 +492,8 @@ public:
     }
 
     // evaluates the gradient of the Poisson Kernel
-    Vector2 poissonKernelGradient() const {
-        Vector2 d = ySurf - c;
+    Vector2 poissonKernelGradient(const Vector2& y) const {
+        Vector2 d = y - c;
 
         return 2.0f*d/(2.0f*M_PI*R*R);
     }
@@ -515,7 +511,7 @@ public:
     HarmonicGreensFnBall(): GreensFnBall<3>() {}
 
     // samples a point inside the ball given the direction along which to sample the point
-    Vector3 sampleVolume(const Vector3& dir, pcg32& sampler, float& pdf) {
+    Vector3 sampleVolume(const Vector3& dir, pcg32& sampler, float& r, float& pdf) {
         // sample radius r from pdf 6.0f * r * (R - r) / R^3 using Ulrich's polar method
         float u1 = sampler.nextFloat();
         float u2 = sampler.nextFloat();
@@ -524,19 +520,18 @@ public:
         r = (1.0f + std::sqrt(1.0f - std::cbrt(u1*u1))*std::cos(phi))*R/2.0f;
         r = std::max(rClamp, r);
         if (r > R) r = R/2.0f;
-        yVol = c + r*dir;
-        pdf = evaluate()/norm();
+        pdf = evaluate(r)/norm();
 
-        return yVol;
+        return c + r*dir;
     }
 
     // samples a point inside the ball
-    Vector3 sampleVolume(pcg32& sampler, float& pdf) {
-        return sampleVolume(sampleUnitSphereUniform<3>(sampler), sampler, pdf);
+    Vector3 sampleVolume(pcg32& sampler, float& r, float& pdf) {
+        return sampleVolume(sampleUnitSphereUniform<3>(sampler), sampler, r, pdf);
     }
 
     // evaluates the Green's function
-    float evaluate() const {
+    float evaluate(float r) const {
         return (1.0f/r - 1.0f/R)/(4.0f*M_PI);
     }
 
@@ -552,23 +547,23 @@ public:
     }
 
     // evaluates the gradient norm of the Green's function
-    float gradientNorm() const {
+    float gradientNorm(float r) const {
         float r3 = r*r*r;
         return (1.0f/r3 - 1.0f/(R*R*R))/(4.0f*M_PI);
     }
 
     // evaluates the gradient of the Green's function
-    Vector3 gradient() const {
-        Vector3 d = yVol - c;
-        return d*gradientNorm();
+    Vector3 gradient(float r, const Vector3& y) const {
+        Vector3 d = y - c;
+        return d*gradientNorm(r);
     }
 
     // samples a point on the surface of the ball
     Vector3 sampleSurface(pcg32& sampler, float& pdf) {
-        ySurf = c + R*sampleUnitSphereUniform<3>(sampler);
+        Vector3 y = c + R*sampleUnitSphereUniform<3>(sampler);
         pdf = 1.0f/(4.0f*M_PI);
 
-        return ySurf;
+        return y;
     }
 
     // evaluates the Poisson Kernel (normal derivative of the Green's function)
@@ -606,8 +601,8 @@ public:
     }
 
     // evaluates the gradient of the Poisson Kernel
-    Vector3 poissonKernelGradient() const {
-        Vector3 d = ySurf - c;
+    Vector3 poissonKernelGradient(const Vector3& y) const {
+        Vector3 d = y - c;
 
         return 3.0f*d/(4.0f*M_PI*R*R);
     }
@@ -646,23 +641,23 @@ public:
     }
 
     // samples a point inside the ball given the direction along which to sample the point
-    Vector2 sampleVolume(const Vector2& dir, pcg32& sampler, float& pdf) {
+    Vector2 sampleVolume(const Vector2& dir, pcg32& sampler, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf r * λ * (K_0(r√λ) * I_0(R√λ) - I_0(r√λ) * K_0(R√λ)) / (I_0(R√λ) - 1)
         float bound = R <= lambda ?
                       std::max(std::max(2.2f/R, 2.2f/lambda), std::max(0.6f*std::sqrt(R), 0.6f*sqrtLambda)) :
                       std::max(std::min(2.2f/R, 2.2f/lambda), std::min(0.6f*std::sqrt(R), 0.6f*sqrtLambda));
 
-        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, sampler, pdf);
+        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
     }
 
     // samples a point inside the ball
-    Vector2 sampleVolume(pcg32& sampler, float& pdf) {
-        return sampleVolume(sampleUnitSphereUniform<2>(sampler), sampler, pdf);
+    Vector2 sampleVolume(pcg32& sampler, float& r, float& pdf) {
+        return sampleVolume(sampleUnitSphereUniform<2>(sampler), sampler, r, pdf);
     }
 
     // evaluates the Green's function
-    float evaluate() const {
+    float evaluate(float r) const {
         float mur = r*sqrtLambda;
         float K0mur = bessel::bessk0(mur);
         float I0mur = bessel::bessi0(mur);
@@ -694,7 +689,7 @@ public:
     }
 
     // evaluates the gradient norm of the Green's function
-    float gradientNorm() const {
+    float gradientNorm(float r) const {
         float mur = r*sqrtLambda;
         float K1mur = bessel::bessk1(mur);
         float I1mur = bessel::bessi1(mur);
@@ -704,17 +699,17 @@ public:
     }
 
     // evaluates the gradient of the Green's function
-    Vector2 gradient() const {
-        Vector2 d = yVol - c;
-        return d*gradientNorm();
+    Vector2 gradient(float r, const Vector2& y) const {
+        Vector2 d = y - c;
+        return d*gradientNorm(r);
     }
 
     // samples a point on the surface of the ball
     Vector2 sampleSurface(pcg32& sampler, float& pdf) {
-        ySurf = c + R*sampleUnitSphereUniform<2>(sampler);
+        Vector2 y = c + R*sampleUnitSphereUniform<2>(sampler);
         pdf = 1.0f/(2.0f*M_PI);
 
-        return ySurf;
+        return y;
     }
 
     // evaluates the Poisson Kernel (normal derivative of the Green's function)
@@ -766,8 +761,8 @@ public:
     }
 
     // evaluates the gradient of the Poisson Kernel
-    Vector2 poissonKernelGradient() const {
-        Vector2 d = ySurf - c;
+    Vector2 poissonKernelGradient(const Vector2& y) const {
+        Vector2 d = y - c;
         float QR = sqrtLambda/(R*I1muR);
 
         return d*QR/(2.0f*M_PI);
@@ -804,23 +799,23 @@ public:
     }
 
     // samples a point inside the ball given the direction along which to sample the point
-    Vector3 sampleVolume(const Vector3& dir, pcg32& sampler, float& pdf) {
+    Vector3 sampleVolume(const Vector3& dir, pcg32& sampler, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf r * λ * sinh((R - r)√λ) / (sinh(R√λ) - R√λ)
         float bound = R <= lambda ?
                       std::max(std::max(2.0f/R, 2.0f/lambda), std::max(0.5f*std::sqrt(R), 0.5f*sqrtLambda)) :
                       std::max(std::min(2.0f/R, 2.0f/lambda), std::min(0.5f*std::sqrt(R), 0.5f*sqrtLambda));
 
-        return GreensFnBall<3>::rejectionSampleGreensFn(dir, bound, sampler, pdf);
+        return GreensFnBall<3>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
     }
 
     // samples a point inside the ball
-    Vector3 sampleVolume(pcg32& sampler, float& pdf) {
-        return sampleVolume(sampleUnitSphereUniform<3>(sampler), sampler, pdf);
+    Vector3 sampleVolume(pcg32& sampler, float& r, float& pdf) {
+        return sampleVolume(sampleUnitSphereUniform<3>(sampler), sampler, r, pdf);
     }
 
     // evaluates the Green's function
-    float evaluate() const {
+    float evaluate(float r) const {
         float mur = r*sqrtLambda;
         float expmur = std::exp(-mur);
         float sinhmur = (1.0f - expmur*expmur)/(2.0f*expmur);
@@ -852,7 +847,7 @@ public:
     }
 
     // evaluates the gradient norm of the Green's function
-    float gradientNorm() const {
+    float gradientNorm(float r) const {
         float r2 = r*r;
         float mur = r*sqrtLambda;
         float expmur = std::exp(-mur);
@@ -867,17 +862,17 @@ public:
     }
 
     // evaluates the gradient of the Green's function
-    Vector3 gradient() const {
-        Vector3 d = yVol - c;
-        return d*gradientNorm();
+    Vector3 gradient(float r, const Vector3& y) const {
+        Vector3 d = y - c;
+        return d*gradientNorm(r);
     }
 
     // samples a point on the surface of the ball
     Vector3 sampleSurface(pcg32& sampler, float& pdf) {
-        ySurf = c + R*sampleUnitSphereUniform<3>(sampler);
+        Vector3 y = c + R*sampleUnitSphereUniform<3>(sampler);
         pdf = 1.0f/(4.0f*M_PI);
 
-        return ySurf;
+        return y;
     }
 
     // evaluates the Poisson Kernel (normal derivative of the Green's function)
@@ -935,8 +930,8 @@ public:
     }
 
     // evaluates the gradient of the Poisson Kernel
-    Vector3 poissonKernelGradient() const {
-        Vector3 d = ySurf - c;
+    Vector3 poissonKernelGradient(const Vector3& y) const {
+        Vector3 d = y - c;
         float QR = lambda/I32muR;
 
         return d*QR/(4.0f*M_PI);
