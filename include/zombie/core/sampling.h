@@ -6,7 +6,7 @@
 #define _USE_MATH_DEFINES
 #define NOMINMAX
 #include <algorithm>
-#include <cmath>
+#include <math.h>
 #include <iostream>
 #include <limits>
 #include <memory>
