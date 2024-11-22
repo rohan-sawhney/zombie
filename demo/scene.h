@@ -32,15 +32,15 @@ public:
     std::vector<std::vector<size_t>> absorbingBoundarySegments;
     std::vector<std::vector<size_t>> reflectingBoundarySegments;
     const bool isDoubleSided;
-    zombie::GeometricQueries<2> queries;
     zombie::PDE<float, 2> pde;
+    zombie::GeometricQueries<2> queries;
 
 protected:
     // loads boundary mesh from OBJ file
     void loadOBJ(const std::string& filename, bool normalize, bool flipOrientation);
 
-    // populates PDE
-    void populatePDE();
+    // setup PDE
+    void setupPDE();
 
     // populates geometric queries for boundary mesh
     void populateGeometricQueries();
@@ -86,7 +86,7 @@ queries(getOptional<bool>(config, "isWatertight", true)) {
 
     // load boundary mesh, build acceleration structures and set geometric queries and PDE inputs
     loadOBJ(boundaryFile, normalize, flipOrientation);
-    populatePDE();
+    setupPDE();
     populateGeometricQueries();
 }
 
@@ -102,7 +102,7 @@ void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrient
     bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
 }
 
-void Scene::populatePDE() {
+void Scene::setupPDE() {
     const Vector2& bMin = bbox.first;
     const Vector2& bMax = bbox.second;
     float maxLength = (bMax - bMin).maxCoeff();
@@ -131,42 +131,10 @@ void Scene::populatePDE() {
 }
 
 void Scene::populateGeometricQueries() {
-    // separate boundary vertices and indices into absorbing and reflecting parts
-    std::vector<size_t> indices(2, -1);
-    size_t nAbsorbingBoundaryVerts = 0, nReflectingBoundaryVerts = 0;
-    std::unordered_map<size_t, size_t> absorbingBoundaryIndexMap, reflectingBoundaryIndexMap;
-
-    for (int i = 0; i < segments.size(); i++) {
-        Vector2 pMid = 0.5f * (vertices[segments[i][0]] + vertices[segments[i][1]]);
-        if (pde.hasReflectingBoundaryConditions(pMid)) {
-            for (int j = 0; j < 2; j++) {
-                size_t vIndex = segments[i][j];
-                if (reflectingBoundaryIndexMap.find(vIndex) == reflectingBoundaryIndexMap.end()) {
-                    const Vector2& p = vertices[vIndex];
-                    reflectingBoundaryVertices.emplace_back(p);
-                    reflectingBoundaryIndexMap[vIndex] = nReflectingBoundaryVerts++;
-                }
-
-                indices[j] = reflectingBoundaryIndexMap[vIndex];
-            }
-
-            reflectingBoundarySegments.emplace_back(indices);
-
-        } else {
-            for (int j = 0; j < 2; j++) {
-                size_t vIndex = segments[i][j];
-                if (absorbingBoundaryIndexMap.find(vIndex) == absorbingBoundaryIndexMap.end()) {
-                    const Vector2& p = vertices[vIndex];
-                    absorbingBoundaryVertices.emplace_back(p);
-                    absorbingBoundaryIndexMap[vIndex] = nAbsorbingBoundaryVerts++;
-                }
-
-                indices[j] = absorbingBoundaryIndexMap[vIndex];
-            }
-
-            absorbingBoundarySegments.emplace_back(indices);
-        }
-    }
+    // partition boundary vertices and indices into absorbing and reflecting parts
+    zombie::partitionBoundaryMesh<2>(pde.hasReflectingBoundaryConditions, vertices, segments,
+                                     absorbingBoundaryVertices, absorbingBoundarySegments,
+                                     reflectingBoundaryVertices, reflectingBoundarySegments);
 
     // build acceleration structures for absorbing and reflecting boundaries
     absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryVertices, absorbingBoundarySegments);

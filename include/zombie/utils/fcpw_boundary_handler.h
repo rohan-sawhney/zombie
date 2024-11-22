@@ -37,6 +37,18 @@ template <size_t DIM>
 std::pair<Vector<DIM>, Vector<DIM>> computeBoundingBox(const std::vector<Vector<DIM>>& positions,
                                                        bool makeSquare, float scale);
 
+// partitions boundary mesh into absorbing and reflecting parts using primitive centroids---
+// this assumes the boundary discretization is perfectly adapted to the boundary conditions,
+// which isn't always a correct assumption
+template <size_t DIM>
+void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onReflectingBoundary,
+                           const std::vector<Vector<DIM>>& positions,
+                           const std::vector<std::vector<size_t>>& indices,
+                           std::vector<Vector<DIM>>& absorbingPositions,
+                           std::vector<std::vector<size_t>>& absorbingIndices,
+                           std::vector<Vector<DIM>>& reflectingPositions,
+                           std::vector<std::vector<size_t>>& reflectingIndices);
+
 // Helper class to build an acceleration structure to perform geometric queries such as
 // ray intersection, closest point, etc. against a mesh. Also provides a utility function
 // to update Robin coefficients after building the acceleration structure.
@@ -192,6 +204,74 @@ std::pair<Vector<DIM>, Vector<DIM>> computeBoundingBox(const std::vector<Vector<
     }
 
     return std::make_pair(bbox.pMin, bbox.pMax);
+}
+
+template <size_t DIM>
+Vector<DIM> computePrimitiveMidpoint(const std::vector<Vector<DIM>>& positions,
+                                     const std::vector<std::vector<size_t>>& indices,
+                                     size_t primitiveIndex)
+{
+    Vector<DIM> pMid = Vector<DIM>::Zero();
+    for (int j = 0; j < DIM; j++) {
+        size_t vIndex = indices[primitiveIndex][j];
+        const Vector<DIM>& p = positions[vIndex];
+
+        pMid += p;
+    }
+
+    return pMid/DIM;
+}
+
+template <size_t DIM>
+void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onReflectingBoundary,
+                           const std::vector<Vector<DIM>>& positions,
+                           const std::vector<std::vector<size_t>>& indices,
+                           std::vector<Vector<DIM>>& absorbingPositions,
+                           std::vector<std::vector<size_t>>& absorbingIndices,
+                           std::vector<Vector<DIM>>& reflectingPositions,
+                           std::vector<std::vector<size_t>>& reflectingIndices)
+{
+    std::vector<size_t> index(DIM, -1);
+    std::unordered_map<size_t, size_t> absorbingBoundaryMap, reflectingBoundaryMap;
+    absorbingPositions.clear();
+    absorbingIndices.clear();
+    reflectingPositions.clear();
+    reflectingIndices.clear();
+
+    for (int i = 0; i < (int)indices.size(); i++) {
+        Vector<DIM> pMid = computePrimitiveMidpoint<DIM>(positions, indices, i);
+
+        if (onReflectingBoundary(pMid)) {
+            for (int j = 0; j < DIM; j++) {
+                size_t vIndex = indices[i][j];
+                const Vector<DIM>& p = positions[vIndex];
+
+                if (reflectingBoundaryMap.find(vIndex) == reflectingBoundaryMap.end()) {
+                    reflectingBoundaryMap[vIndex] = reflectingPositions.size();
+                    reflectingPositions.emplace_back(p);
+                }
+
+                index[j] = reflectingBoundaryMap[vIndex];
+            }
+
+            reflectingIndices.emplace_back(index);
+
+        } else {
+            for (int j = 0; j < DIM; j++) {
+                size_t vIndex = indices[i][j];
+                const Vector<DIM>& p = positions[vIndex];
+
+                if (absorbingBoundaryMap.find(vIndex) == absorbingBoundaryMap.end()) {
+                    absorbingBoundaryMap[vIndex] = absorbingPositions.size();
+                    absorbingPositions.emplace_back(p);
+                }
+
+                index[j] = absorbingBoundaryMap[vIndex];
+            }
+
+            absorbingIndices.emplace_back(index);
+        }
+    }
 }
 
 inline float intAsFloat(int a)
