@@ -7,8 +7,7 @@
 
 #pragma once
 
-#include <zombie/variance_reduction/boundary_sampler.h>
-#include <zombie/variance_reduction/domain_sampler.h>
+#include <zombie/point_estimation/walk_on_stars.h>
 
 namespace zombie {
 
@@ -66,6 +65,11 @@ public:
                                   bool useFiniteDifferences=false,
                                   bool runSingleThreaded=false,
                                   std::function<void(int,int)> reportProgress={}) const;
+
+    // sets the source value at the provided sample points
+    void setSourceValues(const PDE<T, DIM>& pde,
+                         std::vector<SamplePoint<T, DIM>>& samplePts,
+                         bool runSingleThreaded=false) const;
 
     // splats sample pt data to the input evaluation pt
     void splat(const PDE<T, DIM>& pde,
@@ -239,6 +243,28 @@ inline void BoundaryValueCaching<T, DIM>::computeBoundaryEstimates(const PDE<T, 
     // set estimated boundary data
     setEstimatedBoundaryData(pde, walkSettings, robinCoeffCutoffForNormalDerivative,
                              useFiniteDifferences, samplePts);
+}
+
+template <typename T, size_t DIM>
+inline void BoundaryValueCaching<T, DIM>::setSourceValues(const PDE<T, DIM>& pde,
+                                                          std::vector<SamplePoint<T, DIM>>& samplePts,
+                                                          bool runSingleThreaded) const {
+    int nSamplePoints = (int)samplePts.size();
+    if (runSingleThreaded) {
+        for (int i = 0; i < nSamplePoints; i++) {
+            samplePts[i].source = pde.source(samplePts[i].pt);
+        }
+
+    } else {
+        auto run = [&](const tbb::blocked_range<int>& range) {
+            for (int i = range.begin(); i < range.end(); ++i) {
+                samplePts[i].source = pde.source(samplePts[i].pt);
+            }
+        };
+
+        tbb::blocked_range<int> range(0, nSamplePoints);
+        tbb::parallel_for(range, run);
+    }
 }
 
 template <typename T, size_t DIM>

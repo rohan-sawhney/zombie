@@ -139,10 +139,10 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
         zombie::DomainSampler<float, 2> domainSampler(queries, insideSolveRegionDomainSampler,
                                                       bbox.first, bbox.second,
                                                       scene.getSolveRegionVolume());
-        domainSampler.generateSamples(pde, domainCacheSize, domainCache);
+        domainSampler.generateSamples(domainCacheSize, domainCache);
     }
 
-    // estimate solution on the boundary
+    // estimate solution on the boundary and set source values in the interior
     int totalWork = 2*(boundaryCache.size() + boundaryCacheNormalAligned.size()) + domainCache.size();
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
@@ -168,6 +168,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
                                                   nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
                                                   boundaryCacheNormalAligned, useFiniteDifferencesForBoundaryDerivatives,
                                                   runSingleThreaded, reportProgress);
+    boundaryValueCaching.setSourceValues(pde, domainCache, runSingleThreaded);
 
     // splat solution to evaluation points
     boundaryValueCaching.splat(pde, boundaryCache, radiusClampForKernels, regularizationForKernels,
@@ -270,7 +271,7 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
         zombie::DomainSampler<float, 2> domainSampler(queries, insideSolveRegionDomainSampler,
                                                       bbox.first, bbox.second,
                                                       scene.getSolveRegionVolume());
-        domainSampler.generateSamples(pde, domainSampleCount, domainSamplePts);
+        domainSampler.generateSamples(domainSampleCount, domainSamplePts);
     }
 
     // initialize nearest neigbhbor finder for evaluation points and assign

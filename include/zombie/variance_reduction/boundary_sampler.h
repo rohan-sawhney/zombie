@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <zombie/point_estimation/walk_on_stars.h>
+#include <zombie/point_estimation/common.h>
 #include <unordered_map>
 
 namespace zombie {

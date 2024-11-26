@@ -5,9 +5,7 @@
 
 #pragma once
 
-#include <zombie/core/pde.h>
-#include <zombie/core/geometric_queries.h>
-#include <zombie/core/sampling.h>
+#include <zombie/point_estimation/common.h>
 
 namespace zombie {
 
@@ -24,8 +22,7 @@ public:
     // generates uniformly distributed sample points inside the solve region;
     // NOTE: may not generate exactly the requested number of samples when the
     // solve region volume does not match the volume of its bounding extents
-    void generateSamples(const PDE<T, DIM>& pde, int nTotalSamples,
-                         std::vector<SamplePoint<T, DIM>>& samplePts);
+    void generateSamples(int nTotalSamples, std::vector<SamplePoint<T, DIM>>& samplePts);
 
 protected:
     // members
@@ -60,8 +57,7 @@ inline DomainSampler<T, DIM>::DomainSampler(const GeometricQueries<DIM>& queries
 }
 
 template <typename T, size_t DIM>
-inline void DomainSampler<T, DIM>::generateSamples(const PDE<T, DIM>& pde, int nTotalSamples,
-                                                   std::vector<SamplePoint<T, DIM>>& samplePts) {
+inline void DomainSampler<T, DIM>::generateSamples(int nTotalSamples, std::vector<SamplePoint<T, DIM>>& samplePts) {
     // initialize sample points
     samplePts.clear();
     Vector<DIM> regionExtent = solveRegionMax - solveRegionMin;
@@ -80,12 +76,10 @@ inline void DomainSampler<T, DIM>::generateSamples(const PDE<T, DIM>& pde, int n
         Vector<DIM> pt = (solveRegionMin.array() + regionExtent.array()*randomVector.array()).matrix();
         if (!insideSolveRegion(pt)) continue;
 
-        T source = pde.source(pt);
         float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
         float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
         SamplePoint<T, DIM> samplePt(pt, Vector<DIM>::Zero(), SampleType::InDomain, pdf,
                                      distToAbsorbingBoundary, distToReflectingBoundary);
-        samplePt.source = source;
         samplePts.emplace_back(samplePt);
     }
 }
