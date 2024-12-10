@@ -78,15 +78,14 @@ public:
 
 protected:
     // checks which nodes should be visited during traversal
-    MaskP<FCPW_MBVH_BRANCHING_FACTOR> visitNodes(const QueryStub<WIDTH, DIM>& stub,
-                                                 const enokiVector<DIM>& sc, float r2, int nodeIndex,
+    MaskP<FCPW_MBVH_BRANCHING_FACTOR> visitNodes(const enokiVector<DIM>& sc, float r2, int nodeIndex,
                                                  FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MinBound,
                                                  FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MaxBound,
                                                  MaskP<FCPW_MBVH_BRANCHING_FACTOR>& hasSilhouettes) const;
 };
 
 template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>>> initializeVectorizedRobinBvh(
+std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>>> createVectorizedRobinBvh(
                                                         RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType> *robinBvh,
                                                         std::vector<PrimitiveType *>& primitives,
                                                         std::vector<SilhouettePrimitive<DIM> *>& silhouettes,
@@ -378,46 +377,95 @@ inline void RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::updateRobinCoefficie
     }
 }
 
-template<size_t WIDTH, size_t DIM>
-inline FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeNodeSquaredStarRadiusBound(const QueryStub<WIDTH, DIM>& stub,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r0,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r1,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& robinCoeff,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& cosTheta)
-{
-    std::cerr << "computeNodeSquaredStarRadiusBound(): DIM: " << DIM << " not supported" << std::endl;
-    exit(EXIT_FAILURE);
-}
+template<size_t DIM>
+struct RobinMbvhNodeBound {
+    // computes the minimum squared star radius bound
+    static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMinSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMax,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minCosTheta,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxCosTheta) {
+        std::cerr << "RobinMbvhNodeBound::computeMinSquaredStarRadiusBound(): DIM: " << DIM << " not supported" << std::endl;
+        exit(EXIT_FAILURE);
 
-template<size_t WIDTH>
-inline FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeNodeSquaredStarRadiusBound(const QueryStub<WIDTH, 2>& stub,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r0,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r1,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& robinCoeff,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& cosTheta)
-{
-    FloatP<FCPW_MBVH_BRANCHING_FACTOR> rBound = r0*enoki::exp(cosTheta*enoki::rcp(robinCoeff*r1));
-    return rBound*rBound;
-}
+        return 0.0f;
+    }
 
-template<size_t WIDTH>
-inline FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeNodeSquaredStarRadiusBound(const QueryStub<WIDTH, 3>& stub,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r0,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r1,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& robinCoeff,
-                                                                            const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& cosTheta)
-{
-    FloatP<FCPW_MBVH_BRANCHING_FACTOR> cosThetaOverRobinCoeff = cosTheta*enoki::rcp(robinCoeff);
-    FloatP<FCPW_MBVH_BRANCHING_FACTOR> rBound = r0*enoki::rcp(1.0f - cosThetaOverRobinCoeff*enoki::rcp(r1));
-    enoki::masked(rBound, r1 < cosThetaOverRobinCoeff) = maxFloat;
-    return rBound*rBound;
-}
+    // computes the maximum squared star radius bound
+    static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMaxSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMax,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minCosTheta,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxCosTheta) {
+        std::cerr << "RobinMbvhNodeBound::computeMaxSquaredStarRadiusBound(): DIM: " << DIM << " not supported" << std::endl;
+        exit(EXIT_FAILURE);
+
+        return 0.0f;
+    }
+};
+
+template<>
+struct RobinMbvhNodeBound<2> {
+    // computes the minimum squared star radius bound
+    static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMinSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMax,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minCosTheta,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxCosTheta) {
+        FloatP<FCPW_MBVH_BRANCHING_FACTOR> rBound = rMin*enoki::exp(minCosTheta*enoki::rcp(maxRobinCoeff*rMax));
+        return rBound*rBound;
+    }
+
+    // computes the maximum squared star radius bound
+    static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMaxSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMax,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minCosTheta,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxCosTheta) {
+        FloatP<FCPW_MBVH_BRANCHING_FACTOR> rBound = rMax*enoki::exp(maxCosTheta*enoki::rcp(minRobinCoeff*rMin));
+        return rBound*rBound;
+    }
+};
+
+template<>
+struct RobinMbvhNodeBound<3> {
+    // computes the minimum squared star radius bound
+    static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMinSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMax,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minCosTheta,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxCosTheta) {
+        FloatP<FCPW_MBVH_BRANCHING_FACTOR> cosThetaOverRobinCoeff = minCosTheta*enoki::rcp(maxRobinCoeff);
+        FloatP<FCPW_MBVH_BRANCHING_FACTOR> rBound = rMin*enoki::rcp(1.0f - cosThetaOverRobinCoeff*enoki::rcp(rMax));
+        enoki::masked(rBound, rMax < cosThetaOverRobinCoeff) = maxFloat;
+
+        return rBound*rBound;
+    }
+
+    // computes the maximum squared star radius bound
+    static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMaxSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMax,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxRobinCoeff,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& minCosTheta,
+                                                                               const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& maxCosTheta) {
+        FloatP<FCPW_MBVH_BRANCHING_FACTOR> cosThetaOverRobinCoeff = maxCosTheta*enoki::rcp(minRobinCoeff);
+        FloatP<FCPW_MBVH_BRANCHING_FACTOR> rBound = rMax*enoki::rcp(1.0f - cosThetaOverRobinCoeff*enoki::rcp(rMin));
+        enoki::masked(rBound, rMin < cosThetaOverRobinCoeff) = maxFloat;
+
+        return rBound*rBound;
+    }
+};
 
 template<size_t WIDTH, size_t DIM,
          typename PrimitiveType,
          typename NodeType>
 inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::visitNodes(
-                                                const QueryStub<WIDTH, DIM>& stub,
                                                 const enokiVector<DIM>& sc, float r2, int nodeIndex,
                                                 FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MinBound,
                                                 FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MaxBound,
@@ -465,10 +513,10 @@ inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> RobinMbvh<WIDTH, DIM, PrimitiveType, No
             FloatP<FCPW_MBVH_BRANCHING_FACTOR> minAbsCosTheta = enoki::min(enoki::abs(enoki::cos(maximalAngles[0])),
                                                                            enoki::abs(enoki::cos(maximalAngles[1])));
             FloatP<FCPW_MBVH_BRANCHING_FACTOR> maxAbsCosTheta = 1.0f; // assume maxCosTheta = 1.0f for simplicity
-            enoki::masked(r2MinBound, overlapRobinBoxNotCone) = computeNodeSquaredStarRadiusBound(
-                stub, rMin, rMax, node.maxRobinCoeff, minAbsCosTheta);
-            enoki::masked(r2MaxBound, overlapRobinBoxNotCone) = computeNodeSquaredStarRadiusBound(
-                stub, rMax, rMin, node.minRobinCoeff, maxAbsCosTheta);
+            enoki::masked(r2MinBound, overlapRobinBoxNotCone) = RobinMbvhNodeBound<DIM>::computeMinSquaredStarRadiusBound(
+                rMin, rMax, node.minRobinCoeff, node.maxRobinCoeff, minAbsCosTheta, maxAbsCosTheta);
+            enoki::masked(r2MaxBound, overlapRobinBoxNotCone) = RobinMbvhNodeBound<DIM>::computeMaxSquaredStarRadiusBound(
+                rMin, rMax, node.minRobinCoeff, node.maxRobinCoeff, minAbsCosTheta, maxAbsCosTheta);
         }
     }
 
@@ -542,7 +590,6 @@ inline int RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::computeSquaredStarRad
     FloatP<FCPW_MBVH_BRANCHING_FACTOR> d2Min, d2Max;
     MaskP<FCPW_MBVH_BRANCHING_FACTOR> hasSilhouettes;
     enokiVector<DIM> sc = enoki::gather<enokiVector<DIM>>(s.c.data(), MbvhBase::range);
-    QueryStub<WIDTH, DIM> queryStub;
     int nodesVisited = 0;
 
     // push root node
@@ -605,8 +652,7 @@ inline int RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::computeSquaredStarRad
 
         } else {
             // determine which nodes to visit
-            MaskP<FCPW_MBVH_BRANCHING_FACTOR> mask = visitNodes(queryStub, sc, s.r2, nodeIndex,
-                                                                d2Min, d2Max, hasSilhouettes);
+            MaskP<FCPW_MBVH_BRANCHING_FACTOR> mask = visitNodes(sc, s.r2, nodeIndex, d2Min, d2Max, hasSilhouettes);
 
             // enqueue overlapping boxes in sorted order
             nodesVisited++;
@@ -621,7 +667,7 @@ inline int RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::computeSquaredStarRad
 }
 
 template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>>> initializeVectorizedRobinBvh(
+std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>>> createVectorizedRobinBvh(
                                                         RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType> *robinBvh,
                                                         std::vector<PrimitiveType *>& primitives,
                                                         std::vector<SilhouettePrimitive<DIM> *>& silhouettes,

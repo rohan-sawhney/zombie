@@ -170,7 +170,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         computeSourceContribution(pde, walkSettings, sampler, state);
 
         // sample a direction uniformly
-        Vector<DIM> direction = sampleUnitSphereUniform<DIM>(sampler);
+        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(sampler);
 
         // update walk position
         state.currentPt += distToAbsorbingBoundary*direction;
@@ -380,7 +380,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
             if (!walkSettings.ignoreSourceContribution) {
                 if (antitheticIter == 0) {
                     float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
-                    Vector<DIM> sourceDirection = sampleUnitSphereUniform<DIM>(u);
+                    Vector<DIM> sourceDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
                     sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.sampler, sourceRadius, sourcePdf);
 
                 } else {
@@ -401,14 +401,14 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 float *u = &stratifiedSamples[(DIM - 1)*(2*w + 1)];
                 Vector<DIM> boundaryDirection;
                 if (walkSettings.useCosineSamplingForDerivatives) {
-                    boundaryDirection = sampleUnitHemisphereCosine<DIM>(u);
+                    boundaryDirection = SphereSampler<DIM>::sampleUnitHemisphereCosine(u);
                     if (samplePt.sampler.nextFloat() < 0.5f) boundaryDirection[DIM - 1] *= -1.0f;
-                    boundaryPdf = 0.5f*pdfSampleUnitHemisphereCosine<DIM>(std::fabs(boundaryDirection[DIM - 1]));
-                    transformCoordinates<DIM>(directionForDerivative, boundaryDirection);
+                    boundaryPdf = 0.5f*SphereSampler<DIM>::pdfSampleUnitHemisphereCosine(std::fabs(boundaryDirection[DIM - 1]));
+                    SphereSampler<DIM>::transformCoordinates(directionForDerivative, boundaryDirection);
 
                 } else {
-                    boundaryDirection = sampleUnitSphereUniform<DIM>(u);
-                    boundaryPdf = pdfSampleSphereUniform<DIM>(1.0f);
+                    boundaryDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
+                    boundaryPdf = SphereSampler<DIM>::pdfSampleSphereUniform(1.0f);
                 }
 
                 boundaryPt = greensFn->c + greensFn->R*boundaryDirection;

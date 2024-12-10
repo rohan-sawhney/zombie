@@ -377,7 +377,7 @@ protected:
             float u = sampler.nextFloat();
             r = sampler.nextFloat()*R;
             pdf = evaluate(r)/norm();
-            float pdfRadius = pdf/pdfSampleSphereUniform<DIM>(r);
+            float pdfRadius = pdf/SphereSampler<DIM>::pdfSampleSphereUniform(r);
             iter++;
 
             if (u < pdfRadius/bound) {
@@ -420,7 +420,7 @@ public:
 
     // samples a point inside the ball
     Vector2 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(sampleUnitSphereUniform<2>(sampler), sampler, r, pdf);
+        return sampleVolume(SphereSampler<2>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
     }
 
     // evaluates the Green's function
@@ -453,7 +453,7 @@ public:
 
     // samples a point on the surface of the ball
     Vector2 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector2 y = c + R*sampleUnitSphereUniform<2>(sampler);
+        Vector2 y = c + R*SphereSampler<2>::sampleUnitSphereUniform(sampler);
         pdf = 1.0f/(2.0f*M_PI);
 
         return y;
@@ -527,7 +527,7 @@ public:
 
     // samples a point inside the ball
     Vector3 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(sampleUnitSphereUniform<3>(sampler), sampler, r, pdf);
+        return sampleVolume(SphereSampler<3>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
     }
 
     // evaluates the Green's function
@@ -560,7 +560,7 @@ public:
 
     // samples a point on the surface of the ball
     Vector3 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector3 y = c + R*sampleUnitSphereUniform<3>(sampler);
+        Vector3 y = c + R*SphereSampler<3>::sampleUnitSphereUniform(sampler);
         pdf = 1.0f/(4.0f*M_PI);
 
         return y;
@@ -653,7 +653,7 @@ public:
 
     // samples a point inside the ball
     Vector2 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(sampleUnitSphereUniform<2>(sampler), sampler, r, pdf);
+        return sampleVolume(SphereSampler<2>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
     }
 
     // evaluates the Green's function
@@ -706,7 +706,7 @@ public:
 
     // samples a point on the surface of the ball
     Vector2 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector2 y = c + R*sampleUnitSphereUniform<2>(sampler);
+        Vector2 y = c + R*SphereSampler<2>::sampleUnitSphereUniform(sampler);
         pdf = 1.0f/(2.0f*M_PI);
 
         return y;
@@ -811,7 +811,7 @@ public:
 
     // samples a point inside the ball
     Vector3 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(sampleUnitSphereUniform<3>(sampler), sampler, r, pdf);
+        return sampleVolume(SphereSampler<3>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
     }
 
     // evaluates the Green's function
@@ -869,7 +869,7 @@ public:
 
     // samples a point on the surface of the ball
     Vector3 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector3 y = c + R*sampleUnitSphereUniform<3>(sampler);
+        Vector3 y = c + R*SphereSampler<3>::sampleUnitSphereUniform(sampler);
         pdf = 1.0f/(4.0f*M_PI);
 
         return y;
@@ -949,36 +949,48 @@ protected:
 };
 
 template <size_t DIM>
-float regularizationForGreensFn(float r)
-{
-    return 1.0f;
-}
+class KernelRegularization {
+public:
+    // returns regularization for the Green's function
+    static float regularizationForGreensFn(float r) {
+        return 1.0f;
+    }
 
-template <size_t DIM>
-float regularizationForPoissonKernel(float r)
-{
-    return 1.0f;
-}
-
-template <>
-float regularizationForGreensFn<3>(float r)
-{
-    // source: https://arxiv.org/pdf/1508.00265.pdf
-    return std::erf(r);
-}
+    // returns regularization for the Poisson Kernel
+    static float regularizationForPoissonKernel(float r) {
+        return 1.0f;
+    }
+};
 
 template <>
-float regularizationForPoissonKernel<2>(float r)
-{
-    // source: https://epubs.siam.org/doi/abs/10.1137/S0036142999362845
-    return 1.0f - std::exp(-r*r);
-}
+class KernelRegularization<2> {
+public:
+    // returns regularization for the Green's function
+    static float regularizationForGreensFn(float r) {
+        return 1.0f;
+    }
+
+    // returns regularization for the Poisson Kernel
+    static float regularizationForPoissonKernel(float r) {
+        // source: https://epubs.siam.org/doi/abs/10.1137/S0036142999362845
+        return 1.0f - std::exp(-r*r);
+    }
+};
 
 template <>
-float regularizationForPoissonKernel<3>(float r)
-{
-    // source: https://arxiv.org/pdf/1508.00265.pdf
-    return std::erf(r) - 2.0f*r*std::exp(-r*r)/std::sqrt(M_PI);
-}
+class KernelRegularization<3> {
+public:
+    // returns regularization for the Green's function
+    static float regularizationForGreensFn(float r) {
+        // source: https://arxiv.org/pdf/1508.00265.pdf
+        return std::erf(r);
+    }
+
+    // returns regularization for the Poisson Kernel
+    static float regularizationForPoissonKernel(float r) {
+        // source: https://arxiv.org/pdf/1508.00265.pdf
+        return std::erf(r) - 2.0f*r*std::exp(-r*r)/std::sqrt(M_PI);
+    }
+};
 
 } // zombie

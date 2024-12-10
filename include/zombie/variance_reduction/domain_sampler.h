@@ -12,17 +12,24 @@ namespace zombie {
 template <typename T, size_t DIM>
 class DomainSampler {
 public:
+    // generates sample points inside the user-specified solve region
+    virtual void generateSamples(int nSamples, std::vector<SamplePoint<T, DIM>>& samplePts) = 0;
+};
+
+template <typename T, size_t DIM>
+class UniformDomainSampler: public DomainSampler<T, DIM> {
+public:
     // constructor
-    DomainSampler(const GeometricQueries<DIM>& queries_,
-                  const std::function<bool(const Vector<DIM>&)>& insideSolveRegion_,
-                  const Vector<DIM>& solveRegionMin_,
-                  const Vector<DIM>& solveRegionMax_,
-                  float solveRegionVolume_);
+    UniformDomainSampler(const GeometricQueries<DIM>& queries_,
+                         const std::function<bool(const Vector<DIM>&)>& insideSolveRegion_,
+                         const Vector<DIM>& solveRegionMin_,
+                         const Vector<DIM>& solveRegionMax_,
+                         float solveRegionVolume_);
 
     // generates uniformly distributed sample points inside the solve region;
     // NOTE: may not generate exactly the requested number of samples when the
     // solve region volume does not match the volume of its bounding extents
-    void generateSamples(int nTotalSamples, std::vector<SamplePoint<T, DIM>>& samplePts);
+    void generateSamples(int nSamples, std::vector<SamplePoint<T, DIM>>& samplePts);
 
 protected:
     // members
@@ -41,23 +48,23 @@ protected:
 // - sample points in the domain in proportion to source values
 
 template <typename T, size_t DIM>
-inline DomainSampler<T, DIM>::DomainSampler(const GeometricQueries<DIM>& queries_,
-                                            const std::function<bool(const Vector<DIM>&)>& insideSolveRegion_,
-                                            const Vector<DIM>& solveRegionMin_,
-                                            const Vector<DIM>& solveRegionMax_,
-                                            float solveRegionVolume_):
-                                            queries(queries_),
-                                            insideSolveRegion(insideSolveRegion_),
-                                            solveRegionMin(solveRegionMin_),
-                                            solveRegionMax(solveRegionMax_),
-                                            solveRegionVolume(solveRegionVolume_) {
+inline UniformDomainSampler<T, DIM>::UniformDomainSampler(const GeometricQueries<DIM>& queries_,
+                                                          const std::function<bool(const Vector<DIM>&)>& insideSolveRegion_,
+                                                          const Vector<DIM>& solveRegionMin_,
+                                                          const Vector<DIM>& solveRegionMax_,
+                                                          float solveRegionVolume_):
+                                                          queries(queries_),
+                                                          insideSolveRegion(insideSolveRegion_),
+                                                          solveRegionMin(solveRegionMin_),
+                                                          solveRegionMax(solveRegionMax_),
+                                                          solveRegionVolume(solveRegionVolume_) {
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sampler = pcg32(seed);
 }
 
 template <typename T, size_t DIM>
-inline void DomainSampler<T, DIM>::generateSamples(int nTotalSamples, std::vector<SamplePoint<T, DIM>>& samplePts) {
+inline void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, std::vector<SamplePoint<T, DIM>>& samplePts) {
     // initialize sample points
     samplePts.clear();
     Vector<DIM> regionExtent = solveRegionMax - solveRegionMin;
@@ -65,7 +72,7 @@ inline void DomainSampler<T, DIM>::generateSamples(int nTotalSamples, std::vecto
 
     // generate stratified samples
     std::vector<float> stratifiedSamples;
-    int nStratifiedSamples = nTotalSamples;
+    int nStratifiedSamples = nSamples;
     if (solveRegionVolume > 0.0f) nStratifiedSamples *= regionExtent.prod()*pdf;
     generateStratifiedSamples<DIM>(stratifiedSamples, nStratifiedSamples, sampler);
 
@@ -74,13 +81,14 @@ inline void DomainSampler<T, DIM>::generateSamples(int nTotalSamples, std::vecto
         Vector<DIM> randomVector = Vector<DIM>::Zero();
         for (int j = 0; j < DIM; j++) randomVector[j] = stratifiedSamples[DIM*i + j];
         Vector<DIM> pt = (solveRegionMin.array() + regionExtent.array()*randomVector.array()).matrix();
-        if (!insideSolveRegion(pt)) continue;
 
-        float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
-        float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
-        SamplePoint<T, DIM> samplePt(pt, Vector<DIM>::Zero(), SampleType::InDomain, pdf,
-                                     distToAbsorbingBoundary, distToReflectingBoundary);
-        samplePts.emplace_back(samplePt);
+        if (insideSolveRegion(pt)) {
+            float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
+            float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
+            SamplePoint<T, DIM> samplePt(pt, Vector<DIM>::Zero(), SampleType::InDomain, pdf,
+                                         distToAbsorbingBoundary, distToReflectingBoundary);
+            samplePts.emplace_back(samplePt);
+        }
     }
 }
 

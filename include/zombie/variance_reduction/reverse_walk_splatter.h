@@ -145,7 +145,7 @@ void splatContribution(const WalkState<T, DIM>& state,
     size_t nnCount = nearestNeighborFinder.radiusSearch(state.currentPt, state.greensFn->R, nnIndices);
     bool hasRobinCoeffs = pde.robin ? true : false;
     bool useSelfNormalization = queries.domainIsWatertight && pde.absorptionCoeff == 0.0f;
-    if (pde.robin && useSelfNormalization) useSelfNormalization = pde.robinConditionsArePureNeumann;
+    if (pde.robin && useSelfNormalization) useSelfNormalization = pde.areRobinConditionsPureNeumann;
 
     for (size_t i = 0; i < nnCount; i++) {
         EvaluationPoint<T, DIM>& evalPt = evalPts[nnIndices[i]];
@@ -164,7 +164,7 @@ void splatContribution(const WalkState<T, DIM>& state,
             if (kernelRegularization > 0.0f) {
                 float r = std::max(radiusClamp, (state.currentPt - evalPt.pt).norm());
                 r /= kernelRegularization;
-                G *= regularizationForGreensFn<DIM>(r);
+                G *= KernelRegularization<DIM>::regularizationForGreensFn(r);
             }
 
             float weight = samplePtAlpha*state.throughput*G/sampleContribution.pdf;

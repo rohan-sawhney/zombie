@@ -16,8 +16,8 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
 
     const int nWalks = getOptional<int>(solverConfig, "nWalks", 128);
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
-    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", 0);
-    const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "setpsBeforeUsingMaximalSpheres", maxWalkLength);
+    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "stepsBeforeApplyingTikhonov", 0);
+    const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "stepsBeforeUsingMaximalSpheres", maxWalkLength);
     const int gridRes = getRequired<int>(outputConfig, "gridRes");
 
     const bool disableGradientControlVariates = getOptional<bool>(solverConfig, "disableGradientControlVariates", false);
@@ -41,7 +41,7 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
     std::vector<zombie::SampleEstimationData<2>> sampleEstimationData(samplePts.size());
     for (int i = 0; i < samplePts.size(); i++) {
         sampleEstimationData[i].nWalks = nWalks;
-        sampleEstimationData[i].estimationQuantity = queries.insideDomain(samplePts[i].pt, true) || solveDoubleSided ?
+        sampleEstimationData[i].estimationQuantity = solveDoubleSided || queries.insideDomain(samplePts[i].pt, true) ?
                                                      zombie::EstimationQuantity::Solution:
                                                      zombie::EstimationQuantity::None;
     }
@@ -77,8 +77,8 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
 
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
-    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", 0);
-    const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "setpsBeforeUsingMaximalSpheres", maxWalkLength);
+    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "stepsBeforeApplyingTikhonov", 0);
+    const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "stepsBeforeUsingMaximalSpheres", maxWalkLength);
     const int gridRes = getRequired<int>(outputConfig, "gridRes");
 
     const bool disableGradientControlVariates = getOptional<bool>(solverConfig, "disableGradientControlVariates", false);
@@ -93,7 +93,8 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     // load config settings for boundary value caching
     const int nWalksForCachedSolutionEstimates = getOptional<int>(solverConfig, "nWalksForCachedSolutionEstimates", 128);
     const int nWalksForCachedGradientEstimates = getOptional<int>(solverConfig, "nWalksForCachedGradientEstimates", 640);
-    const int boundaryCacheSize = getOptional<int>(solverConfig, "boundaryCacheSize", 1024);
+    const int absorbingBoundaryCacheSize = getOptional<int>(solverConfig, "absorbingBoundaryCacheSize", 1024);
+    const int reflectingBoundaryCacheSize = getOptional<int>(solverConfig, "reflectingBoundaryCacheSize", 1024);
     const int domainCacheSize = getOptional<int>(solverConfig, "domainCacheSize", 1024);
 
     const bool useFiniteDifferencesForBoundaryDerivatives = getOptional<bool>(solverConfig, "useFiniteDifferencesForBoundaryDerivatives", false);
@@ -121,29 +122,50 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     createEvaluationGrid<zombie::bvc::EvaluationPoint<float, 2>>(evalPts, queries, bbox.first, bbox.second, gridRes);
 
     // generate boundary and domain samples
-    std::vector<zombie::SamplePoint<float, 2>> boundaryCache;
-    std::vector<zombie::SamplePoint<float, 2>> boundaryCacheNormalAligned;
+    std::vector<zombie::SamplePoint<float, 2>> absorbingBoundaryCache;
+    std::vector<zombie::SamplePoint<float, 2>> absorbingBoundaryCacheNormalAligned;
+    std::vector<zombie::SamplePoint<float, 2>> reflectingBoundaryCache;
+    std::vector<zombie::SamplePoint<float, 2>> reflectingBoundaryCacheNormalAligned;
     std::vector<zombie::SamplePoint<float, 2>> domainCache;
 
-    zombie::BoundarySampler<float, 2> boundarySampler(scene.vertices, scene.segments, queries,
-                                                      insideSolveRegionBoundarySampler,
-                                                      pde.hasReflectingBoundaryConditions);
-    boundarySampler.initialize(normalOffsetForAbsorbingBoundary,
-                               normalOffsetForReflectingBoundary,
-                               solveDoubleSided);
-    boundarySampler.generateSamples(boundaryCacheSize, normalOffsetForAbsorbingBoundary,
-                                    normalOffsetForReflectingBoundary, solveDoubleSided,
-                                    boundaryCache, boundaryCacheNormalAligned);
+    zombie::UniformLineSegmentBoundarySampler<float> absorbingBoundarySampler(
+        scene.absorbingBoundaryVertices, scene.absorbingBoundarySegments, queries, insideSolveRegionBoundarySampler);
+    absorbingBoundarySampler.initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
+    absorbingBoundarySampler.generateSamples(absorbingBoundarySampler.getSampleCount(absorbingBoundaryCacheSize, false),
+                                             zombie::SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
+                                             absorbingBoundaryCache, false);
+    if (solveDoubleSided) {
+        absorbingBoundarySampler.generateSamples(absorbingBoundarySampler.getSampleCount(absorbingBoundaryCacheSize, true),
+                                                 zombie::SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
+                                                 absorbingBoundaryCacheNormalAligned, true);
+    }
+
+    zombie::UniformLineSegmentBoundarySampler<float> reflectingBoundarySampler(
+        scene.reflectingBoundaryVertices, scene.reflectingBoundarySegments, queries, insideSolveRegionBoundarySampler);
+    reflectingBoundarySampler.initialize(normalOffsetForReflectingBoundary, solveDoubleSided);
+    reflectingBoundarySampler.generateSamples(reflectingBoundarySampler.getSampleCount(reflectingBoundaryCacheSize, false),
+                                              zombie::SampleType::OnReflectingBoundary, normalOffsetForReflectingBoundary,
+                                              reflectingBoundaryCache, false);
+    if (solveDoubleSided) {
+        reflectingBoundarySampler.generateSamples(reflectingBoundarySampler.getSampleCount(reflectingBoundaryCacheSize, true),
+                                                  zombie::SampleType::OnReflectingBoundary, normalOffsetForReflectingBoundary,
+                                                  reflectingBoundaryCacheNormalAligned, true);
+    }
 
     if (!ignoreSourceContribution) {
-        zombie::DomainSampler<float, 2> domainSampler(queries, insideSolveRegionDomainSampler,
-                                                      bbox.first, bbox.second,
-                                                      scene.getSolveRegionVolume());
+        float regionVolume = solveDoubleSided ? (bbox.second - bbox.first).prod() :
+                                                std::fabs(queries.computeSignedDomainVolume());
+        zombie::UniformDomainSampler<float, 2> domainSampler(queries, insideSolveRegionDomainSampler,
+                                                             bbox.first, bbox.second, regionVolume);
         domainSampler.generateSamples(domainCacheSize, domainCache);
     }
 
     // estimate solution on the boundary and set source values in the interior
-    int totalWork = 2*(boundaryCache.size() + boundaryCacheNormalAligned.size()) + domainCache.size();
+    int totalWork = absorbingBoundaryCache.size() +
+                    absorbingBoundaryCacheNormalAligned.size() +
+                    reflectingBoundaryCache.size() +
+                    reflectingBoundaryCacheNormalAligned.size() +
+                    domainCache.size();
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
 
@@ -162,19 +184,33 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
                                       ignoreSourceContribution, printLogs);
     boundaryValueCaching.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
                                                   nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
-                                                  boundaryCache, useFiniteDifferencesForBoundaryDerivatives,
+                                                  absorbingBoundaryCache, useFiniteDifferencesForBoundaryDerivatives,
                                                   runSingleThreaded, reportProgress);
     boundaryValueCaching.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
                                                   nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
-                                                  boundaryCacheNormalAligned, useFiniteDifferencesForBoundaryDerivatives,
+                                                  absorbingBoundaryCacheNormalAligned, useFiniteDifferencesForBoundaryDerivatives,
+                                                  runSingleThreaded, reportProgress);
+    boundaryValueCaching.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
+                                                  nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
+                                                  reflectingBoundaryCache, useFiniteDifferencesForBoundaryDerivatives,
+                                                  runSingleThreaded, reportProgress);
+    boundaryValueCaching.computeBoundaryEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
+                                                  nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
+                                                  reflectingBoundaryCacheNormalAligned, useFiniteDifferencesForBoundaryDerivatives,
                                                   runSingleThreaded, reportProgress);
     boundaryValueCaching.setSourceValues(pde, domainCache, runSingleThreaded);
 
     // splat solution to evaluation points
-    boundaryValueCaching.splat(pde, boundaryCache, radiusClampForKernels, regularizationForKernels,
+    boundaryValueCaching.splat(pde, absorbingBoundaryCache, radiusClampForKernels, regularizationForKernels,
                                robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
                                normalOffsetForReflectingBoundary, evalPts, reportProgress);
-    boundaryValueCaching.splat(pde, boundaryCacheNormalAligned, radiusClampForKernels, regularizationForKernels,
+    boundaryValueCaching.splat(pde, absorbingBoundaryCacheNormalAligned, radiusClampForKernels, regularizationForKernels,
+                               robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
+                               normalOffsetForReflectingBoundary, evalPts, reportProgress);
+    boundaryValueCaching.splat(pde, reflectingBoundaryCache, radiusClampForKernels, regularizationForKernels,
+                               robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
+                               normalOffsetForReflectingBoundary, evalPts, reportProgress);
+    boundaryValueCaching.splat(pde, reflectingBoundaryCacheNormalAligned, radiusClampForKernels, regularizationForKernels,
                                robinCoeffCutoffForNormalDerivative, normalOffsetForAbsorbingBoundary,
                                normalOffsetForReflectingBoundary, evalPts, reportProgress);
     boundaryValueCaching.splat(pde, domainCache, radiusClampForKernels, regularizationForKernels,
@@ -198,8 +234,8 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
     const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
 
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
-    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "setpsBeforeApplyingTikhonov", 0);
-    const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "setpsBeforeUsingMaximalSpheres", maxWalkLength);
+    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "stepsBeforeApplyingTikhonov", 0);
+    const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "stepsBeforeUsingMaximalSpheres", maxWalkLength);
     const int gridRes = getRequired<int>(outputConfig, "gridRes");
 
     const bool ignoreAbsorbingBoundaryContribution = getOptional<bool>(solverConfig, "ignoreAbsorbingBoundaryContribution", false);
@@ -229,12 +265,6 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
     std::function<bool(const Vector2&)> insideSolveRegionDomainSampler = [&queries, solveDoubleSided](const Vector2& x) -> bool {
         return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
     };
-    std::function<bool(const Vector2&)> returnFalse = [](const Vector2& x) -> bool {
-        return false;
-    };
-    std::function<bool(const Vector2&)> returnTrue = [](const Vector2& x) -> bool {
-        return true;
-    };
 
     std::vector<zombie::rws::EvaluationPoint<float, 2>> evalPts;
     createEvaluationGrid<zombie::rws::EvaluationPoint<float, 2>>(evalPts, queries, bbox.first, bbox.second, gridRes);
@@ -247,30 +277,38 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
     std::vector<zombie::SamplePoint<float, 2>> domainSamplePts;
 
     if (!ignoreAbsorbingBoundaryContribution) {
-        zombie::BoundarySampler<float, 2> absorbingBoundarySampler(
-            scene.absorbingBoundaryVertices, scene.absorbingBoundarySegments,
-            queries, insideSolveRegionBoundarySampler, returnFalse);
-        absorbingBoundarySampler.initialize(normalOffsetForAbsorbingBoundary, 0.0f, solveDoubleSided);
-        absorbingBoundarySampler.generateSamples(absorbingBoundarySampleCount,
-                                                 normalOffsetForAbsorbingBoundary, 0.0f,
-                                                 solveDoubleSided, absorbingBoundarySamplePts,
-                                                 absorbingBoundaryNormalAlignedSamplePts);
+        zombie::UniformLineSegmentBoundarySampler<float> absorbingBoundarySampler(
+            scene.absorbingBoundaryVertices, scene.absorbingBoundarySegments, queries, insideSolveRegionBoundarySampler);
+        absorbingBoundarySampler.initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
+        absorbingBoundarySampler.generateSamples(absorbingBoundarySampler.getSampleCount(absorbingBoundarySampleCount, false),
+                                                 zombie::SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
+                                                 absorbingBoundarySamplePts, false);
+        if (solveDoubleSided) {
+            absorbingBoundarySampler.generateSamples(absorbingBoundarySampler.getSampleCount(absorbingBoundarySampleCount, true),
+                                                     zombie::SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
+                                                     absorbingBoundaryNormalAlignedSamplePts, true);
+        }
     }
 
     if (!ignoreReflectingBoundaryContribution) {
-        zombie::BoundarySampler<float, 2> reflectingBoundarySampler(
-            scene.reflectingBoundaryVertices, scene.reflectingBoundarySegments,
-            queries, insideSolveRegionBoundarySampler, returnTrue);
-        reflectingBoundarySampler.initialize(0.0f, 0.0f, solveDoubleSided);
-        reflectingBoundarySampler.generateSamples(reflectingBoundarySampleCount, 0.0f, 0.0f,
-                                                  solveDoubleSided, reflectingBoundarySamplePts,
-                                                  reflectingBoundaryNormalAlignedSamplePts);
+        zombie::UniformLineSegmentBoundarySampler<float> reflectingBoundarySampler(
+            scene.reflectingBoundaryVertices, scene.reflectingBoundarySegments, queries, insideSolveRegionBoundarySampler);
+        reflectingBoundarySampler.initialize(0.0f, solveDoubleSided);
+        reflectingBoundarySampler.generateSamples(reflectingBoundarySampler.getSampleCount(reflectingBoundarySampleCount, false),
+                                                  zombie::SampleType::OnReflectingBoundary, 0.0f,
+                                                  reflectingBoundarySamplePts, false);
+        if (solveDoubleSided) {
+            reflectingBoundarySampler.generateSamples(reflectingBoundarySampler.getSampleCount(reflectingBoundarySampleCount, true),
+                                                      zombie::SampleType::OnReflectingBoundary, 0.0f,
+                                                      reflectingBoundaryNormalAlignedSamplePts, true);
+        }
     }
 
     if (!ignoreSourceContribution) {
-        zombie::DomainSampler<float, 2> domainSampler(queries, insideSolveRegionDomainSampler,
-                                                      bbox.first, bbox.second,
-                                                      scene.getSolveRegionVolume());
+        float regionVolume = solveDoubleSided ? (bbox.second - bbox.first).prod() :
+                                                std::fabs(queries.computeSignedDomainVolume());
+        zombie::UniformDomainSampler<float, 2> domainSampler(queries, insideSolveRegionDomainSampler,
+                                                             bbox.first, bbox.second, regionVolume);
         domainSampler.generateSamples(domainSampleCount, domainSamplePts);
     }
 
@@ -313,14 +351,10 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
                                       ignoreReflectingBoundaryContribution,
                                       ignoreSourceContribution, printLogs);
     zombie::ReverseWalkOnStars<float, 2> reverseWalkOnStars(queries, splatContribution);
-    reverseWalkOnStars.solve(pde, walkSettings, absorbingBoundarySamplePts,
-                             runSingleThreaded, reportProgress);
-    reverseWalkOnStars.solve(pde, walkSettings, absorbingBoundaryNormalAlignedSamplePts,
-                             runSingleThreaded, reportProgress);
-    reverseWalkOnStars.solve(pde, walkSettings, reflectingBoundarySamplePts,
-                             runSingleThreaded, reportProgress);
-    reverseWalkOnStars.solve(pde, walkSettings, reflectingBoundaryNormalAlignedSamplePts,
-                             runSingleThreaded, reportProgress);
+    reverseWalkOnStars.solve(pde, walkSettings, absorbingBoundarySamplePts, runSingleThreaded, reportProgress);
+    reverseWalkOnStars.solve(pde, walkSettings, absorbingBoundaryNormalAlignedSamplePts, runSingleThreaded, reportProgress);
+    reverseWalkOnStars.solve(pde, walkSettings, reflectingBoundarySamplePts, runSingleThreaded, reportProgress);
+    reverseWalkOnStars.solve(pde, walkSettings, reflectingBoundaryNormalAlignedSamplePts, runSingleThreaded, reportProgress);
     reverseWalkOnStars.solve(pde, walkSettings, domainSamplePts, runSingleThreaded, reportProgress);
     pb.finish();
 

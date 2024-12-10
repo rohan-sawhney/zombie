@@ -56,13 +56,21 @@ struct GeometricQueries {
 
     // members
     bool domainIsWatertight;
+
+    // computes the distance to the boundary
     std::function<float(const Vector<DIM>&, bool)> computeDistToAbsorbingBoundary;
     std::function<float(const Vector<DIM>&, bool)> computeDistToReflectingBoundary;
     std::function<float(const Vector<DIM>&, bool)> computeDistToBoundary;
+
+    // projects a point to the boundary
     std::function<bool(Vector<DIM>&, Vector<DIM>&, float&, bool)> projectToAbsorbingBoundary;
     std::function<bool(Vector<DIM>&, Vector<DIM>&, float&, bool)> projectToReflectingBoundary;
     std::function<bool(Vector<DIM>&, Vector<DIM>&, float&, bool)> projectToBoundary;
+
+    // offsets a point along a direction
     std::function<Vector<DIM>(const Vector<DIM>&, const Vector<DIM>&)> offsetPointAlongDirection;
+
+    // intersects a ray with the boundary
     std::function<bool(const Vector<DIM>&, const Vector<DIM>&, const Vector<DIM>&,
                        float, bool, IntersectionPoint<DIM>&)> intersectAbsorbingBoundary;
     std::function<bool(const Vector<DIM>&, const Vector<DIM>&, const Vector<DIM>&,
@@ -71,12 +79,24 @@ struct GeometricQueries {
                        float, bool, bool, IntersectionPoint<DIM>&)> intersectBoundary;
     std::function<int(const Vector<DIM>&, const Vector<DIM>&, const Vector<DIM>&,
                       float, bool, bool, std::vector<IntersectionPoint<DIM>>&)> intersectBoundaryAllHits;
+
+    // checks whether there is a line of sight between two points
     std::function<bool(const Vector<DIM>&, const Vector<DIM>&, const Vector<DIM>&,
                        const Vector<DIM>&, bool, bool)> intersectsWithReflectingBoundary;
+
+    // samples a point on the boundary
     std::function<bool(const Vector<DIM>&, float, const Vector<DIM>&, BoundarySample<DIM>&)> sampleReflectingBoundary;
+
+    // computes the radius of a star-shaped region on a reflecting boundary
     std::function<float(const Vector<DIM>&, float, float, float, bool)> computeStarRadiusForReflectingBoundary;
-    std::function<bool(const Vector<DIM>&, bool)> insideDomain; // NOTE: specialized to watertight domains
+
+    // checks if a point is inside the domain (assuming it is watertight)
+    std::function<bool(const Vector<DIM>&, bool)> insideDomain;
+
+    // checks if a point is outside the bounding domain
     std::function<bool(const Vector<DIM>&)> outsideBoundingDomain;
+
+    // computes the signed volume of a domain
     std::function<float()> computeSignedDomainVolume;
 };
 

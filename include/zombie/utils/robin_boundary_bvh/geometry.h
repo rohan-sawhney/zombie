@@ -47,8 +47,8 @@ public:
     Vector3 n[3];
     float minRobinCoeff;
     float maxRobinCoeff;
-    bool hasAdjacentFace[4]; // padded to 4 from 3
-    bool ignoreAdjacentFace[4]; // padded to 4 from 3
+    bool hasAdjacentFace[3];
+    bool ignoreAdjacentFace[3];
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,6 +78,25 @@ inline float findFarthestPointLineSegment(const Vector2& pa, const Vector2& pb,
     pt = pb;
     return std::sqrt(db);
 }
+
+struct RobinLineSegmentBound {
+    // computes the squared star radius bound
+    static void computeSquaredStarRadiusBound(BoundingSphere<2>& s, float maxRobinCoeff,
+                                              const Vector2& viewDirClosest, float closestPtDist,
+                                              const Vector2& viewDirFarthest, float farthestPtDist,
+                                              const Vector2& planePt, const Vector2& planeNormal) {
+        Vector2 planeClosestPt;
+        float h = findClosestPointPlane<2>(planePt, planeNormal, s.c, planeClosestPt);
+        float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(planeNormal));
+        float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(planeNormal));
+        float cosLine = std::sqrt(h*maxRobinCoeff)/SQRT_2;
+        float cosLineSegment = std::clamp(cosLine, cosLowerBound, cosUpperBound);
+        float cosLineSegment2 = cosLineSegment*cosLineSegment;
+        float lineSegmentRadius = (h/cosLineSegment)*std::exp(cosLineSegment2/(h*maxRobinCoeff));
+        float lineSegmentRadius2 = lineSegmentRadius*lineSegmentRadius;
+        s.r2 = std::min(s.r2, lineSegmentRadius2);
+    }
+};
 
 inline RobinLineSegment::RobinLineSegment():
 LineSegment(),
@@ -146,16 +165,8 @@ inline void RobinLineSegment::computeSquaredStarRadius(BoundingSphere<2>& s,
                 Vector2 farthestPt;
                 float farthestPtDist = findFarthestPointLineSegment(pa, pb, s.c, farthestPt);
                 Vector2 viewDirFarthest = s.c - farthestPt;
-                Vector2 planeClosestPt;
-                float h = findClosestPointPlane<2>(pa, n0, s.c, planeClosestPt);
-                float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(n0));
-                float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(n0));
-                float cosLine = std::sqrt(h*maxRobinCoeff)/SQRT_2;
-                float cosLineSegment = std::clamp(cosLine, cosLowerBound, cosUpperBound);
-                float cosLineSegment2 = cosLineSegment*cosLineSegment;
-                float lineSegmentRadius = (h/cosLineSegment)*std::exp(cosLineSegment2/(h*maxRobinCoeff));
-                float lineSegmentRadius2 = lineSegmentRadius*lineSegmentRadius;
-                s.r2 = std::min(s.r2, lineSegmentRadius2);
+                RobinLineSegmentBound::computeSquaredStarRadiusBound(s, maxRobinCoeff, viewDirClosest, closestPtDist,
+                                                                     viewDirFarthest, farthestPtDist, pa, n0);
             }
 
         } else {
@@ -188,13 +199,35 @@ inline float findFarthestPointTriangle(const Vector3& pa, const Vector3& pb, con
     return std::sqrt(dc);
 }
 
+struct RobinTriangleBound {
+    // computes the squared star radius bound
+    static void computeSquaredStarRadiusBound(BoundingSphere<3>& s, float maxRobinCoeff,
+                                              const Vector3& viewDirClosest, float closestPtDist,
+                                              const Vector3& viewDirFarthest, float farthestPtDist,
+                                              const Vector3& planePt, const Vector3& planeNormal) {
+        Vector3 planeClosestPt;
+        float h = findClosestPointPlane<3>(planePt, planeNormal, s.c, planeClosestPt);
+        float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(planeNormal));
+        float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(planeNormal));
+        float maxCosForBound = std::sqrt(h*maxRobinCoeff);
+        if (maxCosForBound >= cosLowerBound) {
+            float cosPlane = maxCosForBound/SQRT_3;
+            float cosTriangle = std::clamp(cosPlane, cosLowerBound, cosUpperBound);
+            float cosTriangle2 = cosTriangle*cosTriangle;
+            float triangleRadius = h*h*maxRobinCoeff/(cosTriangle*(h*maxRobinCoeff - cosTriangle2));
+            float triangleRadius2 = triangleRadius*triangleRadius;
+            s.r2 = std::min(s.r2, triangleRadius2);
+        }
+    }
+};
+
 inline RobinTriangle::RobinTriangle():
 Triangle(),
 n{Vector3::Zero(), Vector3::Zero(), Vector3::Zero()},
 minRobinCoeff(minFloat),
 maxRobinCoeff(maxFloat)
 {
-    for (size_t i = 0; i < 4; ++i) {
+    for (size_t i = 0; i < 3; ++i) {
         hasAdjacentFace[i] = false;
         ignoreAdjacentFace[i] = true;
     }
@@ -253,18 +286,8 @@ inline void RobinTriangle::computeSquaredStarRadius(BoundingSphere<3>& s,
                 Vector3 farthestPt;
                 float farthestPtDist = findFarthestPointTriangle(pa, pb, pc, s.c, farthestPt);
                 Vector3 viewDirFarthest = s.c - farthestPt;
-                Vector3 planeClosestPt;
-                float h = findClosestPointPlane<3>(pa, n0, s.c, planeClosestPt);
-                float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(n0));
-                float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(n0));
-                float maxCosForBound = std::sqrt(h*maxRobinCoeff);
-                if (maxCosForBound < cosLowerBound) return;
-                float cosPlane = maxCosForBound/SQRT_3;
-                float cosTriangle = std::clamp(cosPlane, cosLowerBound, cosUpperBound);
-                float cosTriangle2 = cosTriangle*cosTriangle;
-                float triangleRadius = h*h*maxRobinCoeff/(cosTriangle*(h*maxRobinCoeff - cosTriangle2));
-                float triangleRadius2 = triangleRadius*triangleRadius;
-                s.r2 = std::min(s.r2, triangleRadius2);
+                RobinTriangleBound::computeSquaredStarRadiusBound(s, maxRobinCoeff, viewDirClosest, closestPtDist,
+                                                                  viewDirFarthest, farthestPtDist, pa, n0);
             }
 
         } else {
@@ -332,7 +355,7 @@ inline FloatP<WIDTH> findFarthestPointWideTriangle(const Vector3P<WIDTH>& pa, co
 }
 
 template<size_t WIDTH>
-inline Vector2P<WIDTH> computeWideLineSegmentNormal(const Vector2P<WIDTH>& pa,
+inline Vector2P<WIDTH> computeNormalWideLineSegment(const Vector2P<WIDTH>& pa,
                                                     const Vector2P<WIDTH>& pb)
 {
     Vector2P<WIDTH> v = pb - pa;
@@ -344,7 +367,7 @@ inline Vector2P<WIDTH> computeWideLineSegmentNormal(const Vector2P<WIDTH>& pa,
 }
 
 template<size_t WIDTH>
-inline Vector3P<WIDTH> computeWideTriangleNormal(const Vector3P<WIDTH>& pa,
+inline Vector3P<WIDTH> computeNormalWideTriangle(const Vector3P<WIDTH>& pa,
                                                  const Vector3P<WIDTH>& pb,
                                                  const Vector3P<WIDTH>& pc)
 {
@@ -353,6 +376,28 @@ inline Vector3P<WIDTH> computeWideTriangleNormal(const Vector3P<WIDTH>& pa,
 
     return enoki::normalize(enoki::cross(v1, v2));
 }
+
+template<size_t WIDTH>
+struct RobinWideLineSegmentBound {
+    // computes the squared star radius bound
+    static void computeSquaredStarRadiusBound(const enokiVector2& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
+                                              const MaskP<WIDTH> activeRobin, const Vector2P<WIDTH>& viewDirClosest,
+                                              const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
+                                              const Vector2P<WIDTH>& viewDirFarthest, const FloatP<WIDTH>& farthestPtDist,
+                                              const Vector2P<WIDTH>& planePt, const Vector2P<WIDTH>& planeNormal) {
+        Vector2P<WIDTH> planeClosestPt;
+        FloatP<WIDTH> h = findClosestPointWidePlane<WIDTH, 2>(planePt, planeNormal, sc, planeClosestPt);
+        FloatP<WIDTH> cosUpperBound = enoki::abs(enoki::dot(viewDirClosest*enoki::rcp(closestPtDist), planeNormal));
+        FloatP<WIDTH> cosLowerBound = enoki::abs(enoki::dot(viewDirFarthest*enoki::rcp(farthestPtDist), planeNormal));
+        FloatP<WIDTH> hMaxRobinCoeff = h*maxRobinCoeff;
+        FloatP<WIDTH> cosLine = enoki::sqrt(hMaxRobinCoeff)/SQRT_2;
+        FloatP<WIDTH> cosLineSegment = enoki::clamp(cosLine, cosLowerBound, cosUpperBound);
+        FloatP<WIDTH> cosLineSegment2 = cosLineSegment*cosLineSegment;
+        FloatP<WIDTH> lineSegmentRadius = (h*enoki::rcp(cosLineSegment))*enoki::exp(cosLineSegment2*enoki::rcp(hMaxRobinCoeff));
+        FloatP<WIDTH> lineSegmentRadius2 = lineSegmentRadius*lineSegmentRadius;
+        enoki::masked(r2, activeRobin && r2 > closestPtDist2) = enoki::min(r2, lineSegmentRadius2);
+    }
+};
 
 template<size_t WIDTH, size_t DIM>
 inline FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
@@ -393,7 +438,7 @@ inline FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
         MaskP<WIDTH> activeNotDirichlet = active && isNotDirichlet;
         if (enoki::any(activeNotDirichlet)) {
             // [Neumann case]: dist to closest visibility silhouette
-            Vector2P<WIDTH> n0 = computeWideLineSegmentNormal<WIDTH>(pa, pb);
+            Vector2P<WIDTH> n0 = computeNormalWideLineSegment<WIDTH>(pa, pb);
             Vector2P<WIDTH> viewDirClosest = sc - closestPt;
 
             if (performSilhouetteTests) {
@@ -434,23 +479,38 @@ inline FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
                 Vector2P<WIDTH> farthestPt;
                 FloatP<WIDTH> farthestPtDist = findFarthestPointWideLineSegment<WIDTH>(pa, pb, sc, farthestPt);
                 Vector2P<WIDTH> viewDirFarthest = sc - farthestPt;
-                Vector2P<WIDTH> planeClosestPt;
-                FloatP<WIDTH> h = findClosestPointWidePlane<WIDTH, 2>(pa, n0, sc, planeClosestPt);
-                FloatP<WIDTH> cosUpperBound = enoki::abs(enoki::dot(viewDirClosest*enoki::rcp(closestPtDist), n0));
-                FloatP<WIDTH> cosLowerBound = enoki::abs(enoki::dot(viewDirFarthest*enoki::rcp(farthestPtDist), n0));
-                FloatP<WIDTH> hMaxRobinCoeff = h*maxRobinCoeff;
-                FloatP<WIDTH> cosLine = enoki::sqrt(hMaxRobinCoeff)/SQRT_2;
-                FloatP<WIDTH> cosLineSegment = enoki::clamp(cosLine, cosLowerBound, cosUpperBound);
-                FloatP<WIDTH> cosLineSegment2 = cosLineSegment*cosLineSegment;
-                FloatP<WIDTH> lineSegmentRadius = (h*enoki::rcp(cosLineSegment))*enoki::exp(cosLineSegment2*enoki::rcp(hMaxRobinCoeff));
-                FloatP<WIDTH> lineSegmentRadius2 = lineSegmentRadius*lineSegmentRadius;
-                enoki::masked(r2, activeRobin && r2 > closestPtDist2) = enoki::min(r2, lineSegmentRadius2);
+                RobinWideLineSegmentBound<WIDTH>::computeSquaredStarRadiusBound(sc, r2, maxRobinCoeff, activeRobin,
+                                                                                viewDirClosest, closestPtDist, closestPtDist2,
+                                                                                viewDirFarthest, farthestPtDist, pa, n0);
             }
         }
     }
 
     return r2;
 }
+
+template<size_t WIDTH>
+struct RobinWideTriangleBound {
+    // computes the squared star radius bound
+    static void computeSquaredStarRadiusBound(const enokiVector3& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
+                                              const MaskP<WIDTH> activeRobin, const Vector3P<WIDTH>& viewDirClosest,
+                                              const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
+                                              const Vector3P<WIDTH>& viewDirFarthest, const FloatP<WIDTH>& farthestPtDist,
+                                              const Vector3P<WIDTH>& planePt, const Vector3P<WIDTH>& planeNormal) {
+        Vector3P<WIDTH> planeClosestPt;
+        FloatP<WIDTH> h = findClosestPointWidePlane<WIDTH, 3>(planePt, planeNormal, sc, planeClosestPt);
+        FloatP<WIDTH> cosUpperBound = enoki::abs(enoki::dot(viewDirClosest*enoki::rcp(closestPtDist), planeNormal));
+        FloatP<WIDTH> cosLowerBound = enoki::abs(enoki::dot(viewDirFarthest*enoki::rcp(farthestPtDist), planeNormal));
+        FloatP<WIDTH> hMaxRobinCoeff = h*maxRobinCoeff;
+        FloatP<WIDTH> maxCosForBound = enoki::sqrt(hMaxRobinCoeff);
+        FloatP<WIDTH> cosPlane = maxCosForBound/SQRT_3;
+        FloatP<WIDTH> cosTriangle = enoki::clamp(cosPlane, cosLowerBound, cosUpperBound);
+        FloatP<WIDTH> cosTriangle2 = cosTriangle*cosTriangle;
+        FloatP<WIDTH> triangleRadius = h*hMaxRobinCoeff*enoki::rcp(cosTriangle*(hMaxRobinCoeff - cosTriangle2));
+        FloatP<WIDTH> triangleRadius2 = triangleRadius*triangleRadius;
+        enoki::masked(r2, activeRobin && maxCosForBound >= cosLowerBound && r2 > closestPtDist2) = enoki::min(r2, triangleRadius2);
+    }
+};
 
 template<size_t WIDTH>
 inline FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
@@ -479,7 +539,7 @@ inline FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
         MaskP<WIDTH> activeNotDirichlet = active && isNotDirichlet;
         if (enoki::any(activeNotDirichlet)) {
             // [Neumann case]: dist to closest visibility silhouette
-            Vector3P<WIDTH> n0 = computeWideTriangleNormal<WIDTH>(pa, pb, pc);
+            Vector3P<WIDTH> n0 = computeNormalWideTriangle<WIDTH>(pa, pb, pc);
             Vector3P<WIDTH> viewDirClosest = sc - closestPt;
 
             if (performSilhouetteTests) {
@@ -518,18 +578,9 @@ inline FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
                 Vector3P<WIDTH> farthestPt;
                 FloatP<WIDTH> farthestPtDist = findFarthestPointWideTriangle<WIDTH>(pa, pb, pc, sc, farthestPt);
                 Vector3P<WIDTH> viewDirFarthest = sc - farthestPt;
-                Vector3P<WIDTH> planeClosestPt;
-                FloatP<WIDTH> h = findClosestPointWidePlane<WIDTH, 3>(pa, n0, sc, planeClosestPt);
-                FloatP<WIDTH> cosUpperBound = enoki::abs(enoki::dot(viewDirClosest*enoki::rcp(closestPtDist), n0));
-                FloatP<WIDTH> cosLowerBound = enoki::abs(enoki::dot(viewDirFarthest*enoki::rcp(farthestPtDist), n0));
-                FloatP<WIDTH> hMaxRobinCoeff = h*maxRobinCoeff;
-                FloatP<WIDTH> maxCosForBound = enoki::sqrt(hMaxRobinCoeff);
-                FloatP<WIDTH> cosPlane = maxCosForBound/SQRT_3;
-                FloatP<WIDTH> cosTriangle = enoki::clamp(cosPlane, cosLowerBound, cosUpperBound);
-                FloatP<WIDTH> cosTriangle2 = cosTriangle*cosTriangle;
-                FloatP<WIDTH> triangleRadius = h*hMaxRobinCoeff*enoki::rcp(cosTriangle*(hMaxRobinCoeff - cosTriangle2));
-                FloatP<WIDTH> triangleRadius2 = triangleRadius*triangleRadius;
-                enoki::masked(r2, activeRobin && maxCosForBound >= cosLowerBound && r2 > closestPtDist2) = enoki::min(r2, triangleRadius2);
+                RobinWideTriangleBound<WIDTH>::computeSquaredStarRadiusBound(sc, r2, maxRobinCoeff, activeRobin,
+                                                                             viewDirClosest, closestPtDist, closestPtDist2,
+                                                                             viewDirFarthest, farthestPtDist, pa, n0);
             }
         }
     }

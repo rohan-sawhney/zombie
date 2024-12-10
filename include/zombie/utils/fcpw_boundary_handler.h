@@ -595,19 +595,19 @@ public:
             if (buildBvh) {
                 if (enableBvhVectorization) {
 #ifdef FCPW_USE_ENOKI
-                    bvh = initializeRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub,
-                                                                  true, true, FCPW_SIMD_WIDTH);
-                    mbvh = initializeVectorizedRobinBvh<2, RobinLineSegment>(bvh.get(), lineSegmentPtrs,
-                                                                             silhouettePtrsStub, true);
+                    bvh = createRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub,
+                                                              true, true, FCPW_SIMD_WIDTH);
+                    mbvh = createVectorizedRobinBvh<2, RobinLineSegment>(bvh.get(), lineSegmentPtrs,
+                                                                         silhouettePtrsStub, true);
 #else
-                    bvh = initializeRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub);
+                    bvh = createRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub);
 #endif
                 } else {
-                    bvh = initializeRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub);
+                    bvh = createRobinBvh<2, RobinLineSegment>(soup, lineSegmentPtrs, silhouettePtrsStub);
                 }
 
             } else {
-                baseline = initializeRobinBaseline<2, RobinLineSegment>(lineSegmentPtrs, silhouettePtrsStub);
+                baseline = createRobinBaseline<2, RobinLineSegment>(lineSegmentPtrs, silhouettePtrsStub);
             }
         }
     }
@@ -765,19 +765,19 @@ public:
             if (buildBvh) {
                 if (enableBvhVectorization) {
 #ifdef FCPW_USE_ENOKI
-                    bvh = initializeRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub,
-                                                               true, true, FCPW_SIMD_WIDTH);
-                    mbvh = initializeVectorizedRobinBvh<3, RobinTriangle>(bvh.get(), trianglePtrs,
-                                                                          silhouettePtrsStub, true);
+                    bvh = createRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub,
+                                                           true, true, FCPW_SIMD_WIDTH);
+                    mbvh = createVectorizedRobinBvh<3, RobinTriangle>(bvh.get(), trianglePtrs,
+                                                                      silhouettePtrsStub, true);
 #else
-                    bvh = initializeRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub);
+                    bvh = createRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub);
 #endif
                 } else {
-                    bvh = initializeRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub);
+                    bvh = createRobinBvh<3, RobinTriangle>(soup, trianglePtrs, silhouettePtrsStub);
                 }
 
             } else {
-                baseline = initializeRobinBaseline<3, RobinTriangle>(trianglePtrs, silhouettePtrsStub);
+                baseline = createRobinBaseline<3, RobinTriangle>(trianglePtrs, silhouettePtrsStub);
             }
         }
     }

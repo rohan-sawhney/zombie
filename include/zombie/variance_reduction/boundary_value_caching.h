@@ -40,8 +40,10 @@ struct EvaluationPoint {
 
 protected:
     // members
-    std::unique_ptr<SampleStatistics<T, DIM>> boundaryStatistics;
-    std::unique_ptr<SampleStatistics<T, DIM>> boundaryNormalAlignedStatistics;
+    std::unique_ptr<SampleStatistics<T, DIM>> absorbingBoundaryStatistics;
+    std::unique_ptr<SampleStatistics<T, DIM>> absorbingBoundaryNormalAlignedStatistics;
+    std::unique_ptr<SampleStatistics<T, DIM>> reflectingBoundaryStatistics;
+    std::unique_ptr<SampleStatistics<T, DIM>> reflectingBoundaryNormalAlignedStatistics;
     std::unique_ptr<SampleStatistics<T, DIM>> sourceStatistics;
 
     template <typename A, size_t B>
@@ -182,15 +184,19 @@ inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
                                                 pt(pt_), normal(normal_), type(type_),
                                                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
                                                 distToReflectingBoundary(distToReflectingBoundary_) {
-    boundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>();
-    boundaryNormalAlignedStatistics = std::make_unique<SampleStatistics<T, DIM>>();
+    absorbingBoundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>();
+    absorbingBoundaryNormalAlignedStatistics = std::make_unique<SampleStatistics<T, DIM>>();
+    reflectingBoundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>();
+    reflectingBoundaryNormalAlignedStatistics = std::make_unique<SampleStatistics<T, DIM>>();
     sourceStatistics = std::make_unique<SampleStatistics<T, DIM>>();
 }
 
 template <typename T, size_t DIM>
 inline T EvaluationPoint<T, DIM>::getEstimatedSolution() const {
-    T solution = boundaryStatistics->getEstimatedSolution();
-    solution += boundaryNormalAlignedStatistics->getEstimatedSolution();
+    T solution = absorbingBoundaryStatistics->getEstimatedSolution();
+    solution += absorbingBoundaryNormalAlignedStatistics->getEstimatedSolution();
+    solution += reflectingBoundaryStatistics->getEstimatedSolution();
+    solution += reflectingBoundaryNormalAlignedStatistics->getEstimatedSolution();
     solution += sourceStatistics->getEstimatedSolution();
 
     return solution;
@@ -200,16 +206,20 @@ template <typename T, size_t DIM>
 inline void EvaluationPoint<T, DIM>::getEstimatedGradient(std::vector<T>& gradient) const {
     gradient.resize(DIM);
     for (int i = 0; i < DIM; i++) {
-        gradient[i] = boundaryStatistics->getEstimatedGradient()[i];
-        gradient[i] += boundaryNormalAlignedStatistics->getEstimatedGradient()[i];
+        gradient[i] = absorbingBoundaryStatistics->getEstimatedGradient()[i];
+        gradient[i] += absorbingBoundaryNormalAlignedStatistics->getEstimatedGradient()[i];
+        gradient[i] += reflectingBoundaryStatistics->getEstimatedGradient()[i];
+        gradient[i] += reflectingBoundaryNormalAlignedStatistics->getEstimatedGradient()[i];
         gradient[i] += sourceStatistics->getEstimatedGradient()[i];
     }
 }
 
 template <typename T, size_t DIM>
 inline void EvaluationPoint<T, DIM>::reset() {
-    boundaryStatistics->reset();
-    boundaryNormalAlignedStatistics->reset();
+    absorbingBoundaryStatistics->reset();
+    absorbingBoundaryNormalAlignedStatistics->reset();
+    reflectingBoundaryStatistics->reset();
+    reflectingBoundaryNormalAlignedStatistics->reset();
     sourceStatistics->reset();
 }
 
@@ -418,7 +428,12 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
         // update statistics
         evalPt.reset();
         T solutionEstimate = samplePt.statistics->getEstimatedSolution();
-        evalPt.boundaryStatistics->addSolutionEstimate(solutionEstimate);
+        if (evalPt.type == SampleType::OnAbsorbingBoundary) {
+            evalPt.absorbingBoundaryStatistics->addSolutionEstimate(solutionEstimate);
+
+        } else if (evalPt.type == SampleType::OnReflectingBoundary) {
+            evalPt.reflectingBoundaryStatistics->addSolutionEstimate(solutionEstimate);
+        }
     }
 }
 
@@ -481,7 +496,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimationData(const PDE<T, DIM>& p
             estimationData[i].nWalks = nWalksForGradientEstimates;
 
         } else if (samplePt.type == SampleType::OnReflectingBoundary) {
-            if (!pde.robinConditionsArePureNeumann) {
+            if (!pde.areRobinConditionsPureNeumann) {
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         samplePt.estimateBoundaryNormalAligned;
                 samplePt.robinCoeff = pde.robinCoeff(samplePt.pt, returnBoundaryNormalAlignedValue);
@@ -523,7 +538,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
             if (!walkSettings.ignoreReflectingBoundaryContribution) {
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         samplePt.estimateBoundaryNormalAligned;
-                if (pde.robinConditionsArePureNeumann) {
+                if (pde.areRobinConditionsPureNeumann) {
                     samplePt.normalDerivative = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
 
                 } else {
@@ -589,8 +604,8 @@ inline void BoundaryValueCaching<T, DIM>::splatBoundaryData(const SamplePoint<T,
 
     if (kernelRegularization > 0.0f) {
         r /= kernelRegularization;
-        G *= regularizationForGreensFn<DIM>(r);
-        P *= regularizationForPoissonKernel<DIM>(r);
+        G *= KernelRegularization<DIM>::regularizationForGreensFn(r);
+        P *= KernelRegularization<DIM>::regularizationForPoissonKernel(r);
     }
 
     T solutionEstimate;
@@ -626,12 +641,24 @@ inline void BoundaryValueCaching<T, DIM>::splatBoundaryData(const SamplePoint<T,
 
     // update statistics
     if (samplePt.estimateBoundaryNormalAligned) {
-        evalPt.boundaryNormalAlignedStatistics->addSolutionEstimate(solutionEstimate);
-        evalPt.boundaryNormalAlignedStatistics->addGradientEstimate(gradientEstimate);
+        if (samplePt.type == SampleType::OnAbsorbingBoundary) {
+            evalPt.absorbingBoundaryNormalAlignedStatistics->addSolutionEstimate(solutionEstimate);
+            evalPt.absorbingBoundaryNormalAlignedStatistics->addGradientEstimate(gradientEstimate);
+
+        } else if (samplePt.type == SampleType::OnReflectingBoundary) {
+            evalPt.reflectingBoundaryNormalAlignedStatistics->addSolutionEstimate(solutionEstimate);
+            evalPt.reflectingBoundaryNormalAlignedStatistics->addGradientEstimate(gradientEstimate);
+        }
 
     } else {
-        evalPt.boundaryStatistics->addSolutionEstimate(solutionEstimate);
-        evalPt.boundaryStatistics->addGradientEstimate(gradientEstimate);
+        if (samplePt.type == SampleType::OnAbsorbingBoundary) {
+            evalPt.absorbingBoundaryStatistics->addSolutionEstimate(solutionEstimate);
+            evalPt.absorbingBoundaryStatistics->addGradientEstimate(gradientEstimate);
+
+        } else if (samplePt.type == SampleType::OnReflectingBoundary) {
+            evalPt.reflectingBoundaryStatistics->addSolutionEstimate(solutionEstimate);
+            evalPt.reflectingBoundaryStatistics->addGradientEstimate(gradientEstimate);
+        }
     }
 }
 
@@ -657,7 +684,7 @@ inline void BoundaryValueCaching<T, DIM>::splatSourceData(const SamplePoint<T, D
 
     if (kernelRegularization > 0.0f) {
         r /= kernelRegularization;
-        G *= regularizationForGreensFn<DIM>(r);
+        G *= KernelRegularization<DIM>::regularizationForGreensFn(r);
     }
 
     float alpha = evalPt.type == SampleType::OnAbsorbingBoundary ||

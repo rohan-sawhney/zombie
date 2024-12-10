@@ -20,9 +20,6 @@ public:
     // constructor
     Scene(const json& config);
 
-    // returns the volume of the solve region
-    float getSolveRegionVolume() const;
-
     // members
     std::pair<Vector2, Vector2> bbox;
     std::vector<Vector2> vertices;
@@ -90,11 +87,6 @@ queries(getOptional<bool>(config, "isWatertight", true)) {
     populateGeometricQueries();
 }
 
-float Scene::getSolveRegionVolume() const {
-    if (isDoubleSided) return (bbox.second - bbox.first).prod();
-    return std::fabs(queries.computeSignedDomainVolume());
-}
-
 void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation) {
     zombie::loadBoundaryMesh<2>(filename, vertices, segments);
     if (normalize) zombie::normalize<2>(vertices);
@@ -126,7 +118,7 @@ void Scene::setupPDE() {
         Vector2 uv = (x - bMin)/maxLength;
         return this->isReflectingBoundary->get(uv)[0] > 0;
     };
-    pde.robinConditionsArePureNeumann = robinCoeff == 0.0f;
+    pde.areRobinConditionsPureNeumann = robinCoeff == 0.0f;
     pde.absorptionCoeff = absorptionCoeff;
 }
 

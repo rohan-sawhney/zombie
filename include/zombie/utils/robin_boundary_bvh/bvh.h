@@ -59,7 +59,7 @@ protected:
 };
 
 template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>> initializeRobinBvh(
+std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>> createRobinBvh(
                                                     PolygonSoup<DIM>& soup,
                                                     std::vector<PrimitiveType *>& primitives,
                                                     std::vector<SilhouettePrimitive<DIM> *>& silhouettes,
@@ -390,31 +390,73 @@ inline void RobinBvh<DIM, NodeType, PrimitiveType>::updateRobinCoefficients(cons
 }
 
 template<size_t DIM>
-inline float computeNodeSquaredStarRadiusBound(float r0, float r1, float robinCoeff, float cosTheta)
-{
-    std::cerr << "computeNodeSquaredStarRadiusBound(): DIM: " << DIM << " not supported" << std::endl;
-    exit(EXIT_FAILURE);
+struct RobinBvhNodeBound {
+    // computes the minimum squared star radius bound
+    static float computeMinSquaredStarRadiusBound(float rMin, float rMax,
+                                                  float minRobinCoeff, float maxRobinCoeff,
+                                                  float minCosTheta, float maxCosTheta) {
+        std::cerr << "RobinBvhNodeBound::computeMinSquaredStarRadiusBound(): DIM: " << DIM << " not supported" << std::endl;
+        exit(EXIT_FAILURE);
 
-    return 0.0f;
-}
-
-template<>
-inline float computeNodeSquaredStarRadiusBound<2>(float r0, float r1, float robinCoeff, float cosTheta)
-{
-    float rBound = r0*std::exp(cosTheta/(robinCoeff*r1));
-    return rBound*rBound;
-}
-
-template<>
-inline float computeNodeSquaredStarRadiusBound<3>(float r0, float r1, float robinCoeff, float cosTheta)
-{
-    if (r1 < cosTheta/robinCoeff) {
-        return maxFloat;
+        return 0.0f;
     }
 
-    float rBound = r0/(1.0f - (cosTheta/(robinCoeff*r1)));
-    return rBound*rBound;
-}
+    // computes the maximum squared star radius bound
+    static float computeMaxSquaredStarRadiusBound(float rMin, float rMax,
+                                                  float minRobinCoeff, float maxRobinCoeff,
+                                                  float minCosTheta, float maxCosTheta) {
+        std::cerr << "RobinBvhNodeBound::computeMaxSquaredStarRadiusBound(): DIM: " << DIM << " not supported" << std::endl;
+        exit(EXIT_FAILURE);
+
+        return 0.0f;
+    }
+};
+
+template<>
+struct RobinBvhNodeBound<2> {
+    // computes the minimum squared star radius bound
+    static float computeMinSquaredStarRadiusBound(float rMin, float rMax,
+                                                  float minRobinCoeff, float maxRobinCoeff,
+                                                  float minCosTheta, float maxCosTheta) {
+        float rBound = rMin*std::exp(minCosTheta/(maxRobinCoeff*rMax));
+        return rBound*rBound;
+    }
+
+    // computes the maximum squared star radius bound
+    static float computeMaxSquaredStarRadiusBound(float rMin, float rMax,
+                                                  float minRobinCoeff, float maxRobinCoeff,
+                                                  float minCosTheta, float maxCosTheta) {
+        float rBound = rMax*std::exp(maxCosTheta/(minRobinCoeff*rMin));
+        return rBound*rBound;
+    }
+};
+
+template<>
+struct RobinBvhNodeBound<3> {
+    // computes the minimum squared star radius bound
+    static float computeMinSquaredStarRadiusBound(float rMin, float rMax,
+                                                  float minRobinCoeff, float maxRobinCoeff,
+                                                  float minCosTheta, float maxCosTheta) {
+        if (rMax < minCosTheta/maxRobinCoeff) {
+            return maxFloat;
+        }
+
+        float rBound = rMin/(1.0f - (minCosTheta/(maxRobinCoeff*rMax)));
+        return rBound*rBound;
+    }
+
+    // computes the maximum squared star radius bound
+    static float computeMaxSquaredStarRadiusBound(float rMin, float rMax,
+                                                  float minRobinCoeff, float maxRobinCoeff,
+                                                  float minCosTheta, float maxCosTheta) {
+        if (rMin < maxCosTheta/minRobinCoeff) {
+            return maxFloat;
+        }
+
+        float rBound = rMax/(1.0f - (maxCosTheta/(minRobinCoeff*rMin)));
+        return rBound*rBound;
+    }
+};
 
 template<size_t DIM, typename NodeType, typename PrimitiveType>
 inline bool RobinBvh<DIM, NodeType, PrimitiveType>::visitNode(const BoundingSphere<DIM>& s, int nodeIndex,
@@ -441,8 +483,10 @@ inline bool RobinBvh<DIM, NodeType, PrimitiveType>::visitNode(const BoundingSphe
                     float minAbsCosTheta = std::min(std::fabs(std::cos(maximalAngles[0])),
                                                     std::fabs(std::cos(maximalAngles[1])));
                     float maxAbsCosTheta = 1.0f; // assume maxCosTheta = 1.0f for simplicity
-                    r2MinBound = computeNodeSquaredStarRadiusBound<DIM>(rMin, rMax, node.maxRobinCoeff, minAbsCosTheta);
-                    r2MaxBound = computeNodeSquaredStarRadiusBound<DIM>(rMax, rMin, node.minRobinCoeff, maxAbsCosTheta);
+                    r2MinBound = RobinBvhNodeBound<DIM>::computeMinSquaredStarRadiusBound(
+                        rMin, rMax, node.minRobinCoeff, node.maxRobinCoeff, minAbsCosTheta, maxAbsCosTheta);
+                    r2MaxBound = RobinBvhNodeBound<DIM>::computeMaxSquaredStarRadiusBound(
+                        rMin, rMax, node.minRobinCoeff, node.maxRobinCoeff, minAbsCosTheta, maxAbsCosTheta);
 
                 } else {
                     // Neumann case: r2MinBound becomes infinite, which means the node will not be visited
@@ -552,7 +596,7 @@ inline int RobinBvh<DIM, NodeType, PrimitiveType>::computeSquaredStarRadius(Boun
 }
 
 template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>> initializeRobinBvh(
+std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>> createRobinBvh(
                                                     PolygonSoup<DIM>& soup,
                                                     std::vector<PrimitiveType *>& primitives,
                                                     std::vector<SilhouettePrimitive<DIM> *>& silhouettes,

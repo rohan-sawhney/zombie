@@ -27,7 +27,7 @@ public:
 };
 
 template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinBaseline<DIM, PrimitiveType>> initializeRobinBaseline(
+std::unique_ptr<RobinBaseline<DIM, PrimitiveType>> createRobinBaseline(
                                     std::vector<PrimitiveType *>& primitives,
                                     std::vector<SilhouettePrimitive<DIM> *>& silhouettes);
 
@@ -69,7 +69,7 @@ inline int RobinBaseline<DIM, PrimitiveType>::computeSquaredStarRadius(BoundingS
 }
 
 template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinBaseline<DIM, PrimitiveType>> initializeRobinBaseline(
+std::unique_ptr<RobinBaseline<DIM, PrimitiveType>> createRobinBaseline(
                                     std::vector<PrimitiveType *>& primitives,
                                     std::vector<SilhouettePrimitive<DIM> *>& silhouettes)
 {

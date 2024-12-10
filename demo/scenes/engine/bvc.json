@@ -1,7 +1,8 @@
 {
     "solverType": "bvc",
     "solver": {
-        "boundaryCacheSize": 6144,
+        "absorbingBoundaryCacheSize": 3072,
+        "reflectingBoundaryCacheSize": 3072,
         "domainCacheSize": 6144,
         "nWalksForCachedSolutionEstimates": 96,
         "nWalksForCachedGradientEstimates": 960,

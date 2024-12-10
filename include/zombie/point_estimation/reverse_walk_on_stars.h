@@ -188,7 +188,7 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
         float robinCoeff = 0.0f;
         Vector<DIM> normal = state.currentNormal;
 
-        if (!pde.robinConditionsArePureNeumann) {
+        if (!pde.areRobinConditionsPureNeumann) {
             bool flipNormalOrientation = false;
             if (walkSettings.solveDoubleSided) {
                 flipNormalOrientation = state.prevDirection.dot(state.currentNormal) < 0.0f;
@@ -258,7 +258,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
         splatContribution(state, contribution);
 
         // sample a direction uniformly
-        Vector<DIM> direction = sampleUnitSphereUniform<DIM>(sampler);
+        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(sampler);
 
         // perform hemispherical sampling if on the reflecting boundary, which cancels
         // the alpha term in our integral expression
