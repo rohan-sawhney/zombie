@@ -115,8 +115,8 @@ Mbvh<WIDTH, DIM,
                           MbvhLeafNode<WIDTH, DIM>,
                           MbvhSilhouetteLeafNode<WIDTH, DIM>>;
 
-    MbvhBase::primitiveTypeSupportsVectorizedQueries = std::is_same<PrimitiveType, RobinLineSegment<RobinLineSegmentBound>>::value ||
-                                                       std::is_same<PrimitiveType, RobinTriangle<RobinTriangleBound>>::value;
+    MbvhBase::primitiveTypeSupportsVectorizedQueries = std::is_same<PrimitiveType, RobinLineSegment<typename PrimitiveType::Bound>>::value ||
+                                                       std::is_same<PrimitiveType, RobinTriangle<typename PrimitiveType::Bound>>::value;
 }
 
 template<size_t DIM>
@@ -133,9 +133,9 @@ inline void assignGeometricDataToNode(const RobinBvhNode<DIM>& bvhNode, RobinMbv
     mbvhNode.maxRobinCoeff[index] = bvhNode.maxRobinCoeff;
 }
 
-template<typename NodeType, typename LeafNodeType>
+template<typename NodeType, typename LeafNodeType, typename PrimitiveBound>
 inline void populateLeafNode(const NodeType& node,
-                             const std::vector<RobinLineSegment<RobinLineSegmentBound> *>& primitives,
+                             const std::vector<RobinLineSegment<PrimitiveBound> *>& primitives,
                              std::vector<LeafNodeType>& leafNodes, size_t WIDTH)
 {
     int leafOffset = -node.child[0] - 1;
@@ -147,7 +147,7 @@ inline void populateLeafNode(const NodeType& node,
         int referenceIndex = referenceOffset + p;
         int leafIndex = leafOffset + p/WIDTH;
         int w = p%WIDTH;
-        const RobinLineSegment<RobinLineSegmentBound> *lineSegment = primitives[referenceIndex];
+        const RobinLineSegment<PrimitiveBound> *lineSegment = primitives[referenceIndex];
         LeafNodeType& leafNode = leafNodes[leafIndex];
 
         leafNode.maxRobinCoeff[w] = lineSegment->maxRobinCoeff;
@@ -164,9 +164,9 @@ inline void populateLeafNode(const NodeType& node,
     }
 }
 
-template<typename NodeType, typename LeafNodeType>
+template<typename NodeType, typename LeafNodeType, typename PrimitiveBound>
 inline void populateLeafNode(const NodeType& node,
-                             const std::vector<RobinTriangle<RobinTriangleBound> *>& primitives,
+                             const std::vector<RobinTriangle<PrimitiveBound> *>& primitives,
                              std::vector<LeafNodeType>& leafNodes, size_t WIDTH)
 {
     int leafOffset = -node.child[0] - 1;
@@ -178,7 +178,7 @@ inline void populateLeafNode(const NodeType& node,
         int referenceIndex = referenceOffset + p;
         int leafIndex = leafOffset + p/WIDTH;
         int w = p%WIDTH;
-        const RobinTriangle<RobinTriangleBound> *triangle = primitives[referenceIndex];
+        const RobinTriangle<PrimitiveBound> *triangle = primitives[referenceIndex];
         LeafNodeType& leafNode = leafNodes[leafIndex];
 
         leafNode.maxRobinCoeff[w] = triangle->maxRobinCoeff;
