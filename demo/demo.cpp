@@ -7,7 +7,8 @@
 
 using json = nlohmann::json;
 
-void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& outputConfig) {
+void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& outputConfig)
+{
     // load config settings
     const float epsilonShellForAbsorbingBoundary = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
     const float epsilonShellForReflectingBoundary = getOptional<float>(solverConfig, "epsilonShellForReflectingBoundary", 1e-3f);
@@ -69,7 +70,8 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
     saveSolutionGrid(samplePts, pde, queries, solveDoubleSided, outputConfig);
 }
 
-void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const json& outputConfig) {
+void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const json& outputConfig)
+{
     // load config settings for wost
     const float epsilonShellForAbsorbingBoundary = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
     const float epsilonShellForReflectingBoundary = getOptional<float>(solverConfig, "epsilonShellForReflectingBoundary", 1e-3f);
@@ -226,7 +228,8 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     saveEvaluationGrid(evalPts, pde, queries, solveDoubleSided, outputConfig);
 }
 
-void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const json& outputConfig) {
+void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const json& outputConfig)
+{
     // load config settings for reverse wost
     const float epsilonShellForAbsorbingBoundary = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
     const float epsilonShellForReflectingBoundary = getOptional<float>(solverConfig, "epsilonShellForReflectingBoundary", 1e-3f);
@@ -364,7 +367,8 @@ void runReverseWalkSplatter(const Scene& scene, const json& solverConfig, const 
                        domainSamplePts.size(), pde, queries, solveDoubleSided, outputConfig);
 };
 
-int main(int argc, const char *argv[]) {
+int main(int argc, const char *argv[])
+{
     if (argc != 2) {
         std::cerr << "must provide config filename" << std::endl;
         exit(EXIT_FAILURE);

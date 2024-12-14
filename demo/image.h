@@ -82,7 +82,8 @@ protected:
 // Implementation
 
 template <size_t CHANNELS>
-Array<CHANNELS> Image<CHANNELS>::get(Vector2 uv, bool flipY) const {
+Array<CHANNELS> Image<CHANNELS>::get(Vector2 uv, bool flipY) const
+{
     int i = std::clamp(int(uv.y()*h), 0, h - 1);
     int j = std::clamp(int(uv.x()*w), 0, w - 1);
     i = flipY ? h - i - 1 : i;
@@ -91,21 +92,24 @@ Array<CHANNELS> Image<CHANNELS>::get(Vector2 uv, bool flipY) const {
 }
 
 template <size_t CHANNELS>
-Array<CHANNELS>& Image<CHANNELS>::get(size_t i, size_t j) {
+Array<CHANNELS>& Image<CHANNELS>::get(size_t i, size_t j)
+{
     if (i*w + j < buffer.size()) return buffer[i*w + j];
     std::cerr << "index out of range: (" << i << "," << j << ")" << std::endl;
     exit(EXIT_FAILURE);
 }
 
 template <size_t CHANNELS>
-float& Image<CHANNELS>::get(size_t i, size_t j, size_t c) {
+float& Image<CHANNELS>::get(size_t i, size_t j, size_t c)
+{
     if (i*w + j < buffer.size() && c < CHANNELS) return buffer[i*w + j][c];
     std::cerr << "index out of range: (" << i << "," << j << "," << c << ")" << std::endl;
     exit(EXIT_FAILURE);
 }
 
 template <size_t CHANNELS>
-void Image<CHANNELS>::setFromRGB(size_t i, size_t j, const Array3& rgb) {
+void Image<CHANNELS>::setFromRGB(size_t i, size_t j, const Array3& rgb)
+{
     if (CHANNELS == 1) {
         // grayscale
         get(i, j, 0) = 0.299*rgb[0] + 0.587*rgb[1] + 0.114*rgb[2];
@@ -119,7 +123,8 @@ void Image<CHANNELS>::setFromRGB(size_t i, size_t j, const Array3& rgb) {
 }
 
 template <size_t CHANNELS>
-void Image<CHANNELS>::read(const std::string& filename) {
+void Image<CHANNELS>::read(const std::string& filename)
+{
     if (hasExtension(filename, "pfm"))  {
         return readPFM(filename);
     }
@@ -133,7 +138,8 @@ void Image<CHANNELS>::read(const std::string& filename) {
 }
 
 template <size_t CHANNELS>
-void Image<CHANNELS>::write(const std::string& filename) {
+void Image<CHANNELS>::write(const std::string& filename)
+{
     if (hasExtension(filename, "pfm")) {
         return writePFM(filename);
     }
@@ -142,7 +148,8 @@ void Image<CHANNELS>::write(const std::string& filename) {
 }
 
 template <size_t CHANNELS>
-void Image<CHANNELS>::readPFM(const std::string& filename) {
+void Image<CHANNELS>::readPFM(const std::string& filename)
+{
     std::ifstream file;
     file.open(filename.c_str(), std::ios::in | std::ios::binary);
     if (!file.is_open()) {
@@ -191,7 +198,8 @@ void Image<CHANNELS>::readPFM(const std::string& filename) {
 }
 
 template <size_t CHANNELS>
-void Image<CHANNELS>::readPNG(const std::string& filename) {
+void Image<CHANNELS>::readPNG(const std::string& filename)
+{
     int channels;
     unsigned char *tmpBuffer = stbi_load(filename.c_str(), &w, &h, &channels, CHANNELS);
     if (tmpBuffer == nullptr && stbi_failure_reason()) {
@@ -215,7 +223,8 @@ void Image<CHANNELS>::readPNG(const std::string& filename) {
 }
 
 template <size_t CHANNELS>
-void Image<CHANNELS>::writePFM(const std::string& filename) {
+void Image<CHANNELS>::writePFM(const std::string& filename)
+{
     std::ofstream file(filename, std::ios::binary);
     if (!file) {
         std::cerr << "Error opening file: " << filename << std::endl;
@@ -246,7 +255,8 @@ void Image<CHANNELS>::writePFM(const std::string& filename) {
 }
 
 template <size_t CHANNELS>
-void Image<CHANNELS>::writePNG(const std::string& filename) {
+void Image<CHANNELS>::writePNG(const std::string& filename)
+{
     std::vector<unsigned char> tmpBuffer(h*w*CHANNELS);
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
@@ -264,7 +274,8 @@ void Image<CHANNELS>::writePNG(const std::string& filename) {
 }
 
 template <size_t CHANNELS>
-bool Image<CHANNELS>::hasExtension(const std::string& filename, const std::string& targetExtension) {
+bool Image<CHANNELS>::hasExtension(const std::string& filename, const std::string& targetExtension)
+{
     size_t dotPos = filename.find_last_of('.');
     std::string fileExtension = filename.substr(dotPos + 1);
 
@@ -272,7 +283,8 @@ bool Image<CHANNELS>::hasExtension(const std::string& filename, const std::strin
 }
 
 template <size_t CHANNELS>
-bool Image<CHANNELS>::machineIsLittleEndian() {
+bool Image<CHANNELS>::machineIsLittleEndian()
+{
     int val = 1;
     std::byte *bytes = reinterpret_cast<std::byte*>(&val);
 
@@ -280,7 +292,8 @@ bool Image<CHANNELS>::machineIsLittleEndian() {
 }
 
 template <size_t CHANNELS>
-Array3 Image<CHANNELS>::reverseRGBByteOrder(Array3 rgb) {
+Array3 Image<CHANNELS>::reverseRGBByteOrder(Array3 rgb)
+{
     for (int i = 0; i < 3; i++) {
         rgb[i] = reverseFloatByteOrder(rgb[i]);
     }
@@ -289,7 +302,8 @@ Array3 Image<CHANNELS>::reverseRGBByteOrder(Array3 rgb) {
 }
 
 template <size_t CHANNELS>
-float Image<CHANNELS>::reverseFloatByteOrder(float val) {
+float Image<CHANNELS>::reverseFloatByteOrder(float val)
+{
     float retVal;
     std::byte *bytes = reinterpret_cast<std::byte*>(&val);
     std::byte *retBytes = reinterpret_cast<std::byte*>(&retVal);

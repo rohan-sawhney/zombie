@@ -13,7 +13,8 @@ void writeSolution(const std::string& filename,
                    std::shared_ptr<Image<3>> boundaryDistance,
                    std::shared_ptr<Image<3>> boundaryData,
                    bool saveDebug, bool saveColormapped,
-                   std::string colormap, float minVal, float maxVal) {
+                   std::string colormap, float minVal, float maxVal)
+{
     // write solution to disk
     std::filesystem::path path(filename);
     std::filesystem::create_directories(path.parent_path());
@@ -36,7 +37,8 @@ void writeSolution(const std::string& filename,
 void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
                         const zombie::GeometricQueries<2>& queries,
                         const Vector2& bMin, const Vector2& bMax,
-                        const int gridRes) {
+                        const int gridRes)
+{
     // create a grid of sample points
     Vector2 extent = bMax - bMin;
     for (int i = 0; i < gridRes; i++) {
@@ -57,7 +59,8 @@ void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
 void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePts,
                       const zombie::PDE<float, 2>& pde,
                       const zombie::GeometricQueries<2>& queries,
-                      const bool isDoubleSided, const json& config) {
+                      const bool isDoubleSided, const json& config)
+{
     // read settings from config
     const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const int gridRes = getRequired<int>(config, "gridRes");
@@ -106,7 +109,8 @@ template <typename EvaluationPointType>
 void createEvaluationGrid(std::vector<EvaluationPointType>& evalPts,
                           const zombie::GeometricQueries<2>& queries,
                           const Vector2& bMin, const Vector2& bMax,
-                          const int gridRes) {
+                          const int gridRes)
+{
     // create a grid of evaluation points
     Vector2 extent = bMax - bMin;
     for (int i = 0; i < gridRes; i++) {
@@ -127,7 +131,8 @@ void createEvaluationGrid(std::vector<EvaluationPointType>& evalPts,
 void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>>& evalPts,
                         const zombie::PDE<float, 2>& pde,
                         const zombie::GeometricQueries<2>& queries,
-                        const bool isDoubleSided, const json& config) {
+                        const bool isDoubleSided, const json& config)
+{
     // read settings from config
     const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const int gridRes = getRequired<int>(config, "gridRes");
@@ -177,7 +182,8 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
                         int nReflectingBoundarySamples, int nReflectingBoundaryNormalAlignedSamples,
                         int nSourceSamples, const zombie::PDE<float, 2>& pde,
                         const zombie::GeometricQueries<2>& queries,
-                        const bool isDoubleSided, const json& config) {
+                        const bool isDoubleSided, const json& config)
+{
     // read settings from config
     const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const int gridRes = getRequired<int>(config, "gridRes");

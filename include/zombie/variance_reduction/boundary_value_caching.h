@@ -183,7 +183,8 @@ inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
                                                 float distToReflectingBoundary_):
                                                 pt(pt_), normal(normal_), type(type_),
                                                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
-                                                distToReflectingBoundary(distToReflectingBoundary_) {
+                                                distToReflectingBoundary(distToReflectingBoundary_)
+{
     absorbingBoundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>();
     absorbingBoundaryNormalAlignedStatistics = std::make_unique<SampleStatistics<T, DIM>>();
     reflectingBoundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>();
@@ -192,7 +193,8 @@ inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
 }
 
 template <typename T, size_t DIM>
-inline T EvaluationPoint<T, DIM>::getEstimatedSolution() const {
+inline T EvaluationPoint<T, DIM>::getEstimatedSolution() const
+{
     T solution = absorbingBoundaryStatistics->getEstimatedSolution();
     solution += absorbingBoundaryNormalAlignedStatistics->getEstimatedSolution();
     solution += reflectingBoundaryStatistics->getEstimatedSolution();
@@ -203,7 +205,8 @@ inline T EvaluationPoint<T, DIM>::getEstimatedSolution() const {
 }
 
 template <typename T, size_t DIM>
-inline void EvaluationPoint<T, DIM>::getEstimatedGradient(std::vector<T>& gradient) const {
+inline void EvaluationPoint<T, DIM>::getEstimatedGradient(std::vector<T>& gradient) const
+{
     gradient.resize(DIM);
     for (int i = 0; i < DIM; i++) {
         gradient[i] = absorbingBoundaryStatistics->getEstimatedGradient()[i];
@@ -215,7 +218,8 @@ inline void EvaluationPoint<T, DIM>::getEstimatedGradient(std::vector<T>& gradie
 }
 
 template <typename T, size_t DIM>
-inline void EvaluationPoint<T, DIM>::reset() {
+inline void EvaluationPoint<T, DIM>::reset()
+{
     absorbingBoundaryStatistics->reset();
     absorbingBoundaryNormalAlignedStatistics->reset();
     reflectingBoundaryStatistics->reset();
@@ -226,7 +230,8 @@ inline void EvaluationPoint<T, DIM>::reset() {
 template <typename T, size_t DIM>
 inline BoundaryValueCaching<T, DIM>::BoundaryValueCaching(const GeometricQueries<DIM>& queries_,
                                                           const WalkOnStars<T, DIM>& walkOnStars_):
-                                                          queries(queries_), walkOnStars(walkOnStars_) {
+                                                          queries(queries_), walkOnStars(walkOnStars_)
+{
     // do nothing
 }
 
@@ -239,7 +244,8 @@ inline void BoundaryValueCaching<T, DIM>::computeBoundaryEstimates(const PDE<T, 
                                                                    std::vector<SamplePoint<T, DIM>>& samplePts,
                                                                    bool useFiniteDifferences,
                                                                    bool runSingleThreaded,
-                                                                   std::function<void(int,int)> reportProgress) const {
+                                                                   std::function<void(int,int)> reportProgress) const
+{
     // initialize estimation quantities
     std::vector<SampleEstimationData<DIM>> estimationData;
     setEstimationData(pde, walkSettings, nWalksForSolutionEstimates,
@@ -258,7 +264,8 @@ inline void BoundaryValueCaching<T, DIM>::computeBoundaryEstimates(const PDE<T, 
 template <typename T, size_t DIM>
 inline void BoundaryValueCaching<T, DIM>::setSourceValues(const PDE<T, DIM>& pde,
                                                           std::vector<SamplePoint<T, DIM>>& samplePts,
-                                                          bool runSingleThreaded) const {
+                                                          bool runSingleThreaded) const
+{
     int nSamplePoints = (int)samplePts.size();
     if (runSingleThreaded) {
         for (int i = 0; i < nSamplePoints; i++) {
@@ -285,7 +292,8 @@ inline void BoundaryValueCaching<T, DIM>::splat(const PDE<T, DIM>& pde,
                                                 float robinCoeffCutoffForNormalDerivative,
                                                 float cutoffDistToAbsorbingBoundary,
                                                 float cutoffDistToReflectingBoundary,
-                                                EvaluationPoint<T, DIM>& evalPt) const {
+                                                EvaluationPoint<T, DIM>& evalPt) const
+{
     // don't evaluate if the distance to the boundary is smaller than the cutoff distance
     if (evalPt.distToAbsorbingBoundary < cutoffDistToAbsorbingBoundary ||
         evalPt.distToReflectingBoundary < cutoffDistToReflectingBoundary) return;
@@ -320,7 +328,8 @@ inline void BoundaryValueCaching<T, DIM>::splat(const PDE<T, DIM>& pde,
                                                 float robinCoeffCutoffForNormalDerivative,
                                                 float cutoffDistToAbsorbingBoundary,
                                                 float cutoffDistToReflectingBoundary,
-                                                EvaluationPoint<T, DIM>& evalPt) const {
+                                                EvaluationPoint<T, DIM>& evalPt) const
+{
     // don't evaluate if the distance to the boundary is smaller than the cutoff distance
     if (evalPt.distToAbsorbingBoundary < cutoffDistToAbsorbingBoundary ||
         evalPt.distToReflectingBoundary < cutoffDistToReflectingBoundary) return;
@@ -358,7 +367,8 @@ inline void BoundaryValueCaching<T, DIM>::splat(const PDE<T, DIM>& pde,
                                                 float cutoffDistToAbsorbingBoundary,
                                                 float cutoffDistToReflectingBoundary,
                                                 std::vector<EvaluationPoint<T, DIM>>& evalPts,
-                                                bool runSingleThreaded) const {
+                                                bool runSingleThreaded) const
+{
     int nEvalPoints = (int)evalPts.size();
     if (runSingleThreaded) {
         for (int i = 0; i < nEvalPoints; i++) {
@@ -390,7 +400,8 @@ inline void BoundaryValueCaching<T, DIM>::splat(const PDE<T, DIM>& pde,
                                                 float cutoffDistToAbsorbingBoundary,
                                                 float cutoffDistToReflectingBoundary,
                                                 std::vector<EvaluationPoint<T, DIM>>& evalPts,
-                                                std::function<void(int, int)> reportProgress) const {
+                                                std::function<void(int, int)> reportProgress) const
+{
     const int reportGranularity = 100;
     for (int i = 0; i < (int)samplePts.size(); i++) {
         splat(pde, samplePts[i], radiusClamp, kernelRegularization,
@@ -412,7 +423,8 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
                                                                        const WalkSettings& walkSettings,
                                                                        bool useDistanceToAbsorbingBoundary,
                                                                        float cutoffDistToBoundary, int nWalks,
-                                                                       EvaluationPoint<T, DIM>& evalPt) const {
+                                                                       EvaluationPoint<T, DIM>& evalPt) const
+{
     float distToBoundary = useDistanceToAbsorbingBoundary ? evalPt.distToAbsorbingBoundary :
                                                             evalPt.distToReflectingBoundary;
     if (distToBoundary < cutoffDistToBoundary) {
@@ -442,7 +454,8 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
                                                                        bool useDistanceToAbsorbingBoundary,
                                                                        float cutoffDistToBoundary, int nWalks,
                                                                        std::vector<EvaluationPoint<T, DIM>>& evalPts,
-                                                                       bool runSingleThreaded) const {
+                                                                       bool runSingleThreaded) const
+{
     int nEvalPoints = (int)evalPts.size();
     if (runSingleThreaded) {
         for (int i = 0; i < nEvalPoints; i++) {
@@ -471,7 +484,8 @@ inline void BoundaryValueCaching<T, DIM>::setEstimationData(const PDE<T, DIM>& p
                                                             float robinCoeffCutoffForNormalDerivative,
                                                             bool useFiniteDifferences,
                                                             std::vector<SampleEstimationData<DIM>>& estimationData,
-                                                            std::vector<SamplePoint<T, DIM>>& samplePts) const {
+                                                            std::vector<SamplePoint<T, DIM>>& samplePts) const
+{
     int nSamples = (int)samplePts.size();
     estimationData.resize(nSamples);
     for (int i = 0; i < nSamples; i++) {
@@ -528,7 +542,8 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
                                                                    const WalkSettings& walkSettings,
                                                                    float robinCoeffCutoffForNormalDerivative,
                                                                    bool useFiniteDifferences,
-                                                                   std::vector<SamplePoint<T, DIM>>& samplePts) const {
+                                                                   std::vector<SamplePoint<T, DIM>>& samplePts) const
+{
     for (int i = 0; i < (int)samplePts.size(); i++) {
         SamplePoint<T, DIM>& samplePt = samplePts[i];
         samplePt.solution = samplePt.statistics->getEstimatedSolution();
@@ -578,7 +593,8 @@ inline void BoundaryValueCaching<T, DIM>::splatBoundaryData(const SamplePoint<T,
                                                             float radiusClamp,
                                                             float kernelRegularization,
                                                             float robinCoeffCutoffForNormalDerivative,
-                                                            EvaluationPoint<T, DIM>& evalPt) const {
+                                                            EvaluationPoint<T, DIM>& evalPt) const
+{
     // compute the contribution of the boundary sample
     const T& solution = samplePt.solution;
     const T& normalDerivative = samplePt.normalDerivative;
@@ -666,7 +682,8 @@ inline void BoundaryValueCaching<T, DIM>::splatSourceData(const SamplePoint<T, D
                                                           const std::unique_ptr<GreensFnFreeSpace<DIM>>& greensFn,
                                                           float radiusClamp,
                                                           float kernelRegularization,
-                                                          EvaluationPoint<T, DIM>& evalPt) const {
+                                                          EvaluationPoint<T, DIM>& evalPt) const
+{
     // compute the contribution of the source sample
     const T& source = samplePt.source;
     const Vector<DIM>& pt = samplePt.pt;

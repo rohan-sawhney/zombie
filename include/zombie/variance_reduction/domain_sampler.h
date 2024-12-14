@@ -57,14 +57,16 @@ inline UniformDomainSampler<T, DIM>::UniformDomainSampler(const GeometricQueries
                                                           insideSolveRegion(insideSolveRegion_),
                                                           solveRegionMin(solveRegionMin_),
                                                           solveRegionMax(solveRegionMax_),
-                                                          solveRegionVolume(solveRegionVolume_) {
+                                                          solveRegionVolume(solveRegionVolume_)
+{
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sampler = pcg32(seed);
 }
 
 template <typename T, size_t DIM>
-inline void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, std::vector<SamplePoint<T, DIM>>& samplePts) {
+inline void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, std::vector<SamplePoint<T, DIM>>& samplePts)
+{
     // initialize sample points
     samplePts.clear();
     Vector<DIM> regionExtent = solveRegionMax - solveRegionMin;

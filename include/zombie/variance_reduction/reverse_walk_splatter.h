@@ -76,7 +76,8 @@ inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
                                                 float distToReflectingBoundary_):
                                                 pt(pt_), normal(normal_), type(type_),
                                                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
-                                                distToReflectingBoundary(distToReflectingBoundary_) {
+                                                distToReflectingBoundary(distToReflectingBoundary_)
+{
     mutex = std::make_unique<tbb::mutex>();
     reset();
 }
@@ -86,7 +87,8 @@ T EvaluationPoint<T, DIM>::getEstimatedSolution(int nAbsorbingBoundarySamples,
                                                 int nAbsorbingBoundaryNormalAlignedSamples,
                                                 int nReflectingBoundarySamples,
                                                 int nReflectingBoundaryNormalAlignedSamples,
-                                                int nSourceSamples) const {
+                                                int nSourceSamples) const
+{
     if (type == SampleType::OnAbsorbingBoundary) {
         return totalAbsorbingBoundaryContribution;
     }
@@ -121,7 +123,8 @@ T EvaluationPoint<T, DIM>::getEstimatedSolution(int nAbsorbingBoundarySamples,
 }
 
 template <typename T, size_t DIM>
-void EvaluationPoint<T, DIM>::reset() {
+void EvaluationPoint<T, DIM>::reset()
+{
     totalPoissonKernelContribution = 0.0f;
     totalAbsorbingBoundaryContribution = T(0.0f);
     totalAbsorbingBoundaryNormalAlignedContribution = T(0.0f);
@@ -138,7 +141,8 @@ void splatContribution(const WalkState<T, DIM>& state,
                        const PDE<T, DIM>& pde,
                        float normalOffsetForAbsorbingBoundary,
                        float radiusClamp, float kernelRegularization,
-                       std::vector<EvaluationPoint<T, DIM>>& evalPts) {
+                       std::vector<EvaluationPoint<T, DIM>>& evalPts)
+{
     // perform nearest neighbor queries to determine evaluation points that lie
     // within the sphere centered at the current random walk position
     std::vector<size_t> nnIndices;

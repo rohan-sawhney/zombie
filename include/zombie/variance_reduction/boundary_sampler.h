@@ -166,7 +166,8 @@ inline UniformLineSegmentBoundarySampler<T>::UniformLineSegmentBoundarySampler(c
                                                                                bool computeWeightedNormals):
                                                                                positions(positions_), indices(indices_),
                                                                                queries(queries_), insideSolveRegion(insideSolveRegion_),
-                                                                               boundaryArea(0.0f), boundaryAreaNormalAligned(0.0f) {
+                                                                               boundaryArea(0.0f), boundaryAreaNormalAligned(0.0f)
+{
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sampler = pcg32(seed);
@@ -174,7 +175,8 @@ inline UniformLineSegmentBoundarySampler<T>::UniformLineSegmentBoundarySampler(c
 }
 
 template <typename T>
-inline void UniformLineSegmentBoundarySampler<T>::computeNormals(bool computeWeighted) {
+inline void UniformLineSegmentBoundarySampler<T>::computeNormals(bool computeWeighted)
+{
     int nPrimitives = (int)indices.size();
     int nPositions = (int)positions.size();
     normals.resize(nPositions, Vector2::Zero());
@@ -196,7 +198,8 @@ inline void UniformLineSegmentBoundarySampler<T>::computeNormals(bool computeWei
 
 template <typename T>
 inline void UniformLineSegmentBoundarySampler<T>::buildCDFTable(CDFTable& table, float& area,
-                                                                float normalOffsetForBoundary) {
+                                                                float normalOffsetForBoundary)
+{
     int nPrimitives = (int)indices.size();
     std::vector<float> weights(nPrimitives, 0.0f);
 
@@ -219,7 +222,8 @@ inline void UniformLineSegmentBoundarySampler<T>::buildCDFTable(CDFTable& table,
 }
 
 template <typename T>
-inline void UniformLineSegmentBoundarySampler<T>::initialize(float normalOffsetForBoundary, bool solveDoubleSided) {
+inline void UniformLineSegmentBoundarySampler<T>::initialize(float normalOffsetForBoundary, bool solveDoubleSided)
+{
     // build a cdf table for boundary vertices displaced along inward normals
     buildCDFTable(cdfTable, boundaryArea, -1.0f*normalOffsetForBoundary);
 
@@ -230,7 +234,8 @@ inline void UniformLineSegmentBoundarySampler<T>::initialize(float normalOffsetF
 }
 
 template <typename T>
-inline int UniformLineSegmentBoundarySampler<T>::getSampleCount(int nTotalSamples, bool boundaryNormalAlignedSamples) const {
+inline int UniformLineSegmentBoundarySampler<T>::getSampleCount(int nTotalSamples, bool boundaryNormalAlignedSamples) const
+{
     float totalBoundaryArea = boundaryArea + boundaryAreaNormalAligned;
     return boundaryNormalAlignedSamples ? std::ceil(nTotalSamples*boundaryAreaNormalAligned/totalBoundaryArea) :
                                           std::ceil(nTotalSamples*boundaryArea/totalBoundaryArea);
@@ -240,7 +245,8 @@ template <typename T>
 inline void UniformLineSegmentBoundarySampler<T>::generateSamples(const CDFTable& table, float area,
                                                                   int nSamples, SampleType sampleType,
                                                                   float normalOffsetForBoundary,
-                                                                  std::vector<SamplePoint<T, 2>>& samplePts) {
+                                                                  std::vector<SamplePoint<T, 2>>& samplePts)
+{
     samplePts.clear();
     if (area > 0.0f) {
         // generate stratified samples for CDF table sampling
@@ -298,7 +304,8 @@ template <typename T>
 inline void UniformLineSegmentBoundarySampler<T>::generateSamples(int nSamples, SampleType sampleType,
                                                                   float normalOffsetForBoundary,
                                                                   std::vector<SamplePoint<T, 2>>& samplePts,
-                                                                  bool generateBoundaryNormalAlignedSamples) {
+                                                                  bool generateBoundaryNormalAlignedSamples)
+{
     if (generateBoundaryNormalAlignedSamples) {
         generateSamples(cdfTableNormalAligned, boundaryAreaNormalAligned,
                         nSamples, sampleType, normalOffsetForBoundary, samplePts);
@@ -364,7 +371,8 @@ inline UniformTriangleBoundarySampler<T>::UniformTriangleBoundarySampler(const s
                                                                          bool computeWeightedNormals):
                                                                          positions(positions_), indices(indices_),
                                                                          queries(queries_), insideSolveRegion(insideSolveRegion_),
-                                                                         boundaryArea(0.0f), boundaryAreaNormalAligned(0.0f) {
+                                                                         boundaryArea(0.0f), boundaryAreaNormalAligned(0.0f)
+{
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sampler = pcg32(seed);
@@ -372,7 +380,8 @@ inline UniformTriangleBoundarySampler<T>::UniformTriangleBoundarySampler(const s
 }
 
 template <typename T>
-inline void UniformTriangleBoundarySampler<T>::computeNormals(bool computeWeighted) {
+inline void UniformTriangleBoundarySampler<T>::computeNormals(bool computeWeighted)
+{
     int nPrimitives = (int)indices.size();
     int nPositions = (int)positions.size();
     normals.resize(nPositions, Vector3::Zero());
@@ -401,7 +410,8 @@ inline void UniformTriangleBoundarySampler<T>::computeNormals(bool computeWeight
 
 template <typename T>
 inline void UniformTriangleBoundarySampler<T>::buildCDFTable(CDFTable& table, float& area,
-                                                             float normalOffsetForBoundary) {
+                                                             float normalOffsetForBoundary)
+{
     int nPrimitives = (int)indices.size();
     std::vector<float> weights(nPrimitives, 0.0f);
 
@@ -426,7 +436,8 @@ inline void UniformTriangleBoundarySampler<T>::buildCDFTable(CDFTable& table, fl
 }
 
 template <typename T>
-inline void UniformTriangleBoundarySampler<T>::initialize(float normalOffsetForBoundary, bool solveDoubleSided) {
+inline void UniformTriangleBoundarySampler<T>::initialize(float normalOffsetForBoundary, bool solveDoubleSided)
+{
     // build a cdf table for boundary vertices displaced along inward normals
     buildCDFTable(cdfTable, boundaryArea, -1.0f*normalOffsetForBoundary);
 
@@ -437,7 +448,8 @@ inline void UniformTriangleBoundarySampler<T>::initialize(float normalOffsetForB
 }
 
 template <typename T>
-inline int UniformTriangleBoundarySampler<T>::getSampleCount(int nTotalSamples, bool boundaryNormalAlignedSamples) const {
+inline int UniformTriangleBoundarySampler<T>::getSampleCount(int nTotalSamples, bool boundaryNormalAlignedSamples) const
+{
     float totalBoundaryArea = boundaryArea + boundaryAreaNormalAligned;
     return boundaryNormalAlignedSamples ? std::ceil(nTotalSamples*boundaryAreaNormalAligned/totalBoundaryArea) :
                                           std::ceil(nTotalSamples*boundaryArea/totalBoundaryArea);
@@ -447,7 +459,8 @@ template <typename T>
 inline void UniformTriangleBoundarySampler<T>::generateSamples(const CDFTable& table, float area,
                                                                int nSamples, SampleType sampleType,
                                                                float normalOffsetForBoundary,
-                                                               std::vector<SamplePoint<T, 3>>& samplePts) {
+                                                               std::vector<SamplePoint<T, 3>>& samplePts)
+{
     samplePts.clear();
     if (area > 0.0f) {
         // generate stratified samples for CDF table sampling
@@ -507,7 +520,8 @@ template <typename T>
 inline void UniformTriangleBoundarySampler<T>::generateSamples(int nSamples, SampleType sampleType,
                                                                float normalOffsetForBoundary,
                                                                std::vector<SamplePoint<T, 3>>& samplePts,
-                                                               bool generateBoundaryNormalAlignedSamples) {
+                                                               bool generateBoundaryNormalAlignedSamples)
+{
     if (generateBoundaryNormalAlignedSamples) {
         generateSamples(cdfTableNormalAligned, boundaryAreaNormalAligned,
                         nSamples, sampleType, normalOffsetForBoundary, samplePts);

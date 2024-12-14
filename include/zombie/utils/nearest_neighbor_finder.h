@@ -58,19 +58,22 @@ protected:
 template <size_t DIM>
 inline NearestNeighborFinder<DIM>::NearestNeighborFinder():
 params(10 /* max leaf */, nanoflann::KDTreeSingleIndexAdaptorFlags::SkipInitialBuildIndex),
-tree(DIM, data, params) {
+tree(DIM, data, params)
+{
     // do nothing
 }
 
 template <size_t DIM>
-inline void NearestNeighborFinder<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& points) {
+inline void NearestNeighborFinder<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& points)
+{
     data.points = points;
     tree.buildIndex();
 }
 
 template <size_t DIM>
 inline size_t NearestNeighborFinder<DIM>::kNearest(const Vector<DIM>& queryPt, size_t k,
-                                                   std::vector<size_t>& outIndices) const {
+                                                   std::vector<size_t>& outIndices) const
+{
     if (k > data.points.size()) {
         std::cerr << "k is greater than number of points" << std::endl;
         exit(EXIT_FAILURE);
@@ -83,7 +86,8 @@ inline size_t NearestNeighborFinder<DIM>::kNearest(const Vector<DIM>& queryPt, s
 
 template <size_t DIM>
 inline size_t NearestNeighborFinder<DIM>::radiusSearch(const Vector<DIM>& queryPt, float radius,
-                                                       std::vector<size_t>& outIndices) const {
+                                                       std::vector<size_t>& outIndices) const
+{
     float squaredRadius = radius*radius; // nanoflann wants a SQUARED raidus
     std::vector<nanoflann::ResultItem<uint32_t, float>> resultItems;
     size_t nResultItems = tree.radiusSearch(&queryPt[0], squaredRadius, resultItems);

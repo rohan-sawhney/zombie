@@ -63,7 +63,8 @@ protected:
 
 Scene::Scene(const json& config):
 isDoubleSided(getOptional<bool>(config, "isDoubleSided", false)),
-queries(getOptional<bool>(config, "isWatertight", true)) {
+queries(getOptional<bool>(config, "isWatertight", true))
+{
     // load config settings
     const std::string boundaryFile = getRequired<std::string>(config, "boundary");
     const std::string isReflectingBoundaryFile = getRequired<std::string>(config, "isReflectingBoundary");
@@ -87,14 +88,16 @@ queries(getOptional<bool>(config, "isWatertight", true)) {
     populateGeometricQueries();
 }
 
-void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation) {
+void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation)
+{
     zombie::loadBoundaryMesh<2>(filename, vertices, segments);
     if (normalize) zombie::normalize<2>(vertices);
     if (flipOrientation) zombie::flipOrientation(segments);
     bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
 }
 
-void Scene::setupPDE() {
+void Scene::setupPDE()
+{
     const Vector2& bMin = bbox.first;
     const Vector2& bMax = bbox.second;
     float maxLength = (bMax - bMin).maxCoeff();
@@ -122,7 +125,8 @@ void Scene::setupPDE() {
     pde.absorptionCoeff = absorptionCoeff;
 }
 
-void Scene::populateGeometricQueries() {
+void Scene::populateGeometricQueries()
+{
     // partition boundary vertices and indices into absorbing and reflecting parts
     zombie::partitionBoundaryMesh<2>(pde.hasReflectingBoundaryConditions, vertices, segments,
                                      absorbingBoundaryVertices, absorbingBoundarySegments,

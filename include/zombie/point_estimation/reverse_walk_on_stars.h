@@ -77,14 +77,16 @@ protected:
 template <typename T, size_t DIM>
 inline ReverseWalkOnStars<T, DIM>::ReverseWalkOnStars(const GeometricQueries<DIM>& queries_,
                                                       SplatContributionCallback<T, DIM> splatContribution_):
-                                                      queries(queries_), splatContribution(splatContribution_) {
+                                                      queries(queries_), splatContribution(splatContribution_)
+{
     // do nothing
 }
 
 template <typename T, size_t DIM>
 inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                                               const WalkSettings& walkSettings,
-                                              SamplePoint<T, DIM>& samplePt) const {
+                                              SamplePoint<T, DIM>& samplePt) const
+{
     // set the sample contribution
     SampleContribution<T> sampleContribution;
     sampleContribution.pdf = samplePt.pdf;
@@ -155,7 +157,8 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                                               const WalkSettings& walkSettings,
                                               std::vector<SamplePoint<T, DIM>>& samplePts,
                                               bool runSingleThreaded,
-                                              std::function<void(int, int)> reportProgress) const {
+                                              std::function<void(int, int)> reportProgress) const
+{
     int nPoints = (int)samplePts.size();
     if (runSingleThreaded || walkSettings.printLogs) {
         for (int i = 0; i < nPoints; i++) {
@@ -183,7 +186,8 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& pde,
                                                                    const WalkSettings& walkSettings,
-                                                                   const WalkState<T, DIM>& state) const {
+                                                                   const WalkState<T, DIM>& state) const
+{
     if (state.onReflectingBoundary && state.prevDistance > std::numeric_limits<T>::epsilon()) {
         float robinCoeff = 0.0f;
         Vector<DIM> normal = state.currentNormal;
@@ -212,7 +216,8 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
                                                            const WalkSettings& walkSettings,
                                                            const SampleContribution<T>& contribution,
                                                            float distToAbsorbingBoundary,
-                                                           pcg32& sampler, WalkState<T, DIM>& state) const {
+                                                           pcg32& sampler, WalkState<T, DIM>& state) const
+{
     // recursively perform a random walk till it reaches the absorbing boundary
     while (distToAbsorbingBoundary > walkSettings.epsilonShellForAbsorbingBoundary) {
         // for problems with double-sided boundary conditions, flip the current
