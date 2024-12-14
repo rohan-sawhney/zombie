@@ -26,7 +26,7 @@ struct RobinBvhNode {
     float maxRobinCoeff;
 };
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
+template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
 class RobinBvh: public Bvh<DIM, NodeType, PrimitiveType> {
 public:
     // constructor
@@ -58,8 +58,8 @@ protected:
                    bool& hasSilhouette) const;
 };
 
-template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>> createRobinBvh(
+template<size_t DIM, typename PrimitiveType, typename NodeBound>
+std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType, NodeBound>> createRobinBvh(
                                                     PolygonSoup<DIM>& soup,
                                                     std::vector<PrimitiveType *>& primitives,
                                                     std::vector<SilhouettePrimitive<DIM> *>& silhouettes,
@@ -78,23 +78,23 @@ inline void sortRobinSoupPositions(const std::vector<NodeType>& flatTree,
 }
 
 template<>
-inline void sortRobinSoupPositions<2, RobinBvhNode<2>, RobinLineSegment, SilhouettePrimitive<2>>(
+inline void sortRobinSoupPositions<2, RobinBvhNode<2>, RobinLineSegment<RobinLineSegmentBound>, SilhouettePrimitive<2>>(
                                                     const std::vector<RobinBvhNode<2>>& flatTree,
-                                                    std::vector<RobinLineSegment *>& lineSegments,
+                                                    std::vector<RobinLineSegment<RobinLineSegmentBound> *>& lineSegments,
                                                     std::vector<SilhouettePrimitive<2> *>& silhouettes,
                                                     PolygonSoup<2>& soup)
 {
-    sortLineSegmentSoupPositions<RobinBvhNode<2>, RobinLineSegment>(flatTree, lineSegments, soup);
+    sortLineSegmentSoupPositions<RobinBvhNode<2>, RobinLineSegment<RobinLineSegmentBound>>(flatTree, lineSegments, soup);
 }
 
 template<>
-inline void sortRobinSoupPositions<3, RobinBvhNode<3>, RobinTriangle, SilhouettePrimitive<3>>(
+inline void sortRobinSoupPositions<3, RobinBvhNode<3>, RobinTriangle<RobinTriangleBound>, SilhouettePrimitive<3>>(
                                                     const std::vector<RobinBvhNode<3>>& flatTree,
-                                                    std::vector<RobinTriangle *>& triangles,
+                                                    std::vector<RobinTriangle<RobinTriangleBound> *>& triangles,
                                                     std::vector<SilhouettePrimitive<3> *>& silhouettes,
                                                     PolygonSoup<3>& soup)
 {
-    sortTriangleSoupPositions<RobinBvhNode<3>, RobinTriangle>(flatTree, triangles, soup);
+    sortTriangleSoupPositions<RobinBvhNode<3>, RobinTriangle<RobinTriangleBound>>(flatTree, triangles, soup);
 }
 
 template<size_t DIM, typename NodeType, typename PrimitiveType>
@@ -182,8 +182,8 @@ inline void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType 
     }
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
-inline void RobinBvh<DIM, NodeType, PrimitiveType>::assignGeometricDataToNodes(const std::function<bool(float, int)>& ignoreSilhouette)
+template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+inline void RobinBvh<DIM, NodeType, PrimitiveType, NodeBound>::assignGeometricDataToNodes(const std::function<bool(float, int)>& ignoreSilhouette)
 {
     // precompute normals for each primitive
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
@@ -209,12 +209,12 @@ inline void RobinBvh<DIM, NodeType, PrimitiveType>::assignGeometricDataToNodes(c
     }
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
-inline RobinBvh<DIM, NodeType, PrimitiveType>::RobinBvh(const CostHeuristic& costHeuristic_,
-                                                        std::vector<PrimitiveType *>& primitives_,
-                                                        std::vector<SilhouettePrimitive<DIM> *>& silhouettes_,
-                                                        SortPositionsFunc<DIM, RobinBvhNode<DIM>, PrimitiveType, SilhouettePrimitive<DIM>> sortPositions_,
-                                                        bool packLeaves_, int leafSize_, int nBuckets_):
+template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+inline RobinBvh<DIM, NodeType, PrimitiveType, NodeBound>::RobinBvh(const CostHeuristic& costHeuristic_,
+                                                                   std::vector<PrimitiveType *>& primitives_,
+                                                                   std::vector<SilhouettePrimitive<DIM> *>& silhouettes_,
+                                                                   SortPositionsFunc<DIM, RobinBvhNode<DIM>, PrimitiveType, SilhouettePrimitive<DIM>> sortPositions_,
+                                                                   bool packLeaves_, int leafSize_, int nBuckets_):
 Bvh<DIM, NodeType, PrimitiveType, SilhouettePrimitive<DIM>>(
     costHeuristic_, primitives_, silhouettes_, sortPositions_, {}, packLeaves_, leafSize_, nBuckets_)
 {
@@ -324,8 +324,8 @@ inline void refitRecursive(const std::vector<PrimitiveType *>& primitives,
     }
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
-inline void RobinBvh<DIM, NodeType, PrimitiveType>::refit()
+template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+inline void RobinBvh<DIM, NodeType, PrimitiveType, NodeBound>::refit()
 {
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
     int nNodes = (int)BvhBase::flatTree.size();
@@ -367,9 +367,9 @@ inline std::pair<float, float> updateRobinCoefficientsRecursive(const std::vecto
     return std::make_pair(node.minRobinCoeff, node.maxRobinCoeff);
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
-inline void RobinBvh<DIM, NodeType, PrimitiveType>::updateRobinCoefficients(const std::vector<float>& minCoeffValues,
-                                                                            const std::vector<float>& maxCoeffValues)
+template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+inline void RobinBvh<DIM, NodeType, PrimitiveType, NodeBound>::updateRobinCoefficients(const std::vector<float>& minCoeffValues,
+                                                                                       const std::vector<float>& maxCoeffValues)
 {
     // update robin coefficients for primitives
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
@@ -458,10 +458,10 @@ struct RobinBvhNodeBound<3> {
     }
 };
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
-inline bool RobinBvh<DIM, NodeType, PrimitiveType>::visitNode(const BoundingSphere<DIM>& s, int nodeIndex,
-                                                              float& r2MinBound, float& r2MaxBound,
-                                                              bool& hasSilhouette) const
+template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+inline bool RobinBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(const BoundingSphere<DIM>& s, int nodeIndex,
+                                                                         float& r2MinBound, float& r2MaxBound,
+                                                                         bool& hasSilhouette) const
 {
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
     const NodeType& node(BvhBase::flatTree[nodeIndex]);
@@ -483,9 +483,9 @@ inline bool RobinBvh<DIM, NodeType, PrimitiveType>::visitNode(const BoundingSphe
                     float minAbsCosTheta = std::min(std::fabs(std::cos(maximalAngles[0])),
                                                     std::fabs(std::cos(maximalAngles[1])));
                     float maxAbsCosTheta = 1.0f; // assume maxCosTheta = 1.0f for simplicity
-                    r2MinBound = RobinBvhNodeBound<DIM>::computeMinSquaredStarRadiusBound(
+                    r2MinBound = NodeBound::computeMinSquaredStarRadiusBound(
                         rMin, rMax, node.minRobinCoeff, node.maxRobinCoeff, minAbsCosTheta, maxAbsCosTheta);
-                    r2MaxBound = RobinBvhNodeBound<DIM>::computeMaxSquaredStarRadiusBound(
+                    r2MaxBound = NodeBound::computeMaxSquaredStarRadiusBound(
                         rMin, rMax, node.minRobinCoeff, node.maxRobinCoeff, minAbsCosTheta, maxAbsCosTheta);
 
                 } else {
@@ -501,10 +501,10 @@ inline bool RobinBvh<DIM, NodeType, PrimitiveType>::visitNode(const BoundingSphe
     return false;
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
-inline int RobinBvh<DIM, NodeType, PrimitiveType>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
-                                                                            bool flipNormalOrientation,
-                                                                            float silhouettePrecision) const
+template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+inline int RobinBvh<DIM, NodeType, PrimitiveType, NodeBound>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
+                                                                                       bool flipNormalOrientation,
+                                                                                       float silhouettePrecision) const
 {
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
     TraversalStack subtree[FCPW_BVH_MAX_DEPTH];
@@ -595,8 +595,8 @@ inline int RobinBvh<DIM, NodeType, PrimitiveType>::computeSquaredStarRadius(Boun
     return nodesVisited;
 }
 
-template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>> createRobinBvh(
+template<size_t DIM, typename PrimitiveType, typename NodeBound>
+std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType, NodeBound>> createRobinBvh(
                                                     PolygonSoup<DIM>& soup,
                                                     std::vector<PrimitiveType *>& primitives,
                                                     std::vector<SilhouettePrimitive<DIM> *>& silhouettes,
@@ -612,8 +612,8 @@ std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>> createRobinBvh(
         SortPositionsFunc sortPositions = std::bind(
             &sortRobinSoupPositions<DIM, RobinBvhNode<DIM>, PrimitiveType, SilhouettePrimitive<DIM>>,
             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::ref(soup));
-        std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>> bvh(
-            new RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType>(
+        std::unique_ptr<RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType, NodeBound>> bvh(
+            new RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType, NodeBound>(
                 fcpw::CostHeuristic::SurfaceArea,
                 primitives, silhouettes,
                 sortPositions, packLeaves, leafSize

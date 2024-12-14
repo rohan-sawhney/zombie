@@ -52,7 +52,8 @@ struct MbvhLeafNode {
 
 template<size_t WIDTH, size_t DIM,
          typename PrimitiveType,
-         typename NodeType>
+         typename NodeType,
+         typename NodeBound>
 class RobinMbvh: public Mbvh<WIDTH, DIM,
                              PrimitiveType,
                              SilhouettePrimitive<DIM>,
@@ -84,9 +85,9 @@ protected:
                                                  MaskP<FCPW_MBVH_BRANCHING_FACTOR>& hasSilhouettes) const;
 };
 
-template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>>> createVectorizedRobinBvh(
-                                                        RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType> *robinBvh,
+template<size_t DIM, typename PrimitiveType, typename MbvhNodeBound, typename BvhNodeBound>
+std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>, MbvhNodeBound>> createVectorizedRobinBvh(
+                                                        RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType, BvhNodeBound> *robinBvh,
                                                         std::vector<PrimitiveType *>& primitives,
                                                         std::vector<SilhouettePrimitive<DIM> *>& silhouettes,
                                                         bool printStats=true);
@@ -96,9 +97,10 @@ std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM
 
 template<size_t WIDTH, size_t DIM,
          typename PrimitiveType,
-         typename NodeType>
-inline RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::RobinMbvh(std::vector<PrimitiveType *>& primitives_,
-                                                                 std::vector<SilhouettePrimitive<DIM> *>& silhouettes_):
+         typename NodeType,
+         typename NodeBound>
+inline RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::RobinMbvh(std::vector<PrimitiveType *>& primitives_,
+                                                                            std::vector<SilhouettePrimitive<DIM> *>& silhouettes_):
 Mbvh<WIDTH, DIM,
      PrimitiveType,
      SilhouettePrimitive<DIM>,
@@ -113,8 +115,8 @@ Mbvh<WIDTH, DIM,
                           MbvhLeafNode<WIDTH, DIM>,
                           MbvhSilhouetteLeafNode<WIDTH, DIM>>;
 
-    MbvhBase::primitiveTypeSupportsVectorizedQueries = std::is_same<PrimitiveType, RobinLineSegment>::value ||
-                                                       std::is_same<PrimitiveType, RobinTriangle>::value;
+    MbvhBase::primitiveTypeSupportsVectorizedQueries = std::is_same<PrimitiveType, RobinLineSegment<RobinLineSegmentBound>>::value ||
+                                                       std::is_same<PrimitiveType, RobinTriangle<RobinTriangleBound>>::value;
 }
 
 template<size_t DIM>
@@ -133,7 +135,7 @@ inline void assignGeometricDataToNode(const RobinBvhNode<DIM>& bvhNode, RobinMbv
 
 template<typename NodeType, typename LeafNodeType>
 inline void populateLeafNode(const NodeType& node,
-                             const std::vector<RobinLineSegment *>& primitives,
+                             const std::vector<RobinLineSegment<RobinLineSegmentBound> *>& primitives,
                              std::vector<LeafNodeType>& leafNodes, size_t WIDTH)
 {
     int leafOffset = -node.child[0] - 1;
@@ -145,7 +147,7 @@ inline void populateLeafNode(const NodeType& node,
         int referenceIndex = referenceOffset + p;
         int leafIndex = leafOffset + p/WIDTH;
         int w = p%WIDTH;
-        const RobinLineSegment *lineSegment = primitives[referenceIndex];
+        const RobinLineSegment<RobinLineSegmentBound> *lineSegment = primitives[referenceIndex];
         LeafNodeType& leafNode = leafNodes[leafIndex];
 
         leafNode.maxRobinCoeff[w] = lineSegment->maxRobinCoeff;
@@ -164,7 +166,7 @@ inline void populateLeafNode(const NodeType& node,
 
 template<typename NodeType, typename LeafNodeType>
 inline void populateLeafNode(const NodeType& node,
-                             const std::vector<RobinTriangle *>& primitives,
+                             const std::vector<RobinTriangle<RobinTriangleBound> *>& primitives,
                              std::vector<LeafNodeType>& leafNodes, size_t WIDTH)
 {
     int leafOffset = -node.child[0] - 1;
@@ -176,7 +178,7 @@ inline void populateLeafNode(const NodeType& node,
         int referenceIndex = referenceOffset + p;
         int leafIndex = leafOffset + p/WIDTH;
         int w = p%WIDTH;
-        const RobinTriangle *triangle = primitives[referenceIndex];
+        const RobinTriangle<RobinTriangleBound> *triangle = primitives[referenceIndex];
         LeafNodeType& leafNode = leafNodes[leafIndex];
 
         leafNode.maxRobinCoeff[w] = triangle->maxRobinCoeff;
@@ -275,8 +277,9 @@ inline std::pair<BoundingBox<DIM>, BoundingCone<DIM>> refitRecursive(const std::
 
 template<size_t WIDTH, size_t DIM,
          typename PrimitiveType,
-         typename NodeType>
-inline void RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::refit()
+         typename NodeType,
+         typename NodeBound>
+inline void RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::refit()
 {
     using MbvhBase = Mbvh<WIDTH, DIM,
                           PrimitiveType,
@@ -336,9 +339,10 @@ inline std::pair<float, float> updateRobinCoefficientsRecursive(const std::vecto
 
 template<size_t WIDTH, size_t DIM,
          typename PrimitiveType,
-         typename NodeType>
-inline void RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::updateRobinCoefficients(const std::vector<float>& minCoeffValues,
-                                                                                    const std::vector<float>& maxCoeffValues)
+         typename NodeType,
+         typename NodeBound>
+inline void RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::updateRobinCoefficients(const std::vector<float>& minCoeffValues,
+                                                                                               const std::vector<float>& maxCoeffValues)
 {
     using MbvhBase = Mbvh<WIDTH, DIM,
                           PrimitiveType,
@@ -464,12 +468,13 @@ struct RobinMbvhNodeBound<3> {
 
 template<size_t WIDTH, size_t DIM,
          typename PrimitiveType,
-         typename NodeType>
-inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::visitNodes(
-                                                const enokiVector<DIM>& sc, float r2, int nodeIndex,
-                                                FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MinBound,
-                                                FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MaxBound,
-                                                MaskP<FCPW_MBVH_BRANCHING_FACTOR>& hasSilhouettes) const
+         typename NodeType,
+         typename NodeBound>
+inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::visitNodes(
+                                                            const enokiVector<DIM>& sc, float r2, int nodeIndex,
+                                                            FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MinBound,
+                                                            FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MaxBound,
+                                                            MaskP<FCPW_MBVH_BRANCHING_FACTOR>& hasSilhouettes) const
 {
     using MbvhBase = Mbvh<WIDTH, DIM,
                           PrimitiveType,
@@ -513,9 +518,9 @@ inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> RobinMbvh<WIDTH, DIM, PrimitiveType, No
             FloatP<FCPW_MBVH_BRANCHING_FACTOR> minAbsCosTheta = enoki::min(enoki::abs(enoki::cos(maximalAngles[0])),
                                                                            enoki::abs(enoki::cos(maximalAngles[1])));
             FloatP<FCPW_MBVH_BRANCHING_FACTOR> maxAbsCosTheta = 1.0f; // assume maxCosTheta = 1.0f for simplicity
-            enoki::masked(r2MinBound, overlapRobinBoxNotCone) = RobinMbvhNodeBound<DIM>::computeMinSquaredStarRadiusBound(
+            enoki::masked(r2MinBound, overlapRobinBoxNotCone) = NodeBound::computeMinSquaredStarRadiusBound(
                 rMin, rMax, node.minRobinCoeff, node.maxRobinCoeff, minAbsCosTheta, maxAbsCosTheta);
-            enoki::masked(r2MaxBound, overlapRobinBoxNotCone) = RobinMbvhNodeBound<DIM>::computeMaxSquaredStarRadiusBound(
+            enoki::masked(r2MaxBound, overlapRobinBoxNotCone) = NodeBound::computeMaxSquaredStarRadiusBound(
                 rMin, rMax, node.minRobinCoeff, node.maxRobinCoeff, minAbsCosTheta, maxAbsCosTheta);
         }
     }
@@ -574,10 +579,11 @@ inline void enqueueNodes<4>(const IntP<4>& child, const FloatP<4>& tMin, const F
 
 template<size_t WIDTH, size_t DIM,
          typename PrimitiveType,
-         typename NodeType>
-inline int RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
-                                                                                    bool flipNormalOrientation,
-                                                                                    float silhouettePrecision) const
+         typename NodeType,
+         typename NodeBound>
+inline int RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
+                                                                                               bool flipNormalOrientation,
+                                                                                               float silhouettePrecision) const
 {
     using MbvhBase = Mbvh<WIDTH, DIM,
                           PrimitiveType,
@@ -619,11 +625,10 @@ inline int RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::computeSquaredStarRad
                     // perform vectorized primitive query
                     int leafIndex = leafOffset + l;
                     const MbvhLeafNode<WIDTH, DIM>& leafNode = MbvhBase::leafNodes[leafIndex];
-                    FloatP<WIDTH> d2 = computeSquaredStarRadiusWidePrimitive(leafNode.positions, leafNode.normals,
-                                                                             leafNode.maxRobinCoeff, leafNode.hasAdjacentFace,
-                                                                             leafNode.ignoreAdjacentFace, sc, s.r2,
-                                                                             flipNormalOrientation, silhouettePrecision,
-                                                                             currentDist >= 0.0f);
+                    FloatP<WIDTH> d2 = RobinWidePrimitive<WIDTH, DIM, typename PrimitiveType::Bound>::computeSquaredStarRadiusWidePrimitive(
+                                                                            leafNode.positions, leafNode.normals, leafNode.maxRobinCoeff,
+                                                                            leafNode.hasAdjacentFace, leafNode.ignoreAdjacentFace, sc, s.r2,
+                                                                            flipNormalOrientation, silhouettePrecision, currentDist >= 0.0f);
 
                     // update squared radius
                     int W = std::min((int)WIDTH, nReferences - startReference);
@@ -666,9 +671,9 @@ inline int RobinMbvh<WIDTH, DIM, PrimitiveType, NodeType>::computeSquaredStarRad
     return nodesVisited;
 }
 
-template<size_t DIM, typename PrimitiveType>
-std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>>> createVectorizedRobinBvh(
-                                                        RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType> *robinBvh,
+template<size_t DIM, typename PrimitiveType, typename MbvhNodeBound, typename BvhNodeBound>
+std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>, MbvhNodeBound>> createVectorizedRobinBvh(
+                                                        RobinBvh<DIM, RobinBvhNode<DIM>, PrimitiveType, BvhNodeBound> *robinBvh,
                                                         std::vector<PrimitiveType *>& primitives,
                                                         std::vector<SilhouettePrimitive<DIM> *>& silhouettes,
                                                         bool printStats)
@@ -677,8 +682,8 @@ std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM
         using namespace std::chrono;
         high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
-        std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>>> mbvh(
-            new RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>>(primitives, silhouettes));
+        std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>, MbvhNodeBound>> mbvh(
+            new RobinMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, RobinMbvhNode<DIM>, MbvhNodeBound>(primitives, silhouettes));
         mbvh->template initialize<RobinBvhNode<DIM>>(robinBvh);
 
         if (printStats) {
