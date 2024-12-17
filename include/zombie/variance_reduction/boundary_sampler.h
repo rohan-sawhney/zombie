@@ -290,6 +290,7 @@ inline void UniformLineSegmentBoundarySampler<T>::generateSamples(const CDFTable
                 float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
 
                 samplePts.emplace_back(SamplePoint<T, 2>(pt, normal, sampleType,
+                                                         EstimationQuantity::Solution,
                                                          pdf, distToAbsorbingBoundary,
                                                          distToReflectingBoundary));
             }
@@ -506,6 +507,7 @@ inline void UniformTriangleBoundarySampler<T>::generateSamples(const CDFTable& t
                 float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
 
                 samplePts.emplace_back(SamplePoint<T, 3>(pt, normal, sampleType,
+                                                         EstimationQuantity::Solution,
                                                          pdf, distToAbsorbingBoundary,
                                                          distToReflectingBoundary));
             }

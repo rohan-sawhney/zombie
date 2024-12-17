@@ -31,14 +31,13 @@ public:
     // lie on the boundary when estimating the gradient
     void solve(const PDE<T, DIM>& pde,
                const WalkSettings& walkSettings,
-               const SampleEstimationData<DIM>& estimationData,
-               SamplePoint<T, DIM>& samplePt) const;
+               int nWalks, SamplePoint<T, DIM>& samplePt) const;
 
     // solves the given PDE at the input points (in parallel by default); NOTE:
     // assumes points do not lie on the boundary when estimating gradients
     void solve(const PDE<T, DIM>& pde,
                const WalkSettings& walkSettings,
-               const std::vector<SampleEstimationData<DIM>>& estimationData,
+               const std::vector<int>& nWalks,
                std::vector<SamplePoint<T, DIM>>& samplePts,
                bool runSingleThreaded=false,
                std::function<void(int, int)> reportProgress={}) const;
@@ -85,7 +84,6 @@ protected:
     // can be accessed through samplePt.statistics->getEstimatedDerivative()
     void estimateSolutionAndGradient(const PDE<T, DIM>& pde,
                                      const WalkSettings& walkSettings,
-                                     const Vector<DIM>& directionForDerivative,
                                      int nWalks, SamplePoint<T, DIM>& samplePt) const;
 
     // members
@@ -110,17 +108,14 @@ inline WalkOnStars<T, DIM>::WalkOnStars(const GeometricQueries<DIM>& queries_,
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                                        const WalkSettings& walkSettings,
-                                       const SampleEstimationData<DIM>& estimationData,
-                                       SamplePoint<T, DIM>& samplePt) const
+                                       int nWalks, SamplePoint<T, DIM>& samplePt) const
 {
-    if (estimationData.estimationQuantity != EstimationQuantity::None) {
-        if (estimationData.estimationQuantity == EstimationQuantity::SolutionAndGradient) {
-            estimateSolutionAndGradient(pde, walkSettings,
-                                        estimationData.directionForDerivative,
-                                        estimationData.nWalks, samplePt);
+    if (samplePt.estimationQuantity != EstimationQuantity::None) {
+        if (samplePt.estimationQuantity == EstimationQuantity::SolutionAndGradient) {
+            estimateSolutionAndGradient(pde, walkSettings, nWalks, samplePt);
 
         } else {
-            estimateSolution(pde, walkSettings, estimationData.nWalks, samplePt);
+            estimateSolution(pde, walkSettings, nWalks, samplePt);
         }
     }
 }
@@ -128,22 +123,23 @@ inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                                        const WalkSettings& walkSettings,
-                                       const std::vector<SampleEstimationData<DIM>>& estimationData,
-                                       std::vector<SamplePoint<T, DIM>>& samplePts, bool runSingleThreaded,
+                                       const std::vector<int>& nWalks,
+                                       std::vector<SamplePoint<T, DIM>>& samplePts,
+                                       bool runSingleThreaded,
                                        std::function<void(int, int)> reportProgress) const
 {
     // solve the PDE at each point independently
     int nPoints = (int)samplePts.size();
     if (runSingleThreaded || walkSettings.printLogs) {
         for (int i = 0; i < nPoints; i++) {
-            solve(pde, walkSettings, estimationData[i], samplePts[i]);
+            solve(pde, walkSettings, nWalks[i], samplePts[i]);
             if (reportProgress) reportProgress(1, 0);
         }
 
     } else {
         auto run = [&](const tbb::blocked_range<int>& range) {
             for (int i = range.begin(); i < range.end(); ++i) {
-                solve(pde, walkSettings, estimationData[i], samplePts[i]);
+                solve(pde, walkSettings, nWalks[i], samplePts[i]);
             }
 
             if (reportProgress) {
@@ -529,7 +525,7 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
     for (int w = 0; w < nWalks; w++) {
         // initialize the walk state
         WalkState<T, DIM> state(samplePt.pt, currentNormal, prevDirection, prevDistance, 1.0f,
-                                samplePt.type == SampleType::OnReflectingBoundary, 0);
+                                0, samplePt.type == SampleType::OnReflectingBoundary);
 
         // initialize the greens function
         if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
@@ -563,7 +559,6 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& pde,
                                                              const WalkSettings& walkSettings,
-                                                             const Vector<DIM>& directionForDerivative,
                                                              int nWalks, SamplePoint<T, DIM>& samplePt) const
 {
     // initialize statistics if there are no previous estimates
@@ -609,7 +604,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
         for (int antitheticIter = 0; antitheticIter < nAntitheticIters; antitheticIter++) {
             // initialize the walk state
             WalkState<T, DIM> state(samplePt.pt, Vector<DIM>::Zero(), Vector<DIM>::Zero(),
-                                    0.0f, 1.0f, false, 0);
+                                    0.0f, 1.0f, 0, false);
 
             // initialize the greens function
             if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
@@ -653,7 +648,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                     boundaryDirection = SphereSampler<DIM>::sampleUnitHemisphereCosine(u);
                     if (samplePt.sampler.nextFloat() < 0.5f) boundaryDirection[DIM - 1] *= -1.0f;
                     boundaryPdf = 0.5f*SphereSampler<DIM>::pdfSampleUnitHemisphereCosine(std::fabs(boundaryDirection[DIM - 1]));
-                    SphereSampler<DIM>::transformCoordinates(directionForDerivative, boundaryDirection);
+                    SphereSampler<DIM>::transformCoordinates(samplePt.directionForDerivative, boundaryDirection);
 
                 } else {
                     boundaryDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
@@ -699,8 +694,8 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                 for (int i = 0; i < DIM; i++) {
                     boundaryGradientEstimate[i] = (boundaryContribution - boundaryGradientControlVariate)*boundaryGradientDirection[i];
                     sourceGradientEstimate[i] = (firstSourceContribution - sourceGradientControlVariate)*sourceGradientDirection[i];
-                    directionalDerivative += boundaryGradientEstimate[i]*directionForDerivative[i];
-                    directionalDerivative += sourceGradientEstimate[i]*directionForDerivative[i];
+                    directionalDerivative += boundaryGradientEstimate[i]*samplePt.directionForDerivative[i];
+                    directionalDerivative += sourceGradientEstimate[i]*samplePt.directionForDerivative[i];
                 }
 
                 // update statistics

@@ -87,7 +87,8 @@ inline void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, std::vec
         if (insideSolveRegion(pt)) {
             float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
             float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
-            SamplePoint<T, DIM> samplePt(pt, Vector<DIM>::Zero(), SampleType::InDomain, pdf,
+            SamplePoint<T, DIM> samplePt(pt, Vector<DIM>::Zero(), SampleType::InDomain,
+                                         EstimationQuantity::Solution, pdf,
                                          distToAbsorbingBoundary, distToReflectingBoundary);
             samplePts.emplace_back(samplePt);
         }

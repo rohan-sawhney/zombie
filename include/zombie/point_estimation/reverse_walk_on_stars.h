@@ -23,8 +23,8 @@ namespace zombie {
 template <typename T>
 struct SampleContribution {
     T contribution;
-    float pdf;
     SampleType type;
+    float pdf;
     bool boundaryNormalAligned;
 };
 
@@ -89,8 +89,8 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 {
     // set the sample contribution
     SampleContribution<T> sampleContribution;
-    sampleContribution.pdf = samplePt.pdf;
     sampleContribution.type = samplePt.type;
+    sampleContribution.pdf = samplePt.pdf;
     sampleContribution.boundaryNormalAligned = samplePt.estimateBoundaryNormalAligned;
     bool didSetContribution = true;
 
@@ -135,7 +135,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
         // initialize the walk state
         WalkState<T, DIM> state(samplePt.pt, samplePt.normal, prevDirection, prevDistance,
-                                1.0f, onReflectingBoundary, 0);
+                                1.0f, 0, onReflectingBoundary);
 
         // initialize the greens function
         if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {

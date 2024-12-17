@@ -1,10 +1,10 @@
 // This file provides various convenience structs and enums to specify settings
 // and extract outputs from the algorithms implemented in Zombie. Specifically, in
 // addition to the PDE and GeometricQueries interfaces, the user should populate, via
-// their constructors, the WalkSettings, SamplePoint, and SampleEstimationData structs
-// for the walk-on-spheres and walk-on-stars algorithms. For each SamplePoint where
-// the PDE is to be solved, the SampleStatistics struct can be used to query the
-// estimated solution, gradient, and other statistics.
+// their constructors, the WalkSettings and SamplePoint structs for the walk-on-spheres
+// and walk-on-stars algorithms. For each SamplePoint where the PDE is to be solved,
+// the SampleStatistics struct can be used to query the estimated solution, gradient,
+// and other statistics.
 
 #pragma once
 
@@ -84,29 +84,29 @@ struct WalkState {
     // constructor
     WalkState(const Vector<DIM>& currentPt_, const Vector<DIM>& currentNormal_,
               const Vector<DIM>& prevDirection_, float prevDistance_, float throughput_,
-              bool onReflectingBoundary_, int walkLength_):
+              int walkLength_, bool onReflectingBoundary_):
               greensFn(nullptr),
+              totalReflectingBoundaryContribution(0.0f),
+              totalSourceContribution(0.0f),
               currentPt(currentPt_),
               currentNormal(currentNormal_),
               prevDirection(prevDirection_),
               prevDistance(prevDistance_),
               throughput(throughput_),
-              onReflectingBoundary(onReflectingBoundary_),
-              totalReflectingBoundaryContribution(0.0f),
-              totalSourceContribution(0.0f),
-              walkLength(walkLength_) {}
+              walkLength(walkLength_),
+              onReflectingBoundary(onReflectingBoundary_) {}
 
     // members
     std::unique_ptr<GreensFnBall<DIM>> greensFn;
+    T totalReflectingBoundaryContribution;
+    T totalSourceContribution;
     Vector<DIM> currentPt;
     Vector<DIM> currentNormal;
     Vector<DIM> prevDirection;
     float prevDistance;
     float throughput;
-    bool onReflectingBoundary;
-    T totalReflectingBoundaryContribution;
-    T totalSourceContribution;
     int walkLength;
+    bool onReflectingBoundary;
 };
 
 enum class WalkCompletionCode {
@@ -259,16 +259,25 @@ enum class SampleType {
     OnReflectingBoundary
 };
 
+enum class EstimationQuantity {
+    Solution,
+    SolutionAndGradient,
+    None
+};
+
 template <typename T, size_t DIM>
 struct SamplePoint {
     // constructor
     SamplePoint(const Vector<DIM>& pt_, const Vector<DIM>& normal_,
-                SampleType type_, float pdf_, float distToAbsorbingBoundary_,
-                float distToReflectingBoundary_):
-                pt(pt_), normal(normal_), type(type_), pdf(pdf_),
+                SampleType type_, EstimationQuantity estimationQuantity_,
+                float pdf_, float distToAbsorbingBoundary_, float distToReflectingBoundary_):
+                pt(pt_), normal(normal_), type(type_),
+                estimationQuantity(estimationQuantity_), pdf(pdf_),
                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
                 distToReflectingBoundary(distToReflectingBoundary_),
-                firstSphereRadius(0.0f), estimateBoundaryNormalAligned(false) {
+                estimateBoundaryNormalAligned(false) {
+        directionForDerivative = Vector<DIM>::Zero();
+        directionForDerivative(0) = 1.0f;
         reset();
     }
 
@@ -278,50 +287,29 @@ struct SamplePoint {
         uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
         sampler = pcg32(seed);
         statistics = nullptr;
+        firstSphereRadius = 0.0f;
+        robinCoeff = 0.0f;
         solution = T(0.0f);
         normalDerivative = T(0.0f);
         source = T(0.0f);
         robin = T(0.0f);
-        robinCoeff = 0.0f;
     }
 
     // members
     pcg32 sampler;
+    std::shared_ptr<SampleStatistics<T, DIM>> statistics; // populated by WoSt
     Vector<DIM> pt;
     Vector<DIM> normal;
+    Vector<DIM> directionForDerivative;                   // needed only for computing directional derivatives
     SampleType type;
+    EstimationQuantity estimationQuantity;
     float pdf;
     float distToAbsorbingBoundary;
     float distToReflectingBoundary;
-    float firstSphereRadius; // populated by WoSt
+    float firstSphereRadius;                              // populated by WoSt
+    float robinCoeff;                                     // not populated by WoSt, but available for downstream use (e.g. BVC)
+    T solution, normalDerivative, source, robin;          // not populated by WoSt, but available for downstream use (e.g. BVC)
     bool estimateBoundaryNormalAligned;
-    std::shared_ptr<SampleStatistics<T, DIM>> statistics; // populated by WoSt
-    T solution, normalDerivative, source, robin; // not populated by WoSt, but available for downstream use (e.g. BVC)
-    float robinCoeff; // not populated by WoSt, but available for downstream use (e.g. BVC)
-};
-
-enum class EstimationQuantity {
-    Solution,
-    SolutionAndGradient,
-    None
-};
-
-template <size_t DIM>
-struct SampleEstimationData {
-    // constructors
-    SampleEstimationData(): nWalks(0), estimationQuantity(EstimationQuantity::None),
-                            directionForDerivative(Vector<DIM>::Zero()) {
-        directionForDerivative(0) = 1.0f;
-    }
-    SampleEstimationData(int nWalks_, EstimationQuantity estimationQuantity_,
-                         Vector<DIM> directionForDerivative_=Vector<DIM>::Zero()):
-                         nWalks(nWalks_), estimationQuantity(estimationQuantity_),
-                         directionForDerivative(directionForDerivative_) {}
-
-    // members
-    int nWalks;
-    EstimationQuantity estimationQuantity;
-    Vector<DIM> directionForDerivative; // needed only for computing direction derivatives
 };
 
 } // zombie

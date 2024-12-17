@@ -37,7 +37,7 @@ void writeSolution(const std::string& filename,
 void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
                         const zombie::GeometricQueries<2>& queries,
                         const Vector2& bMin, const Vector2& bMax,
-                        const int gridRes)
+                        bool solveDoubleSided, const int gridRes)
 {
     // create a grid of sample points
     Vector2 extent = bMax - bMin;
@@ -45,12 +45,16 @@ void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
         for (int j = 0; j < gridRes; j++) {
             Vector2 pt((i/float(gridRes))*extent.x() + bMin.x(),
                        (j/float(gridRes))*extent.y() + bMin.y());
+            zombie::EstimationQuantity estimationQuantity = solveDoubleSided || queries.insideDomain(pt, true) ?
+                                                            zombie::EstimationQuantity::Solution:
+                                                            zombie::EstimationQuantity::None;
             float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
             float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
 
             samplePts.emplace_back(zombie::SamplePoint<float, 2>(pt, Vector2::Zero(),
                                                                  zombie::SampleType::InDomain,
-                                                                 1.0f, distToAbsorbingBoundary,
+                                                                 estimationQuantity, 1.0f,
+                                                                 distToAbsorbingBoundary,
                                                                  distToReflectingBoundary));
         }
     }
