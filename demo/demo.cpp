@@ -139,7 +139,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     }
 
     // solve using boundary value caching
-    int totalWork = absorbingBoundaryCacheSize + reflectingBoundaryCacheSize + domainCacheSize;
+    int totalWork = 2.0f*(absorbingBoundaryCacheSize + reflectingBoundaryCacheSize) + domainCacheSize;
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
 
