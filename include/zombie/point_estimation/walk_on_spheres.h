@@ -65,7 +65,7 @@ protected:
 
     // estimates the solution and gradient of the given PDE at the input point;
     // NOTE: assumes the point does not lie on the boundary; the directional derivative
-    // can be accessed through samplePt.statistics->getEstimatedDerivative()
+    // can be accessed through samplePt.statistics.getEstimatedDerivative()
     void estimateSolutionAndGradient(const PDE<T, DIM>& pde,
                                      const WalkSettings& walkSettings,
                                      int nWalks, SamplePoint<T, DIM>& samplePt) const;
@@ -251,11 +251,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
                                                     const WalkSettings& walkSettings,
                                                     int nWalks, SamplePoint<T, DIM>& samplePt) const
 {
-    // initialize statistics if there are no previous estimates
-    bool hasPrevEstimates = samplePt.statistics != nullptr;
-    if (!hasPrevEstimates) {
-        samplePt.statistics = std::make_shared<SampleStatistics<T, DIM>>();
-    }
+    // check if there are no previous estimates
+    bool hasPrevEstimates = samplePt.statistics.getSolutionEstimateCount() > 0;
 
     // check if the sample pt is on the absorbing boundary
     if (samplePt.type == SampleType::OnAbsorbingBoundary) {
@@ -269,7 +266,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             }
 
             // update statistics and set the first sphere radius to 0
-            samplePt.statistics->addSolutionEstimate(totalContribution);
+            samplePt.statistics.addSolutionEstimate(totalContribution);
             samplePt.firstSphereRadius = 0.0f;
         }
 
@@ -313,8 +310,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
                                   state.totalSourceContribution;
 
             // update statistics
-            samplePt.statistics->addSolutionEstimate(totalContribution);
-            samplePt.statistics->addWalkLength(state.walkLength);
+            samplePt.statistics.addSolutionEstimate(totalContribution);
+            samplePt.statistics.addWalkLength(state.walkLength);
         }
     }
 }
@@ -324,12 +321,6 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                                                                const WalkSettings& walkSettings,
                                                                int nWalks, SamplePoint<T, DIM>& samplePt) const
 {
-    // initialize statistics if there are no previous estimates
-    bool hasPrevEstimates = samplePt.statistics != nullptr;
-    if (!hasPrevEstimates) {
-        samplePt.statistics = std::make_shared<SampleStatistics<T, DIM>>();
-    }
-
     // reduce nWalks by 2 if using antithetic sampling
     int nAntitheticIters = 1;
     if (walkSettings.useGradientAntitheticVariates) {
@@ -356,8 +347,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
         T boundaryGradientControlVariate(0.0f);
         T sourceGradientControlVariate(0.0f);
         if (walkSettings.useGradientControlVariates) {
-            boundaryGradientControlVariate = samplePt.statistics->getEstimatedSolution();
-            sourceGradientControlVariate = samplePt.statistics->getMeanFirstSourceContribution();
+            boundaryGradientControlVariate = samplePt.statistics.getEstimatedSolution();
+            sourceGradientControlVariate = samplePt.statistics.getMeanFirstSourceContribution();
         }
 
         for (int antitheticIter = 0; antitheticIter < nAntitheticIters; antitheticIter++) {
@@ -455,11 +446,11 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 }
 
                 // update statistics
-                samplePt.statistics->addSolutionEstimate(totalContribution);
-                samplePt.statistics->addFirstSourceContribution(firstSourceContribution);
-                samplePt.statistics->addGradientEstimate(boundaryGradientEstimate, sourceGradientEstimate);
-                samplePt.statistics->addDerivativeContribution(directionalDerivative);
-                samplePt.statistics->addWalkLength(state.walkLength);
+                samplePt.statistics.addSolutionEstimate(totalContribution);
+                samplePt.statistics.addFirstSourceContribution(firstSourceContribution);
+                samplePt.statistics.addGradientEstimate(boundaryGradientEstimate, sourceGradientEstimate);
+                samplePt.statistics.addDerivativeContribution(directionalDerivative);
+                samplePt.statistics.addWalkLength(state.walkLength);
             }
         }
     }

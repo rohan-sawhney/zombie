@@ -40,11 +40,11 @@ struct EvaluationPoint {
 
 protected:
     // members
-    std::unique_ptr<SampleStatistics<T, DIM>> absorbingBoundaryStatistics;
-    std::unique_ptr<SampleStatistics<T, DIM>> absorbingBoundaryNormalAlignedStatistics;
-    std::unique_ptr<SampleStatistics<T, DIM>> reflectingBoundaryStatistics;
-    std::unique_ptr<SampleStatistics<T, DIM>> reflectingBoundaryNormalAlignedStatistics;
-    std::unique_ptr<SampleStatistics<T, DIM>> sourceStatistics;
+    SampleStatistics<T, DIM> absorbingBoundaryStatistics;
+    SampleStatistics<T, DIM> absorbingBoundaryNormalAlignedStatistics;
+    SampleStatistics<T, DIM> reflectingBoundaryStatistics;
+    SampleStatistics<T, DIM> reflectingBoundaryNormalAlignedStatistics;
+    SampleStatistics<T, DIM> sourceStatistics;
 
     template <typename A, size_t B>
     friend class BoundaryValueCaching;
@@ -251,21 +251,17 @@ inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
                                                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
                                                 distToReflectingBoundary(distToReflectingBoundary_)
 {
-    absorbingBoundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>();
-    absorbingBoundaryNormalAlignedStatistics = std::make_unique<SampleStatistics<T, DIM>>();
-    reflectingBoundaryStatistics = std::make_unique<SampleStatistics<T, DIM>>();
-    reflectingBoundaryNormalAlignedStatistics = std::make_unique<SampleStatistics<T, DIM>>();
-    sourceStatistics = std::make_unique<SampleStatistics<T, DIM>>();
+
 }
 
 template <typename T, size_t DIM>
 inline T EvaluationPoint<T, DIM>::getEstimatedSolution() const
 {
-    T solution = absorbingBoundaryStatistics->getEstimatedSolution();
-    solution += absorbingBoundaryNormalAlignedStatistics->getEstimatedSolution();
-    solution += reflectingBoundaryStatistics->getEstimatedSolution();
-    solution += reflectingBoundaryNormalAlignedStatistics->getEstimatedSolution();
-    solution += sourceStatistics->getEstimatedSolution();
+    T solution = absorbingBoundaryStatistics.getEstimatedSolution();
+    solution += absorbingBoundaryNormalAlignedStatistics.getEstimatedSolution();
+    solution += reflectingBoundaryStatistics.getEstimatedSolution();
+    solution += reflectingBoundaryNormalAlignedStatistics.getEstimatedSolution();
+    solution += sourceStatistics.getEstimatedSolution();
 
     return solution;
 }
@@ -275,22 +271,22 @@ inline void EvaluationPoint<T, DIM>::getEstimatedGradient(std::vector<T>& gradie
 {
     gradient.resize(DIM);
     for (int i = 0; i < DIM; i++) {
-        gradient[i] = absorbingBoundaryStatistics->getEstimatedGradient()[i];
-        gradient[i] += absorbingBoundaryNormalAlignedStatistics->getEstimatedGradient()[i];
-        gradient[i] += reflectingBoundaryStatistics->getEstimatedGradient()[i];
-        gradient[i] += reflectingBoundaryNormalAlignedStatistics->getEstimatedGradient()[i];
-        gradient[i] += sourceStatistics->getEstimatedGradient()[i];
+        gradient[i] = absorbingBoundaryStatistics.getEstimatedGradient()[i];
+        gradient[i] += absorbingBoundaryNormalAlignedStatistics.getEstimatedGradient()[i];
+        gradient[i] += reflectingBoundaryStatistics.getEstimatedGradient()[i];
+        gradient[i] += reflectingBoundaryNormalAlignedStatistics.getEstimatedGradient()[i];
+        gradient[i] += sourceStatistics.getEstimatedGradient()[i];
     }
 }
 
 template <typename T, size_t DIM>
 inline void EvaluationPoint<T, DIM>::reset()
 {
-    absorbingBoundaryStatistics->reset();
-    absorbingBoundaryNormalAlignedStatistics->reset();
-    reflectingBoundaryStatistics->reset();
-    reflectingBoundaryNormalAlignedStatistics->reset();
-    sourceStatistics->reset();
+    absorbingBoundaryStatistics.reset();
+    absorbingBoundaryNormalAlignedStatistics.reset();
+    reflectingBoundaryStatistics.reset();
+    reflectingBoundaryNormalAlignedStatistics.reset();
+    sourceStatistics.reset();
 }
 
 template <typename T, size_t DIM>
@@ -505,12 +501,12 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
 
         // update statistics
         evalPt.reset();
-        T solutionEstimate = samplePt.statistics->getEstimatedSolution();
+        T solutionEstimate = samplePt.statistics.getEstimatedSolution();
         if (evalPt.type == SampleType::OnAbsorbingBoundary) {
-            evalPt.absorbingBoundaryStatistics->addSolutionEstimate(solutionEstimate);
+            evalPt.absorbingBoundaryStatistics.addSolutionEstimate(solutionEstimate);
 
         } else if (evalPt.type == SampleType::OnReflectingBoundary) {
-            evalPt.reflectingBoundaryStatistics->addSolutionEstimate(solutionEstimate);
+            evalPt.reflectingBoundaryStatistics.addSolutionEstimate(solutionEstimate);
         }
     }
 }
@@ -613,7 +609,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
 {
     for (int i = 0; i < (int)samplePts.size(); i++) {
         SamplePoint<T, DIM>& samplePt = samplePts[i];
-        samplePt.solution = samplePt.statistics->getEstimatedSolution();
+        samplePt.solution = samplePt.statistics.getEstimatedSolution();
 
         if (samplePt.type == SampleType::OnReflectingBoundary) {
             if (!walkSettings.ignoreReflectingBoundaryContribution) {
@@ -625,7 +621,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
                 } else {
                     samplePt.robin = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
                     if (samplePt.robinCoeff > robinCoeffCutoffForNormalDerivative) {
-                        samplePt.normalDerivative = samplePt.statistics->getEstimatedDerivative();
+                        samplePt.normalDerivative = samplePt.statistics.getEstimatedDerivative();
                     }
                 }
             }
@@ -648,7 +644,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
 
             } else {
                 // use unbiased gradient estimates
-                samplePt.normalDerivative = samplePt.statistics->getEstimatedDerivative();
+                samplePt.normalDerivative = samplePt.statistics.getEstimatedDerivative();
             }
         }
     }
@@ -724,22 +720,22 @@ inline void BoundaryValueCaching<T, DIM>::splatBoundaryData(const SamplePoint<T,
     // update statistics
     if (samplePt.estimateBoundaryNormalAligned) {
         if (samplePt.type == SampleType::OnAbsorbingBoundary) {
-            evalPt.absorbingBoundaryNormalAlignedStatistics->addSolutionEstimate(solutionEstimate);
-            evalPt.absorbingBoundaryNormalAlignedStatistics->addGradientEstimate(gradientEstimate);
+            evalPt.absorbingBoundaryNormalAlignedStatistics.addSolutionEstimate(solutionEstimate);
+            evalPt.absorbingBoundaryNormalAlignedStatistics.addGradientEstimate(gradientEstimate);
 
         } else if (samplePt.type == SampleType::OnReflectingBoundary) {
-            evalPt.reflectingBoundaryNormalAlignedStatistics->addSolutionEstimate(solutionEstimate);
-            evalPt.reflectingBoundaryNormalAlignedStatistics->addGradientEstimate(gradientEstimate);
+            evalPt.reflectingBoundaryNormalAlignedStatistics.addSolutionEstimate(solutionEstimate);
+            evalPt.reflectingBoundaryNormalAlignedStatistics.addGradientEstimate(gradientEstimate);
         }
 
     } else {
         if (samplePt.type == SampleType::OnAbsorbingBoundary) {
-            evalPt.absorbingBoundaryStatistics->addSolutionEstimate(solutionEstimate);
-            evalPt.absorbingBoundaryStatistics->addGradientEstimate(gradientEstimate);
+            evalPt.absorbingBoundaryStatistics.addSolutionEstimate(solutionEstimate);
+            evalPt.absorbingBoundaryStatistics.addGradientEstimate(gradientEstimate);
 
         } else if (samplePt.type == SampleType::OnReflectingBoundary) {
-            evalPt.reflectingBoundaryStatistics->addSolutionEstimate(solutionEstimate);
-            evalPt.reflectingBoundaryStatistics->addGradientEstimate(gradientEstimate);
+            evalPt.reflectingBoundaryStatistics.addSolutionEstimate(solutionEstimate);
+            evalPt.reflectingBoundaryStatistics.addGradientEstimate(gradientEstimate);
         }
     }
 }
@@ -782,8 +778,8 @@ inline void BoundaryValueCaching<T, DIM>::splatSourceData(const SamplePoint<T, D
     }
 
     // update statistics
-    evalPt.sourceStatistics->addSolutionEstimate(solutionEstimate);
-    evalPt.sourceStatistics->addGradientEstimate(gradientEstimate);
+    evalPt.sourceStatistics.addSolutionEstimate(solutionEstimate);
+    evalPt.sourceStatistics.addGradientEstimate(gradientEstimate);
 }
 
 template <typename T, size_t DIM>

@@ -31,7 +31,7 @@ struct EvaluationPoint {
                            int nReflectingBoundaryNormalAlignedSamples,
                            int nSourceSamples) const;
 
-    // resets statistics
+    // resets state
     void reset();
 
     // members

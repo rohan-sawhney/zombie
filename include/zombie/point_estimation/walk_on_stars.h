@@ -46,6 +46,7 @@ protected:
     // computes the contribution from the reflecting boundary at a particular point in the walk
     void computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                const WalkSettings& walkSettings,
+                                               const IntersectionPoint<DIM>& intersectionPt,
                                                float starRadius, bool flipNormalOrientation,
                                                pcg32& sampler, WalkState<T, DIM>& state) const;
 
@@ -81,7 +82,7 @@ protected:
 
     // estimates the solution and gradient of the given PDE at the input point;
     // NOTE: assumes the point does not lie on the boundary; the directional derivative
-    // can be accessed through samplePt.statistics->getEstimatedDerivative()
+    // can be accessed through samplePt.statistics.getEstimatedDerivative()
     void estimateSolutionAndGradient(const PDE<T, DIM>& pde,
                                      const WalkSettings& walkSettings,
                                      int nWalks, SamplePoint<T, DIM>& samplePt) const;
@@ -156,6 +157,7 @@ inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                                        const WalkSettings& walkSettings,
+                                                                       const IntersectionPoint<DIM>& intersectionPt,
                                                                        float starRadius, bool flipNormalOrientation,
                                                                        pcg32& sampler, WalkState<T, DIM>& state) const
 {
@@ -165,8 +167,7 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
         BoundarySample<DIM> boundarySample;
         Vector<DIM> randNumsForBoundarySampling;
         for (int i = 0; i < DIM; i++) randNumsForBoundarySampling[i] = sampler.nextFloat();
-        if (queries.sampleReflectingBoundary(
-            state.currentPt, starRadius, randNumsForBoundarySampling, boundarySample)) {
+        if (queries.sampleReflectingBoundary(state.currentPt, starRadius, randNumsForBoundarySampling, boundarySample)) {
             Vector<DIM> directionToSample = boundarySample.pt - state.currentPt;
             float distToSample = directionToSample.norm();
             float alpha = state.onReflectingBoundary ? 2.0f : 1.0f;
@@ -207,9 +208,22 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         estimateBoundaryNormalAligned;
                 T h = pde.robin(boundarySample.pt, returnBoundaryNormalAlignedValue);
+                if (state.onReflectingBoundary) {
+                    // subtract control variate
+                    T hControl = pde.robin(state.currentPt, returnBoundaryNormalAlignedValue);
+                    h -= boundarySample.normal.dot(state.currentNormal)*hControl;
+                }
 
                 state.totalReflectingBoundaryContribution += state.throughput*alpha*G*h/boundarySample.pdf;
             }
+        }
+
+        if (state.onReflectingBoundary) {
+            // compute the control variate for the reflecting boundary contribution;
+            // hemispherical sampling causes the alpha term to be cancelled out
+            T hControl = pde.robin(state.currentPt, flipNormalOrientation);
+            Vector<DIM> directionToSample = intersectionPt.pt - state.currentPt;
+            state.totalReflectingBoundaryContribution -= state.throughput*directionToSample.dot(state.currentNormal)*hControl;
         }
     }
 }
@@ -227,7 +241,7 @@ inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pd
         float sourceRadius, sourcePdf;
         Vector<DIM> sourcePt = state.greensFn->sampleVolume(direction, sampler, sourceRadius, sourcePdf);
         if (sourceRadius <= intersectionPt.dist) {
-            // NOTE: hemispherical sampling causes the alpha term to cancel when
+            // NOTE: hemispherical sampling causes the alpha term to be cancelled out when
             // currentPt is on the reflecting boundary; in this case, the green's function
             // norm remains unchanged even though our domain is a hemisphere;
             // for double-sided problems in watertight domains, both the current pt
@@ -355,12 +369,11 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // compute the contribution from the reflecting boundary
-        computeReflectingBoundaryContribution(
-            pde, walkSettings, starRadius, flipNormalOrientation, sampler, state);
+        computeReflectingBoundaryContribution(pde, walkSettings, intersectionPt, starRadius, 
+                                              flipNormalOrientation, sampler, state);
 
         // compute the source contribution
-        computeSourceContribution(
-            pde, walkSettings, intersectionPt, direction, sampler, state);
+        computeSourceContribution(pde, walkSettings, intersectionPt, direction, sampler, state);
 
         // update walk position
         state.prevDistance = intersectionPt.dist;
@@ -445,11 +458,8 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
                                                   const WalkSettings& walkSettings,
                                                   int nWalks, SamplePoint<T, DIM>& samplePt) const
 {
-    // initialize statistics if there are no previous estimates
-    bool hasPrevEstimates = samplePt.statistics != nullptr;
-    if (!hasPrevEstimates) {
-        samplePt.statistics = std::make_shared<SampleStatistics<T, DIM>>();
-    }
+    // check if there are no previous estimates
+    bool hasPrevEstimates = samplePt.statistics.getSolutionEstimateCount() > 0;
 
     // check if the sample pt is on the absorbing boundary
     if (samplePt.type == SampleType::OnAbsorbingBoundary) {
@@ -463,7 +473,7 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             }
 
             // update statistics and set the first sphere radius to 0
-            samplePt.statistics->addSolutionEstimate(totalContribution);
+            samplePt.statistics.addSolutionEstimate(totalContribution);
             samplePt.firstSphereRadius = 0.0f;
         }
 
@@ -550,8 +560,8 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
                                   state.totalSourceContribution;
 
             // update statistics
-            samplePt.statistics->addSolutionEstimate(totalContribution);
-            samplePt.statistics->addWalkLength(state.walkLength);
+            samplePt.statistics.addSolutionEstimate(totalContribution);
+            samplePt.statistics.addWalkLength(state.walkLength);
         }
     }
 }
@@ -561,12 +571,6 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                                                              const WalkSettings& walkSettings,
                                                              int nWalks, SamplePoint<T, DIM>& samplePt) const
 {
-    // initialize statistics if there are no previous estimates
-    bool hasPrevEstimates = samplePt.statistics != nullptr;
-    if (!hasPrevEstimates) {
-        samplePt.statistics = std::make_shared<SampleStatistics<T, DIM>>();
-    }
-
     // reduce nWalks by 2 if using antithetic sampling
     int nAntitheticIters = 1;
     if (walkSettings.useGradientAntitheticVariates) {
@@ -597,8 +601,8 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
         T boundaryGradientControlVariate(0.0f);
         T sourceGradientControlVariate(0.0f);
         if (walkSettings.useGradientControlVariates) {
-            boundaryGradientControlVariate = samplePt.statistics->getEstimatedSolution();
-            sourceGradientControlVariate = samplePt.statistics->getMeanFirstSourceContribution();
+            boundaryGradientControlVariate = samplePt.statistics.getEstimatedSolution();
+            sourceGradientControlVariate = samplePt.statistics.getMeanFirstSourceContribution();
         }
 
         for (int antitheticIter = 0; antitheticIter < nAntitheticIters; antitheticIter++) {
@@ -699,11 +703,11 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                 }
 
                 // update statistics
-                samplePt.statistics->addSolutionEstimate(totalContribution);
-                samplePt.statistics->addFirstSourceContribution(firstSourceContribution);
-                samplePt.statistics->addGradientEstimate(boundaryGradientEstimate, sourceGradientEstimate);
-                samplePt.statistics->addDerivativeContribution(directionalDerivative);
-                samplePt.statistics->addWalkLength(state.walkLength);
+                samplePt.statistics.addSolutionEstimate(totalContribution);
+                samplePt.statistics.addFirstSourceContribution(firstSourceContribution);
+                samplePt.statistics.addGradientEstimate(boundaryGradientEstimate, sourceGradientEstimate);
+                samplePt.statistics.addDerivativeContribution(directionalDerivative);
+                samplePt.statistics.addWalkLength(state.walkLength);
             }
         }
     }

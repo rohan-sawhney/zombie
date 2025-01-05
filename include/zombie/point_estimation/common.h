@@ -286,7 +286,7 @@ struct SamplePoint {
         auto now = std::chrono::high_resolution_clock::now();
         uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
         sampler = pcg32(seed);
-        statistics = nullptr;
+        statistics.reset();
         firstSphereRadius = 0.0f;
         robinCoeff = 0.0f;
         solution = T(0.0f);
@@ -297,7 +297,7 @@ struct SamplePoint {
 
     // members
     pcg32 sampler;
-    std::shared_ptr<SampleStatistics<T, DIM>> statistics; // populated by WoSt
+    SampleStatistics<T, DIM> statistics;                  // populated by WoSt
     Vector<DIM> pt;
     Vector<DIM> normal;
     Vector<DIM> directionForDerivative;                   // needed only for computing directional derivatives

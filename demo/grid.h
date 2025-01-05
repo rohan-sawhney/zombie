@@ -96,7 +96,7 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
             boundaryData->get(j, i) = Array3(dirichletVal, robinVal, sourceVal);
 
             // solution data
-            float value = samplePts[idx].statistics ? samplePts[idx].statistics->getEstimatedSolution(): 0.0f;
+            float value = samplePts[idx].statistics.getEstimatedSolution();
             bool maskOutValue = (!inDomain && !isDoubleSided) || std::min(std::abs(distToAbsorbingBoundary),
                                                                           std::abs(distToReflectingBoundary))
                                                                           < boundaryDistanceMask;

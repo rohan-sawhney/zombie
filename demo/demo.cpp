@@ -254,7 +254,7 @@ void runReverseWalkOnStars(const Scene& scene, const json& solverConfig, const j
                                                                                  bbox.first, bbox.second, regionVolume);
     }
 
-    // solve using reverse walk solver
+    // solve using reverse walk on stars
     int totalWork = absorbingBoundarySampleCount + reflectingBoundarySampleCount + domainSampleCount;
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
