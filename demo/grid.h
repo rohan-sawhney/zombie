@@ -62,7 +62,7 @@ void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
 void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePts,
                       const zombie::PDE<float, 2>& pde,
                       const zombie::GeometricQueries<2>& queries,
-                      const bool isDoubleSided, const json& config)
+                      const bool solveDoubleSided, const json& config)
 {
     // read settings from config
     const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
@@ -83,7 +83,7 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
         for (int j = 0; j < gridRes; j++) {
             int idx = i*gridRes + j;
 
-            // scene data
+            // model problem data
             float inDomain = queries.insideDomain(samplePts[idx].pt, true) ? 1 : 0;
             float distToAbsorbingBoundary = samplePts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = samplePts[idx].distToReflectingBoundary;
@@ -96,9 +96,10 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
 
             // solution data
             float value = samplePts[idx].statistics.getEstimatedSolution();
-            bool maskOutValue = (!inDomain && !isDoubleSided) || std::min(std::abs(distToAbsorbingBoundary),
-                                                                          std::abs(distToReflectingBoundary))
-                                                                          < boundaryDistanceMask;
+            bool maskOutValue = (!inDomain && !solveDoubleSided) ||
+                                std::min(std::abs(distToAbsorbingBoundary),
+                                         std::abs(distToReflectingBoundary))
+                                < boundaryDistanceMask;
             solution->get(j, i) = Array3(maskOutValue ? 0.0f : value);
         }
     }
@@ -133,7 +134,7 @@ void createEvaluationGrid(std::vector<EvaluationPointType>& evalPts,
 void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>>& evalPts,
                         const zombie::PDE<float, 2>& pde,
                         const zombie::GeometricQueries<2>& queries,
-                        const bool isDoubleSided, const json& config)
+                        const bool solveDoubleSided, const json& config)
 {
     // read settings from config
     const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
@@ -154,7 +155,7 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
         for (int j = 0; j < gridRes; j++) {
             int idx = i*gridRes + j;
 
-            // scene data
+            // model problem data
             float inDomain = queries.insideDomain(evalPts[idx].pt, true) ? 1 : 0;
             float distToAbsorbingBoundary = evalPts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = evalPts[idx].distToReflectingBoundary;
@@ -167,9 +168,10 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
 
             // solution data
             float value = evalPts[idx].getEstimatedSolution();
-            bool maskOutValue = (!inDomain && !isDoubleSided) || std::min(std::abs(distToAbsorbingBoundary),
-                                                                          std::abs(distToReflectingBoundary))
-                                                                          < boundaryDistanceMask;
+            bool maskOutValue = (!inDomain && !solveDoubleSided) ||
+                                std::min(std::abs(distToAbsorbingBoundary),
+                                         std::abs(distToReflectingBoundary))
+                                < boundaryDistanceMask;
             solution->get(j, i) = Array3(maskOutValue ? 0.0f : value);
         }
     }
@@ -184,7 +186,7 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
                         int nReflectingBoundarySamples, int nReflectingBoundaryNormalAlignedSamples,
                         int nSourceSamples, const zombie::PDE<float, 2>& pde,
                         const zombie::GeometricQueries<2>& queries,
-                        const bool isDoubleSided, const json& config)
+                        const bool solveDoubleSided, const json& config)
 {
     // read settings from config
     const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
@@ -205,7 +207,7 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
         for (int j = 0; j < gridRes; j++) {
             int idx = i*gridRes + j;
 
-            // scene data
+            // model problem data
             float inDomain = queries.insideDomain(evalPts[idx].pt, true) ? 1 : 0;
             float distToAbsorbingBoundary = evalPts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = evalPts[idx].distToReflectingBoundary;
@@ -222,9 +224,10 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
                                                             nReflectingBoundarySamples,
                                                             nReflectingBoundaryNormalAlignedSamples,
                                                             nSourceSamples);
-            bool maskOutValue = (!inDomain && !isDoubleSided) || std::min(std::abs(distToAbsorbingBoundary),
-                                                                          std::abs(distToReflectingBoundary))
-                                                                          < boundaryDistanceMask;
+            bool maskOutValue = (!inDomain && !solveDoubleSided) ||
+                                std::min(std::abs(distToAbsorbingBoundary),
+                                         std::abs(distToReflectingBoundary))
+                                < boundaryDistanceMask;
             solution->get(j, i) = Array3(maskOutValue ? 0.0f : value);
         }
     }

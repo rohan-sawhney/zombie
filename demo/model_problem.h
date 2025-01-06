@@ -1,10 +1,10 @@
-// This file defines a Scene class, which is used to describe a scalar-valued
+// This file defines a ModelProblem class, which is used to describe a scalar-valued
 // Poisson or screened Poisson PDE on a 2D domain via a boundary mesh, associated
 // boundary conditions, source term, and robin and absorption coefficients.
 //
 // The boundary mesh is read from an OBJ file, while the input PDE data is read
 // from images for the purposes of this demo. NOTE: Users may analogously define
-// a Scene class for 3D domains and/or vector-valued PDEs, as all functionality
+// a ModelProblem class for 3D domains and/or vector-valued PDEs, as all functionality
 // in Zombie is templated on the dimension and value type of the PDE.
 
 #pragma once
@@ -15,10 +15,10 @@
 #include "config.h"
 #include "image.h"
 
-class Scene {
+class ModelProblem {
 public:
     // constructor
-    Scene(const json& config);
+    ModelProblem(const json& config);
 
     // members
     std::vector<Vector2> vertices;
@@ -27,7 +27,7 @@ public:
     std::vector<std::vector<size_t>> segments;
     std::vector<std::vector<size_t>> absorbingBoundarySegments;
     std::vector<std::vector<size_t>> reflectingBoundarySegments;
-    const bool isDoubleSided;
+    const bool solveDoubleSided;
     zombie::PDE<float, 2> pde;
     zombie::GeometricQueries<2> queries;
 
@@ -60,11 +60,11 @@ protected:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-Scene::Scene(const json& config):
-isDoubleSided(getOptional<bool>(config, "isDoubleSided", false))
+ModelProblem::ModelProblem(const json& config):
+solveDoubleSided(getOptional<bool>(config, "solveDoubleSided", false))
 {
     // load config settings
-    const std::string boundaryFile = getRequired<std::string>(config, "boundary");
+    const std::string geometryFile = getRequired<std::string>(config, "geometry");
     const std::string isReflectingBoundaryFile = getRequired<std::string>(config, "isReflectingBoundary");
     const std::string absorbingBoundaryValueFile = getRequired<std::string>(config, "absorbingBoundaryValue");
     const std::string reflectingBoundaryValueFile = getRequired<std::string>(config, "reflectingBoundaryValue");
@@ -73,7 +73,7 @@ isDoubleSided(getOptional<bool>(config, "isDoubleSided", false))
     bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
     absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
     robinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
-    queries.domainIsWatertight = getOptional<bool>(config, "isWatertight", true);
+    queries.domainIsWatertight = getOptional<bool>(config, "IsWatertightDomain", true);
 
     // load images specifying boundary conditions and source term
     isReflectingBoundary = std::make_shared<Image<1>>(isReflectingBoundaryFile);
@@ -82,12 +82,12 @@ isDoubleSided(getOptional<bool>(config, "isDoubleSided", false))
     sourceValue = std::make_shared<Image<1>>(sourceValueFile);
 
     // load boundary mesh, build acceleration structures and set geometric queries and PDE inputs
-    loadOBJ(boundaryFile, normalize, flipOrientation);
+    loadOBJ(geometryFile, normalize, flipOrientation);
     setupPDE();
     populateGeometricQueries();
 }
 
-void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation)
+void ModelProblem::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation)
 {
     zombie::loadBoundaryMesh<2>(filename, vertices, segments);
     if (normalize) zombie::normalize<2>(vertices);
@@ -97,7 +97,7 @@ void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrient
     queries.domainMax = bbox.second;
 }
 
-void Scene::setupPDE()
+void ModelProblem::setupPDE()
 {
     const Vector2& bMin = queries.domainMin;
     const Vector2& bMax = queries.domainMax;
@@ -126,7 +126,7 @@ void Scene::setupPDE()
     pde.absorptionCoeff = absorptionCoeff;
 }
 
-void Scene::populateGeometricQueries()
+void ModelProblem::populateGeometricQueries()
 {
     // partition boundary vertices and indices into absorbing and reflecting parts
     zombie::partitionBoundaryMesh<2>(pde.hasReflectingBoundaryConditions, vertices, segments,
@@ -143,7 +143,7 @@ void Scene::populateGeometricQueries()
         // NOTE: for complex scenes with both open and closed meshes, the primitive index argument
         // (of an adjacent line segment/triangle in the scene) can be used to determine whether a
         // vertex/edge should be ignored as a candidate for silhouette tests.
-        return this->isDoubleSided ? false : dihedralAngle < 1e-3f;
+        return this->solveDoubleSided ? false : dihedralAngle < 1e-3f;
     };
     branchTraversalWeight = [this](float r2) -> float {
         float r = std::max(std::sqrt(r2), 1e-2f);

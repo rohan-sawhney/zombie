@@ -5,7 +5,7 @@ set(ZOMBIE_DEMO_SRC_FILES
     "config.h"
     "colormap.h"
     "image.h"
-    "scene.h"
+    "model_problem.h"
     "grid.h"
 )
 

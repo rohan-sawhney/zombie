@@ -1,13 +1,13 @@
 // This file is the entry point for the 2D demo application demonstrating how to use Zombie.
-// It reads a 'scene' description from a JSON file, runs the WalkOnStars or BoundaryValueCaching
-// solver, and writes the result to a PMF or PNG file.
+// It reads a 'model problem' description from a JSON file, runs the WalkOnStars, BoundaryValueCaching
+// or ReverseWalkoOnStars solvers, and writes the result to a PMF or PNG file.
 
-#include "scene.h"
+#include "model_problem.h"
 #include "grid.h"
 
 using json = nlohmann::json;
 
-void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& outputConfig)
+void runWalkOnStars(const ModelProblem& modelProblem, const json& solverConfig, const json& outputConfig)
 {
     // load config settings
     const float epsilonShellForAbsorbingBoundary = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
@@ -30,9 +30,9 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
     const bool printLogs = getOptional<bool>(solverConfig, "printLogs", false);
     const bool runSingleThreaded = getOptional<bool>(solverConfig, "runSingleThreaded", false);
 
-    const zombie::GeometricQueries<2>& queries = scene.queries;
-    const zombie::PDE<float, 2>& pde = scene.pde;
-    bool solveDoubleSided = scene.isDoubleSided;
+    const zombie::GeometricQueries<2>& queries = modelProblem.queries;
+    const zombie::PDE<float, 2>& pde = modelProblem.pde;
+    bool solveDoubleSided = modelProblem.solveDoubleSided;
 
     // setup solution domain
     std::vector<zombie::SamplePoint<float, 2>> samplePts;
@@ -62,7 +62,7 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
     saveSolutionGrid(samplePts, pde, queries, solveDoubleSided, outputConfig);
 }
 
-void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const json& outputConfig)
+void runBoundaryValueCaching(const ModelProblem& modelProblem, const json& solverConfig, const json& outputConfig)
 {
     // load config settings for wost
     const float epsilonShellForAbsorbingBoundary = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
@@ -99,9 +99,9 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     const float radiusClampForKernels = getOptional<float>(solverConfig, "radiusClampForKernels", 0.0f);
     const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
 
-    const zombie::GeometricQueries<2>& queries = scene.queries;
-    const zombie::PDE<float, 2>& pde = scene.pde;
-    bool solveDoubleSided = scene.isDoubleSided;
+    const zombie::GeometricQueries<2>& queries = modelProblem.queries;
+    const zombie::PDE<float, 2>& pde = modelProblem.pde;
+    bool solveDoubleSided = modelProblem.solveDoubleSided;
 
     // initialize evaluation points
     std::vector<zombie::bvc::EvaluationPoint<float, 2>> evalPts;
@@ -113,15 +113,15 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     };
 
     std::unique_ptr<zombie::BoundarySampler<float, 2>> absorbingBoundarySampler = 
-        std::make_unique<zombie::UniformLineSegmentBoundarySampler<float>>(scene.absorbingBoundaryVertices,
-                                                                           scene.absorbingBoundarySegments,
-                                                                           queries, insideSolveRegionBoundarySampler);
+        std::make_unique<zombie::UniformLineSegmentBoundarySampler<float>>(
+            modelProblem.absorbingBoundaryVertices, modelProblem.absorbingBoundarySegments,
+            queries, insideSolveRegionBoundarySampler);
     absorbingBoundarySampler->initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
 
     std::unique_ptr<zombie::BoundarySampler<float, 2>> reflectingBoundarySampler = 
-        std::make_unique<zombie::UniformLineSegmentBoundarySampler<float>>(scene.reflectingBoundaryVertices,
-                                                                           scene.reflectingBoundarySegments,
-                                                                           queries, insideSolveRegionBoundarySampler);
+        std::make_unique<zombie::UniformLineSegmentBoundarySampler<float>>(
+            modelProblem.reflectingBoundaryVertices, modelProblem.reflectingBoundarySegments,
+            queries, insideSolveRegionBoundarySampler);
     reflectingBoundarySampler->initialize(normalOffsetForReflectingBoundary, solveDoubleSided);
 
     std::function<bool(const Vector2&)> insideSolveRegionDomainSampler = {};
@@ -182,7 +182,7 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     saveEvaluationGrid(evalPts, pde, queries, solveDoubleSided, outputConfig);
 }
 
-void runReverseWalkOnStars(const Scene& scene, const json& solverConfig, const json& outputConfig)
+void runReverseWalkOnStars(const ModelProblem& modelProblem, const json& solverConfig, const json& outputConfig)
 {
     // load config settings for reverse wost
     const float epsilonShellForAbsorbingBoundary = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
@@ -210,9 +210,9 @@ void runReverseWalkOnStars(const Scene& scene, const json& solverConfig, const j
     const float radiusClampForKernels = getOptional<float>(solverConfig, "radiusClampForKernels", 0.0f);
     const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
 
-    const zombie::GeometricQueries<2>& queries = scene.queries;
-    const zombie::PDE<float, 2>& pde = scene.pde;
-    bool solveDoubleSided = scene.isDoubleSided;
+    const zombie::GeometricQueries<2>& queries = modelProblem.queries;
+    const zombie::PDE<float, 2>& pde = modelProblem.pde;
+    bool solveDoubleSided = modelProblem.solveDoubleSided;
 
     // initialize evaluation points
     std::vector<zombie::rws::EvaluationPoint<float, 2>> evalPts;
@@ -229,14 +229,16 @@ void runReverseWalkOnStars(const Scene& scene, const json& solverConfig, const j
     std::unique_ptr<zombie::BoundarySampler<float, 2>> absorbingBoundarySampler = nullptr;
     if (!ignoreAbsorbingBoundaryContribution) {
         absorbingBoundarySampler = std::make_unique<zombie::UniformLineSegmentBoundarySampler<float>>(
-            scene.absorbingBoundaryVertices, scene.absorbingBoundarySegments, queries, insideSolveRegionBoundarySampler);
+            modelProblem.absorbingBoundaryVertices, modelProblem.absorbingBoundarySegments,
+            queries, insideSolveRegionBoundarySampler);
         absorbingBoundarySampler->initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
     }
 
     std::unique_ptr<zombie::BoundarySampler<float, 2>> reflectingBoundarySampler = nullptr;
     if (!ignoreReflectingBoundaryContribution) {
         reflectingBoundarySampler = std::make_unique<zombie::UniformLineSegmentBoundarySampler<float>>(
-            scene.reflectingBoundaryVertices, scene.reflectingBoundarySegments, queries, insideSolveRegionBoundarySampler);
+            modelProblem.reflectingBoundaryVertices, modelProblem.reflectingBoundarySegments,
+            queries, insideSolveRegionBoundarySampler);
         reflectingBoundarySampler->initialize(0.0f, solveDoubleSided);
     }
 
@@ -303,19 +305,19 @@ int main(int argc, const char *argv[])
 
     json config = json::parse(configFile);
     const std::string solverType = getOptional<std::string>(config, "solverType", "wost");
-    const json sceneConfig = getRequired<json>(config, "scene");
+    const json modelProblemConfig = getRequired<json>(config, "modelProblem");
     const json solverConfig = getRequired<json>(config, "solver");
     const json outputConfig = getRequired<json>(config, "output");
 
-    Scene scene(sceneConfig);
+    ModelProblem modelProblem(modelProblemConfig);
     if (solverType == "wost") {
-        runWalkOnStars(scene, solverConfig, outputConfig);
+        runWalkOnStars(modelProblem, solverConfig, outputConfig);
 
     } else if (solverType == "bvc") {
-        runBoundaryValueCaching(scene, solverConfig, outputConfig);
+        runBoundaryValueCaching(modelProblem, solverConfig, outputConfig);
 
     } else if (solverType == "rws") {
-        runReverseWalkOnStars(scene, solverConfig, outputConfig);
+        runReverseWalkOnStars(modelProblem, solverConfig, outputConfig);
 
     } else {
         std::cerr << "Unknown solver type: " << solverType << std::endl;

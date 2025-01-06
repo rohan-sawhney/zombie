@@ -1,6 +1,6 @@
 # Zombie 2D Demo
 
-To run the demo scenes first build the Zombie library:
+To run the demo first build the Zombie library:
 
 ```bash
 mkdir build
@@ -11,23 +11,23 @@ make -j4
 Next you can run either [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/index.html), [Boundary Value Caching](http://www.rohansawhney.io/BoundaryValueCaching.pdf) or [reverse WoSt](https://imaging.cs.cmu.edu/walk_on_stars_robin/) from the build directory
 
 ```
-./demo/demo ../demo/scenes/engine/wost.json
-./demo/demo ../demo/scenes/engine/bvc.json
-./demo/demo ../demo/scenes/engine/rws.json
+./demo/demo ../demo/model_problems/engine/wost.json
+./demo/demo ../demo/model_problems/engine/bvc.json
+./demo/demo ../demo/model_problems/engine/rws.json
 ```
 
-The results will be saved to `zombie/scenes/engine/solutions`.
+The results will be saved to `zombie/model_problems/engine/solutions`.
 
-## Custom Scene Creation
+## Custom Model Problem Creation
 
-The Zombie 2D demo allows custom scenes to be created by specifying a boundary geometry, a reflecting (Neumann or Robin) boundary mask, and boundary and source textures. The reflecting boundary indicator will determine whether a boundary is Dirichlet (black) or Neumann/Robin (white). The mapping from scene space to the mask is computed relative to the bounding box for the scene geometry.
+The Zombie 2D demo allows custom model problems to be created by specifying a boundary geometry, a reflecting (Neumann or Robin) boundary mask, and boundary and source textures. The reflecting boundary indicator will determine whether a boundary is Dirichlet (black) or Neumann/Robin (white). The mapping from scene space to the mask is computed relative to the bounding box for the boundary geometry.
 
 <div align='center'>
   <img src='./imgs/overview.png'/>
 </div>
 
 
-These scene components are specified along with solver and output options in JSON scene files.
+These model problem components are specified along with solver and output options via JSON files.
 
 ```
 {
@@ -42,17 +42,17 @@ These scene components are specified along with solver and output options in JSO
         "ignoreReflectingBoundaryContribution": true,
         "ignoreSourceContribution": true
     },
-    "scene": {
-        "boundary": "../demo/scenes/engine/data/geometry.obj",
-        "isReflectingBoundary": "../demo/scenes/engine/data/is_reflecting_boundary.pfm",
-        "absorbingBoundaryValue": "../demo/scenes/engine/data/absorbing_boundary_value.pfm",
-        "reflectingBoundaryValue": "../demo/scenes/engine/data/reflecting_boundary_value.pfm",
-        "sourceValue": "../demo/scenes/engine/data/source_value.pfm",
+    "modelProblem": {
+        "geometry": "../demo/modelProblem/engine/data/geometry.obj",
+        "isReflectingBoundary": "../demo/modelProblem/engine/data/is_reflecting_boundary.pfm",
+        "absorbingBoundaryValue": "../demo/modelProblem/engine/data/absorbing_boundary_value.pfm",
+        "reflectingBoundaryValue": "../demo/modelProblem/engine/data/reflecting_boundary_value.pfm",
+        "sourceValue": "../demo/modelProblem/engine/data/source_value.pfm",
         "robinCoeff": 0.0,
         "absorptionCoeff": 0.0
     },
     "output": {
-        "solutionFile": "../demo/scenes/engine/solutions/wost.pfm",
+        "solutionFile": "../demo/modelProblem/engine/solutions/wost.pfm",
         "gridRes": 256,
         "boundaryDistanceMask": 1e-2,
         "saveDebug": false,
@@ -67,7 +67,7 @@ These scene components are specified along with solver and output options in JSO
 You can use a 2D illustration tool to create geometry, a reflecting boundary indicator mask, and boundary and source textures. Assign each asset to a different layer and ensure that the size of the canvas matches the square bounding box for your boundary geometry as shown below
 
 <div align='center'>
-  <img src='./imgs/scene_builder.png'/>
+  <img src='./imgs/model_problem_builder.png'/>
 </div>
 
 
