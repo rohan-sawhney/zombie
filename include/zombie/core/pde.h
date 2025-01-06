@@ -55,9 +55,9 @@ robin({}),
 robinCoeff({})
 {
     hasNonZeroRobinCoeff = [this](const Vector<DIM>& x) {
-        if (robinCoeff) {
-            return robinCoeff(x, true) > 0.0f ||
-                   robinCoeff(x, false) > 0.0f;
+        if (this->robinCoeff) {
+            return this->robinCoeff(x, true) > 0.0f ||
+                   this->robinCoeff(x, false) > 0.0f;
         }
 
         return false;

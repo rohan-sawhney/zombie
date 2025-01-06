@@ -1,9 +1,10 @@
 // This file provides utility functions to load 2D or 3D boundary meshes from OBJ files,
 // normalize mesh positions to lie within a unit sphere, swap mesh indices to flip orientation,
-// and compute the bounding box of a mesh. The FcpwBoundaryHandler class builds an acceleration
-// structure to perform geometric queries against a mesh, while the 'populateGeometricQueries'
-// function populates the GeometricQueries structure using FcpwBoundaryHandler objects for the
-// absorbing (Dirichlet) and reflecting (Neumann or Robin) boundaries.
+// and compute the bounding box of a mesh. The FcpwBoundaryHandler class builds an
+// acceleration structure to perform geometric queries against a mesh, while the
+// 'populateGeometricQueriesForAbsorbingBoundary' and 'populateGeometricQueriesForReflectingBoundary'
+// functions populate the GeometricQueries structure using FcpwBoundaryHandler objects for the
+// absorbing (Dirichlet) and reflecting (Neumann or Robin) boundaries (resp).
 
 #pragma once
 
@@ -16,8 +17,6 @@
 #else
     #include <zombie/utils/robin_boundary_bvh/bvh.h>
 #endif
-
-#define RAY_OFFSET 1e-6f
 
 namespace zombie {
 
@@ -79,16 +78,13 @@ public:
 
 // populates the GeometricQueries structure
 template <size_t DIM>
-void populateGeometricQueries(FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
-                              const std::pair<Vector<DIM>, Vector<DIM>>& boundingBoxExtents,
-                              GeometricQueries<DIM>& geometricQueries);
+void populateGeometricQueriesForAbsorbingBoundary(FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
+                                                  GeometricQueries<DIM>& geometricQueries);
 
 template <size_t DIM, bool useRobinConditions>
-void populateGeometricQueries(FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
-                              FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
-                              const std::function<float(float)>& branchTraversalWeight,
-                              const std::pair<Vector<DIM>, Vector<DIM>>& boundingBoxExtents,
-                              GeometricQueries<DIM>& geometricQueries);
+void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
+                                                   const std::function<float(float)>& branchTraversalWeight,
+                                                   GeometricQueries<DIM>& geometricQueries);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -272,62 +268,6 @@ void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onRefl
             absorbingIndices.emplace_back(index);
         }
     }
-}
-
-inline float intAsFloat(int a)
-{
-    union {int a; float b;} u;
-    u.a = a;
-
-    return u.b;
-}
-
-inline int floatAsInt(float a)
-{
-    union {float a; int b;} u;
-    u.a = a;
-
-    return u.b;
-}
-
-template <size_t DIM>
-inline Vector<DIM> offsetPointAlongDirection(const Vector<DIM>& p, const Vector<DIM>& n)
-{
-    return p + RAY_OFFSET*n;
-}
-
-template <>
-inline Vector2 offsetPointAlongDirection<2>(const Vector2& p, const Vector2& n)
-{
-    // source: https://link.springer.com/content/pdf/10.1007%2F978-1-4842-4427-2_6.pdf
-    const float origin = 1.0f/32.0f;
-    const float floatScale = 1.0f/65536.0f;
-    const float intScale = 256.0f;
-
-    Eigen::Vector2i nOffset(n(0)*intScale, n(1)*intScale);
-    Eigen::Vector2f pOffset(intAsFloat(floatAsInt(p(0)) + (p(0) < 0 ? -nOffset(0) : nOffset(0))),
-                            intAsFloat(floatAsInt(p(1)) + (p(1) < 0 ? -nOffset(1) : nOffset(1))));
-
-    return Eigen::Vector2f(std::fabs(p(0)) < origin ? p(0) + floatScale*n(0) : pOffset(0),
-                           std::fabs(p(1)) < origin ? p(1) + floatScale*n(1) : pOffset(1));
-}
-
-template <>
-inline Vector3 offsetPointAlongDirection<3>(const Vector3& p, const Vector3& n)
-{
-    // source: https://link.springer.com/content/pdf/10.1007%2F978-1-4842-4427-2_6.pdf
-    const float origin = 1.0f/32.0f;
-    const float floatScale = 1.0f/65536.0f;
-    const float intScale = 256.0f;
-
-    Eigen::Vector3i nOffset(n(0)*intScale, n(1)*intScale, n(2)*intScale);
-    Eigen::Vector3f pOffset(intAsFloat(floatAsInt(p(0)) + (p(0) < 0 ? -nOffset(0) : nOffset(0))),
-                            intAsFloat(floatAsInt(p(1)) + (p(1) < 0 ? -nOffset(1) : nOffset(1))),
-                            intAsFloat(floatAsInt(p(2)) + (p(2) < 0 ? -nOffset(2) : nOffset(2))));
-
-    return Eigen::Vector3f(std::fabs(p(0)) < origin ? p(0) + floatScale*n(0) : pOffset(0),
-                           std::fabs(p(1)) < origin ? p(1) + floatScale*n(1) : pOffset(1),
-                           std::fabs(p(2)) < origin ? p(2) + floatScale*n(2) : pOffset(2));
 }
 
 template <size_t DIM, bool useRobinConditions>
@@ -821,57 +761,24 @@ public:
     std::vector<fcpw::SilhouettePrimitive<3> *> silhouettePtrsStub;
 };
 
-template <size_t DIM, typename AbsorbingBoundaryAggregateType, typename ReflectingBoundaryAggregateType>
-void populateGeometricQueries(const AbsorbingBoundaryAggregateType *absorbingBoundaryAggregate,
-                              const ReflectingBoundaryAggregateType *reflectingBoundaryAggregate,
-                              const std::function<float(float)>& branchTraversalWeight,
-                              const std::pair<Vector<DIM>, Vector<DIM>>& boundingBoxExtents,
-                              GeometricQueries<DIM>& geometricQueries)
+template <size_t DIM>
+void populateGeometricQueriesForAbsorbingBoundary(FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
+                                                  GeometricQueries<DIM>& geometricQueries)
 {
-    fcpw::BoundingBox<DIM> boundingBox;
-    boundingBox.expandToInclude(boundingBoxExtents.first);
-    boundingBox.expandToInclude(boundingBoxExtents.second);
-
-    geometricQueries.computeDistToAbsorbingBoundary = [absorbingBoundaryAggregate, boundingBox](
-                                                       const Vector<DIM>& x, bool computeSignedDistance) -> float {
-        if (absorbingBoundaryAggregate != nullptr) {
+    fcpw::Aggregate<DIM> *absorbingBoundaryAggregate = absorbingBoundaryHandler.scene.getSceneData()->aggregate.get();
+    if (absorbingBoundaryAggregate != nullptr) {
+        geometricQueries.computeDistToAbsorbingBoundary = [absorbingBoundaryAggregate](
+                                                          const Vector<DIM>& x, bool computeSignedDistance) -> float {
             Vector<DIM> queryPt = x;
             fcpw::Interaction<DIM> interaction;
             fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
             absorbingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
 
             return computeSignedDistance ? interaction.signedDistance(queryPt) : interaction.d;
-        }
-
-        float d2Min, d2Max;
-        boundingBox.computeSquaredDistance(x, d2Min, d2Max);
-        return std::sqrt(d2Max);
-    };
-    geometricQueries.computeDistToReflectingBoundary = [reflectingBoundaryAggregate](
-                                                        const Vector<DIM>& x,
-                                                        bool computeSignedDistance) -> float {
-        if (reflectingBoundaryAggregate != nullptr) {
-            Vector<DIM> queryPt = x;
-            fcpw::Interaction<DIM> interaction;
-            fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
-            reflectingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
-
-            return computeSignedDistance ? interaction.signedDistance(queryPt) : interaction.d;
-        }
-
-        return fcpw::maxFloat;
-    };
-    geometricQueries.computeDistToBoundary = [&geometricQueries](const Vector<DIM>& x,
-                                                                 bool computeSignedDistance) -> float {
-        float d1 = geometricQueries.computeDistToAbsorbingBoundary(x, computeSignedDistance);
-        float d2 = geometricQueries.computeDistToReflectingBoundary(x, computeSignedDistance);
-
-        return std::fabs(d1) < std::fabs(d2) ? d1 : d2;
-    };
-    geometricQueries.projectToAbsorbingBoundary = [absorbingBoundaryAggregate](
-                                                   Vector<DIM>& x, Vector<DIM>& normal,
-                                                   float& distance, bool computeSignedDistance) -> bool {
-        if (absorbingBoundaryAggregate != nullptr) {
+        };
+        geometricQueries.projectToAbsorbingBoundary = [absorbingBoundaryAggregate](
+                                                      Vector<DIM>& x, Vector<DIM>& normal,
+                                                      float& distance, bool computeSignedDistance) -> bool {
             Vector<DIM> queryPt = x;
             fcpw::Interaction<DIM> interaction;
             fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
@@ -882,72 +789,11 @@ void populateGeometricQueries(const AbsorbingBoundaryAggregateType *absorbingBou
             distance = computeSignedDistance ? interaction.signedDistance(queryPt) : interaction.d;
 
             return true;
-        }
-
-        distance = 0.0f;
-        return false;
-    };
-    geometricQueries.projectToReflectingBoundary = [reflectingBoundaryAggregate](
-                                                    Vector<DIM>& x, Vector<DIM>& normal,
-                                                    float& distance, bool computeSignedDistance) -> bool {
-        if (reflectingBoundaryAggregate != nullptr) {
-            Vector<DIM> queryPt = x;
-            fcpw::Interaction<DIM> interaction;
-            fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
-            reflectingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
-
-            x = interaction.p;
-            normal = interaction.n;
-            distance = computeSignedDistance ? interaction.signedDistance(queryPt) : interaction.d;
-
-            return true;
-        }
-
-        distance = 0.0f;
-        return false;
-    };
-    geometricQueries.projectToBoundary = [&geometricQueries](Vector<DIM>& x, Vector<DIM>& normal,
-                                                             float& distance, bool computeSignedDistance) -> bool {
-        distance = fcpw::maxFloat;
-        bool didProject = false;
-
-        Vector<DIM> absorbingBoundaryPt = x;
-        Vector<DIM> absorbingBoundaryNormal;
-        float distanceToAbsorbingBoundary;
-        if (geometricQueries.projectToAbsorbingBoundary(absorbingBoundaryPt, absorbingBoundaryNormal,
-                                                        distanceToAbsorbingBoundary, computeSignedDistance)) {
-            x = absorbingBoundaryPt;
-            normal = absorbingBoundaryNormal;
-            distance = distanceToAbsorbingBoundary;
-            didProject = true;
-        }
-
-        Vector<DIM> reflectingBoundaryPt = x;
-        Vector<DIM> reflectingBoundaryNormal;
-        float distanceToReflectingBoundary;
-        if (geometricQueries.projectToReflectingBoundary(reflectingBoundaryPt, reflectingBoundaryNormal,
-                                                         distanceToReflectingBoundary, computeSignedDistance)) {
-            if (std::fabs(distanceToReflectingBoundary) < std::fabs(distance)) {
-                x = reflectingBoundaryPt;
-                normal = reflectingBoundaryNormal;
-                distance = distanceToReflectingBoundary;
-            }
-
-            didProject = true;
-        }
-
-        if (!didProject) distance = 0.0f;
-        return didProject;
-    };
-    geometricQueries.offsetPointAlongDirection = [](const Vector<DIM>& x,
-                                                    const Vector<DIM>& dir) -> Vector<DIM> {
-        return offsetPointAlongDirection<DIM>(x, dir);
-    };
-    geometricQueries.intersectAbsorbingBoundary = [&geometricQueries, absorbingBoundaryAggregate](
-                                                   const Vector<DIM>& origin, const Vector<DIM>& normal,
-                                                   const Vector<DIM>& dir, float tMax, bool onAborbingBoundary,
-                                                   IntersectionPoint<DIM>& intersectionPt) -> bool {
-        if (absorbingBoundaryAggregate != nullptr) {
+        };
+        geometricQueries.intersectAbsorbingBoundary = [&geometricQueries, absorbingBoundaryAggregate](
+                                                      const Vector<DIM>& origin, const Vector<DIM>& normal,
+                                                      const Vector<DIM>& dir, float tMax, bool onAborbingBoundary,
+                                                      IntersectionPoint<DIM>& intersectionPt) -> bool {
             Vector<DIM> queryOrigin = onAborbingBoundary ?
                                       geometricQueries.offsetPointAlongDirection(origin, -normal) :
                                       origin;
@@ -962,15 +808,67 @@ void populateGeometricQueries(const AbsorbingBoundaryAggregateType *absorbingBou
             intersectionPt.dist = queryInteraction.d;
 
             return true;
-        }
+        };
+        geometricQueries.intersectAbsorbingBoundaryAllHits = [&geometricQueries, absorbingBoundaryAggregate](
+                                                             const Vector<DIM>& origin, const Vector<DIM>& normal,
+                                                             const Vector<DIM>& dir, float tMax, bool onAborbingBoundary,
+                                                             std::vector<IntersectionPoint<DIM>>& intersectionPts) -> int {
+            Vector<DIM> queryOrigin = onAborbingBoundary ?
+                                      geometricQueries.offsetPointAlongDirection(origin, -normal) :
+                                      origin;
+            Vector<DIM> queryDir = dir;
+            fcpw::Ray<DIM> queryRay(queryOrigin, queryDir, tMax);
+            std::vector<fcpw::Interaction<DIM>> queryInteractions;
+            int nIntersections = absorbingBoundaryAggregate->intersect(queryRay, queryInteractions, false, true);
 
-        return false;
-    };
-    geometricQueries.intersectReflectingBoundary = [&geometricQueries, reflectingBoundaryAggregate](
-                                                    const Vector<DIM>& origin, const Vector<DIM>& normal,
-                                                    const Vector<DIM>& dir, float tMax, bool onReflectingBoundary,
-                                                    IntersectionPoint<DIM>& intersectionPt) -> bool {
-        if (reflectingBoundaryAggregate != nullptr) {
+            intersectionPts.clear();
+            for (int i = 0; i < nIntersections; i++) {
+                intersectionPts.emplace_back(IntersectionPoint<DIM>(queryInteractions[i].p,
+                                                                    queryInteractions[i].n,
+                                                                    queryInteractions[i].d));
+            }
+
+            return nIntersections;
+        };
+        geometricQueries.computeAbsorbingBoundarySignedVolume = [absorbingBoundaryAggregate]() -> float {
+            return absorbingBoundaryAggregate->signedVolume();
+        };
+    }
+}
+
+template <size_t DIM, typename ReflectingBoundaryAggregateType>
+void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggregateType *reflectingBoundaryAggregate,
+                                                   const std::function<float(float)>& branchTraversalWeight,
+                                                   GeometricQueries<DIM>& geometricQueries)
+{
+    if (reflectingBoundaryAggregate != nullptr) {
+        geometricQueries.computeDistToReflectingBoundary = [reflectingBoundaryAggregate](
+                                                           const Vector<DIM>& x, bool computeSignedDistance) -> float {
+            Vector<DIM> queryPt = x;
+            fcpw::Interaction<DIM> interaction;
+            fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
+            reflectingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
+
+            return computeSignedDistance ? interaction.signedDistance(queryPt) : interaction.d;
+        };
+        geometricQueries.projectToReflectingBoundary = [reflectingBoundaryAggregate](
+                                                       Vector<DIM>& x, Vector<DIM>& normal,
+                                                       float& distance, bool computeSignedDistance) -> bool {
+            Vector<DIM> queryPt = x;
+            fcpw::Interaction<DIM> interaction;
+            fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
+            reflectingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
+
+            x = interaction.p;
+            normal = interaction.n;
+            distance = computeSignedDistance ? interaction.signedDistance(queryPt) : interaction.d;
+
+            return true;
+        };
+        geometricQueries.intersectReflectingBoundary = [&geometricQueries, reflectingBoundaryAggregate](
+                                                       const Vector<DIM>& origin, const Vector<DIM>& normal,
+                                                       const Vector<DIM>& dir, float tMax, bool onReflectingBoundary,
+                                                       IntersectionPoint<DIM>& intersectionPt) -> bool {
             Vector<DIM> queryOrigin = onReflectingBoundary ?
                                       geometricQueries.offsetPointAlongDirection(origin, -normal) :
                                       origin;
@@ -985,109 +883,40 @@ void populateGeometricQueries(const AbsorbingBoundaryAggregateType *absorbingBou
             intersectionPt.dist = queryInteraction.d;
 
             return true;
-        }
-
-        return false;
-    };
-    geometricQueries.intersectBoundary = [&geometricQueries](
-                                          const Vector<DIM>& origin, const Vector<DIM>& normal,
-                                          const Vector<DIM>& dir, float tMax,
-                                          bool onAborbingBoundary, bool onReflectingBoundary,
-                                          IntersectionPoint<DIM>& intersectionPt) -> bool {
-        IntersectionPoint<DIM> absorbingBoundaryIntersectionPt;
-        bool intersectedAbsorbingBoundary = geometricQueries.intersectAbsorbingBoundary(
-            origin, normal, dir, tMax, onAborbingBoundary, absorbingBoundaryIntersectionPt);
-
-        IntersectionPoint<DIM> reflectingBoundaryIntersectionPt;
-        bool intersectedReflectingBoundary = geometricQueries.intersectReflectingBoundary(
-            origin, normal, dir, tMax, onReflectingBoundary, reflectingBoundaryIntersectionPt);
-
-        if (intersectedAbsorbingBoundary && intersectedReflectingBoundary) {
-            if (absorbingBoundaryIntersectionPt.dist < reflectingBoundaryIntersectionPt.dist) {
-                intersectionPt = absorbingBoundaryIntersectionPt;
-
-            } else {
-                intersectionPt = reflectingBoundaryIntersectionPt;
-            }
-
-        } else if (intersectedAbsorbingBoundary) {
-            intersectionPt = absorbingBoundaryIntersectionPt;
-
-        } else if (intersectedReflectingBoundary) {
-            intersectionPt = reflectingBoundaryIntersectionPt;
-        }
-
-        return intersectedAbsorbingBoundary || intersectedReflectingBoundary;
-    };
-    geometricQueries.intersectBoundaryAllHits = [&geometricQueries,
-                                                 absorbingBoundaryAggregate, reflectingBoundaryAggregate](
-                                                 const Vector<DIM>& origin, const Vector<DIM>& normal,
-                                                 const Vector<DIM>& dir, float tMax,
-                                                 bool onAborbingBoundary, bool onReflectingBoundary,
-                                                 std::vector<IntersectionPoint<DIM>>& intersectionPts) -> int {
-        // clear buffers
-        int nIntersections = 0;
-        intersectionPts.clear();
-
-        if (absorbingBoundaryAggregate != nullptr) {
-            // initialize query
-            Vector<DIM> queryOrigin = onAborbingBoundary ?
-                                      geometricQueries.offsetPointAlongDirection(origin, -normal) :
-                                      origin;
-            Vector<DIM> queryDir = dir;
-
-            // intersect absorbing boundary
-            fcpw::Ray<DIM> queryRay(queryOrigin, queryDir, tMax);
-            std::vector<fcpw::Interaction<DIM>> queryInteractions;
-            int nHits = absorbingBoundaryAggregate->intersect(queryRay, queryInteractions, false, true);
-            nIntersections += nHits;
-
-            for (int i = 0; i < nHits; i++) {
-                intersectionPts.emplace_back(IntersectionPoint<DIM>(queryInteractions[i].p,
-                                                                    queryInteractions[i].n,
-                                                                    queryInteractions[i].d));
-            }
-        }
-
-        if (reflectingBoundaryAggregate != nullptr) {
-            // initialize query
+        };
+        geometricQueries.intersectReflectingBoundaryAllHits = [&geometricQueries, reflectingBoundaryAggregate](
+                                                              const Vector<DIM>& origin, const Vector<DIM>& normal,
+                                                              const Vector<DIM>& dir, float tMax, bool onReflectingBoundary,
+                                                              std::vector<IntersectionPoint<DIM>>& intersectionPts) -> int {
             Vector<DIM> queryOrigin = onReflectingBoundary ?
                                       geometricQueries.offsetPointAlongDirection(origin, -normal) :
                                       origin;
             Vector<DIM> queryDir = dir;
-
-            // intersect reflecting boundary
             fcpw::Ray<DIM> queryRay(queryOrigin, queryDir, tMax);
             std::vector<fcpw::Interaction<DIM>> queryInteractions;
-            int nHits = reflectingBoundaryAggregate->intersect(queryRay, queryInteractions, false, true);
-            nIntersections += nHits;
+            int nIntersections = reflectingBoundaryAggregate->intersect(queryRay, queryInteractions, false, true);
 
-            for (int i = 0; i < nHits; i++) {
+            intersectionPts.clear();
+            for (int i = 0; i < nIntersections; i++) {
                 intersectionPts.emplace_back(IntersectionPoint<DIM>(queryInteractions[i].p,
                                                                     queryInteractions[i].n,
                                                                     queryInteractions[i].d));
             }
-        }
 
-        return nIntersections;
-    };
-    geometricQueries.intersectsWithReflectingBoundary = [&geometricQueries, reflectingBoundaryAggregate](
-                                                         const Vector<DIM>& xi, const Vector<DIM>& xj,
-                                                         const Vector<DIM>& ni, const Vector<DIM>& nj,
-                                                         bool offseti, bool offsetj) -> bool {
-        if (reflectingBoundaryAggregate != nullptr) {
+            return nIntersections;
+        };
+        geometricQueries.intersectsWithReflectingBoundary = [&geometricQueries, reflectingBoundaryAggregate](
+                                                            const Vector<DIM>& xi, const Vector<DIM>& xj,
+                                                            const Vector<DIM>& ni, const Vector<DIM>& nj,
+                                                            bool offseti, bool offsetj) -> bool {
             Vector<DIM> pt1 = offseti ? geometricQueries.offsetPointAlongDirection(xi, -ni) : xi;
             Vector<DIM> pt2 = offsetj ? geometricQueries.offsetPointAlongDirection(xj, -nj) : xj;
 
             return !reflectingBoundaryAggregate->hasLineOfSight(pt1, pt2);
-        }
-
-        return false;
-    };
-    geometricQueries.sampleReflectingBoundary = [reflectingBoundaryAggregate, &branchTraversalWeight](
-                                                 const Vector<DIM>& x, float radius, const Vector<DIM>& randNums,
-                                                 BoundarySample<DIM>& boundarySample) -> bool {
-        if (reflectingBoundaryAggregate != nullptr) {
+        };
+        geometricQueries.sampleReflectingBoundary = [reflectingBoundaryAggregate, &branchTraversalWeight](
+                                                    const Vector<DIM>& x, float radius, const Vector<DIM>& randNums,
+                                                    BoundarySample<DIM>& boundarySample) -> bool {
             Vector<DIM> queryPt = x;
             fcpw::BoundingSphere<DIM> querySphere(queryPt, radius*radius);
             fcpw::Interaction<DIM> queryInteraction;
@@ -1100,159 +929,105 @@ void populateGeometricQueries(const AbsorbingBoundaryAggregateType *absorbingBou
             boundarySample.pdf = queryInteraction.d;
 
             return true;
-        }
-
-        return false;
-    };
-    geometricQueries.insideDomain = [&geometricQueries](const Vector<DIM>& x, bool useRayIntersections) -> bool {
-        if (!geometricQueries.domainIsWatertight) return true;
-        if (useRayIntersections) {
-            bool isInside = true;
-            Vector<DIM> zero = Vector<DIM>::Zero();
-            for (size_t i = 0; i < DIM; i++) {
-                Vector<DIM> dir = zero;
-                dir(i) = 1.0f;
-                std::vector<IntersectionPoint<DIM>> is;
-                int hits = geometricQueries.intersectBoundaryAllHits(x, zero, dir, maxFloat, false, false, is);
-                isInside = isInside && (hits%2 == 1);
-            }
-
-            return isInside;
-        }
-
-        return geometricQueries.computeDistToBoundary(x, true) < 0.0f;
-    };
-    geometricQueries.outsideBoundingDomain = [boundingBox](const Vector<DIM>& x) -> bool {
-        return !boundingBox.contains(x);
-    };
-    geometricQueries.computeSignedDomainVolume = [absorbingBoundaryAggregate, reflectingBoundaryAggregate]() -> float {
-        float signedVolume = 0.0f;
-        if (absorbingBoundaryAggregate != nullptr) signedVolume += absorbingBoundaryAggregate->signedVolume();
-        if (reflectingBoundaryAggregate != nullptr) signedVolume += reflectingBoundaryAggregate->signedVolume();
-
-        return signedVolume;
-    };
+        };
+        geometricQueries.computeReflectingBoundarySignedVolume = [reflectingBoundaryAggregate]() -> float {
+            return reflectingBoundaryAggregate->signedVolume();
+        };
+    }
 }
 
 template <size_t DIM, typename NeumannBoundaryAggregateType>
 void populateStarRadiusQueryForNeumannBoundary(const NeumannBoundaryAggregateType *reflectingBoundaryAggregate,
                                                GeometricQueries<DIM>& geometricQueries)
 {
-    geometricQueries.computeStarRadiusForReflectingBoundary = [reflectingBoundaryAggregate](
-                                                               const Vector<DIM>& x, float minRadius, float maxRadius,
-                                                               float silhouettePrecision, bool flipNormalOrientation) -> float {
-        if (minRadius > maxRadius) return maxRadius;
-        if (reflectingBoundaryAggregate != nullptr) {
+    if (reflectingBoundaryAggregate != nullptr) {
+        geometricQueries.computeStarRadiusForReflectingBoundary = [reflectingBoundaryAggregate](
+                                                                  const Vector<DIM>& x, float minRadius, float maxRadius,
+                                                                  float silhouettePrecision, bool flipNormalOrientation) -> float {
+            if (minRadius > maxRadius) return maxRadius;
             Vector<DIM> queryPt = x;
             bool flipNormals = true; // FCPW's internal convention requires normals to be flipped
             if (flipNormalOrientation) flipNormals = !flipNormals;
-
             float squaredSphereRadius = maxRadius < fcpw::maxFloat ? maxRadius*maxRadius : fcpw::maxFloat;
             fcpw::Interaction<DIM> interaction;
             fcpw::BoundingSphere<DIM> querySphere(queryPt, squaredSphereRadius);
             bool found = reflectingBoundaryAggregate->findClosestSilhouettePoint(
                 querySphere, interaction, flipNormals, minRadius*minRadius, silhouettePrecision);
-            if (found) return std::max(interaction.d, minRadius);
-        }
 
-        return std::max(maxRadius, minRadius);
-    };
+            return found ? std::max(interaction.d, minRadius) : std::max(maxRadius, minRadius);
+        };
+    }
 }
 
 template <size_t DIM, typename RobinBoundaryAggregateType>
 void populateStarRadiusQueryForRobinBoundary(const RobinBoundaryAggregateType *reflectingBoundaryAggregate,
                                              GeometricQueries<DIM>& geometricQueries)
 {
-    geometricQueries.computeStarRadiusForReflectingBoundary = [reflectingBoundaryAggregate](
-                                                               const Vector<DIM>& x, float minRadius, float maxRadius,
-                                                               float silhouettePrecision, bool flipNormalOrientation) -> float {
-        if (minRadius > maxRadius) return maxRadius;
-        if (reflectingBoundaryAggregate != nullptr) {
+    if (reflectingBoundaryAggregate != nullptr) {
+        geometricQueries.computeStarRadiusForReflectingBoundary = [reflectingBoundaryAggregate](
+                                                                  const Vector<DIM>& x, float minRadius, float maxRadius,
+                                                                  float silhouettePrecision, bool flipNormalOrientation) -> float {
+            if (minRadius > maxRadius) return maxRadius;
             Vector<DIM> queryPt = x;
             bool flipNormals = true; // FCPW's internal convention requires normals to be flipped
             if (flipNormalOrientation) flipNormals = !flipNormals;
-
             float squaredSphereRadius = maxRadius < fcpw::maxFloat ? maxRadius*maxRadius : fcpw::maxFloat;
             fcpw::BoundingSphere<DIM> querySphere(queryPt, squaredSphereRadius);
             reflectingBoundaryAggregate->computeSquaredStarRadius(querySphere, flipNormals, silhouettePrecision);
+
             return std::max(std::sqrt(querySphere.r2), minRadius);
-        }
-
-        return std::max(maxRadius, minRadius);
-    };
-}
-
-template <size_t DIM>
-void populateGeometricQueries(FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
-                              const std::pair<Vector<DIM>, Vector<DIM>>& boundingBoxExtents,
-                              GeometricQueries<DIM>& geometricQueries)
-{
-    fcpw::Aggregate<DIM> *absorbingBoundaryAggregate = absorbingBoundaryHandler.scene.getSceneData()->aggregate.get();
-    populateGeometricQueries<DIM, fcpw::Aggregate<DIM>, fcpw::Aggregate<DIM>>(
-        absorbingBoundaryAggregate, nullptr, {}, boundingBoxExtents, geometricQueries);
+        };
+    }
 }
 
 template <size_t DIM, bool useRobinConditions>
-void populateGeometricQueries(const FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
-                              const FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
-                              const std::function<float(float)>& branchTraversalWeight,
-                              const std::pair<Vector<DIM>, Vector<DIM>>& boundingBoxExtents,
-                              GeometricQueries<DIM>& geometricQueries)
+void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
+                                                   const std::function<float(float)>& branchTraversalWeight,
+                                                   GeometricQueries<DIM>& geometricQueries)
 {
-    std::cerr << "populateGeometricQueries: Unsupported dimension: " << DIM
+    std::cerr << "populateGeometricQueriesForReflectingBoundary: Unsupported dimension: " << DIM
               << ", useRobinConditions: " << useRobinConditions
               << std::endl;
     exit(EXIT_FAILURE);
 }
 
 template <>
-void populateGeometricQueries<2, false>(FcpwBoundaryHandler<2, false>& absorbingBoundaryHandler,
-                                        FcpwBoundaryHandler<2, false>& reflectingBoundaryHandler,
-                                        const std::function<float(float)>& branchTraversalWeight,
-                                        const std::pair<Vector2, Vector2>& boundingBoxExtents,
-                                        GeometricQueries<2>& geometricQueries)
+void populateGeometricQueriesForReflectingBoundary<2, false>(FcpwBoundaryHandler<2, false>& reflectingBoundaryHandler,
+                                                             const std::function<float(float)>& branchTraversalWeight,
+                                                             GeometricQueries<2>& geometricQueries)
 {
-    fcpw::Aggregate<2> *absorbingBoundaryAggregate = absorbingBoundaryHandler.scene.getSceneData()->aggregate.get();
-    fcpw::Aggregate<2> *reflectingBoundaryAggregate = reflectingBoundaryHandler.scene.getSceneData()->aggregate.get();
-    populateGeometricQueries<2, fcpw::Aggregate<2>, fcpw::Aggregate<2>>(
-        absorbingBoundaryAggregate, reflectingBoundaryAggregate,
-        branchTraversalWeight, boundingBoxExtents, geometricQueries);
+    fcpw::Aggregate<2> *reflectingBoundaryAggregate =
+        reflectingBoundaryHandler.scene.getSceneData()->aggregate.get();
+    populateGeometricQueriesForReflectingBoundary<2, fcpw::Aggregate<2>>(
+        reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
     populateStarRadiusQueryForNeumannBoundary<2, fcpw::Aggregate<2>>(
         reflectingBoundaryAggregate, geometricQueries);
 }
 
 template <>
-void populateGeometricQueries<3, false>(FcpwBoundaryHandler<3, false>& absorbingBoundaryHandler,
-                                        FcpwBoundaryHandler<3, false>& reflectingBoundaryHandler,
-                                        const std::function<float(float)>& branchTraversalWeight,
-                                        const std::pair<Vector3, Vector3>& boundingBoxExtents,
-                                        GeometricQueries<3>& geometricQueries)
+void populateGeometricQueriesForReflectingBoundary<3, false>(FcpwBoundaryHandler<3, false>& reflectingBoundaryHandler,
+                                                             const std::function<float(float)>& branchTraversalWeight,
+                                                             GeometricQueries<3>& geometricQueries)
 {
-    fcpw::Aggregate<3> *absorbingBoundaryAggregate = absorbingBoundaryHandler.scene.getSceneData()->aggregate.get();
-    fcpw::Aggregate<3> *reflectingBoundaryAggregate = reflectingBoundaryHandler.scene.getSceneData()->aggregate.get();
-    populateGeometricQueries<3, fcpw::Aggregate<3>, fcpw::Aggregate<3>>(
-        absorbingBoundaryAggregate, reflectingBoundaryAggregate,
-        branchTraversalWeight, boundingBoxExtents, geometricQueries);
+    fcpw::Aggregate<3> *reflectingBoundaryAggregate =
+        reflectingBoundaryHandler.scene.getSceneData()->aggregate.get();
+    populateGeometricQueriesForReflectingBoundary<3, fcpw::Aggregate<3>>(
+        reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
     populateStarRadiusQueryForNeumannBoundary<3, fcpw::Aggregate<3>>(
         reflectingBoundaryAggregate, geometricQueries);
 }
 
 template <>
-void populateGeometricQueries<2, true>(FcpwBoundaryHandler<2, false>& absorbingBoundaryHandler,
-                                       FcpwBoundaryHandler<2, true>& reflectingBoundaryHandler,
-                                       const std::function<float(float)>& branchTraversalWeight,
-                                       const std::pair<Vector2, Vector2>& boundingBoxExtents,
-                                       GeometricQueries<2>& geometricQueries)
+void populateGeometricQueriesForReflectingBoundary<2, true>(FcpwBoundaryHandler<2, true>& reflectingBoundaryHandler,
+                                                            const std::function<float(float)>& branchTraversalWeight,
+                                                            GeometricQueries<2>& geometricQueries)
 {
     using PrimitiveBound = FcpwBoundaryHandler<2, true>::PrimitiveBound;
-    fcpw::Aggregate<2> *absorbingBoundaryAggregate = absorbingBoundaryHandler.scene.getSceneData()->aggregate.get();
-
     if (reflectingBoundaryHandler.baseline != nullptr) {
         using RobinAggregateType = RobinBaseline<2, RobinLineSegment<PrimitiveBound>>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.baseline.get();
-        populateGeometricQueries<2, fcpw::Aggregate<2>, RobinAggregateType>(
-            absorbingBoundaryAggregate, reflectingBoundaryAggregate,
-            branchTraversalWeight, boundingBoxExtents, geometricQueries);
+        populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 
@@ -1263,9 +1038,8 @@ void populateGeometricQueries<2, true>(FcpwBoundaryHandler<2, false>& absorbingB
                                              RobinLineSegment<PrimitiveBound>,
                                              RobinMbvhNode<2>, WideNodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.mbvh.get();
-        populateGeometricQueries<2, fcpw::Aggregate<2>, RobinAggregateType>(
-            absorbingBoundaryAggregate, reflectingBoundaryAggregate,
-            branchTraversalWeight, boundingBoxExtents, geometricQueries);
+        populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 #endif
@@ -1273,30 +1047,24 @@ void populateGeometricQueries<2, true>(FcpwBoundaryHandler<2, false>& absorbingB
         using NodeBound = FcpwBoundaryHandler<2, true>::NodeBound;
         using RobinAggregateType = RobinBvh<2, RobinBvhNode<2>, RobinLineSegment<PrimitiveBound>, NodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.bvh.get();
-        populateGeometricQueries<2, fcpw::Aggregate<2>, RobinAggregateType>(
-            absorbingBoundaryAggregate, reflectingBoundaryAggregate,
-            branchTraversalWeight, boundingBoxExtents, geometricQueries);
+        populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
     }
 }
 
 template <>
-void populateGeometricQueries<3, true>(FcpwBoundaryHandler<3, false>& absorbingBoundaryHandler,
-                                       FcpwBoundaryHandler<3, true>& reflectingBoundaryHandler,
-                                       const std::function<float(float)>& branchTraversalWeight,
-                                       const std::pair<Vector3, Vector3>& boundingBoxExtents,
-                                       GeometricQueries<3>& geometricQueries)
+void populateGeometricQueriesForReflectingBoundary<3, true>(FcpwBoundaryHandler<3, true>& reflectingBoundaryHandler,
+                                                            const std::function<float(float)>& branchTraversalWeight,
+                                                            GeometricQueries<3>& geometricQueries)
 {
     using PrimitiveBound = FcpwBoundaryHandler<3, true>::PrimitiveBound;
-    fcpw::Aggregate<3> *absorbingBoundaryAggregate = absorbingBoundaryHandler.scene.getSceneData()->aggregate.get();
-
     if (reflectingBoundaryHandler.baseline != nullptr) {
         using RobinAggregateType = RobinBaseline<3, RobinTriangle<PrimitiveBound>>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.baseline.get();
-        populateGeometricQueries<3, fcpw::Aggregate<3>, RobinAggregateType>(
-            absorbingBoundaryAggregate, reflectingBoundaryAggregate,
-            branchTraversalWeight, boundingBoxExtents, geometricQueries);
+        populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 
@@ -1307,9 +1075,8 @@ void populateGeometricQueries<3, true>(FcpwBoundaryHandler<3, false>& absorbingB
                                              RobinTriangle<PrimitiveBound>,
                                              RobinMbvhNode<3>, WideNodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.mbvh.get();
-        populateGeometricQueries<3, fcpw::Aggregate<3>, RobinAggregateType>(
-            absorbingBoundaryAggregate, reflectingBoundaryAggregate,
-            branchTraversalWeight, boundingBoxExtents, geometricQueries);
+        populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 #endif
@@ -1317,9 +1084,8 @@ void populateGeometricQueries<3, true>(FcpwBoundaryHandler<3, false>& absorbingB
         using NodeBound = FcpwBoundaryHandler<3, true>::NodeBound;
         using RobinAggregateType = RobinBvh<3, RobinBvhNode<3>, RobinTriangle<PrimitiveBound>, NodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.bvh.get();
-        populateGeometricQueries<3, fcpw::Aggregate<3>, RobinAggregateType>(
-            absorbingBoundaryAggregate, reflectingBoundaryAggregate,
-            branchTraversalWeight, boundingBoxExtents, geometricQueries);
+        populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
     }

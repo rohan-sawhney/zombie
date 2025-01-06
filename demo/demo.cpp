@@ -30,14 +30,13 @@ void runWalkOnStars(const Scene& scene, const json& solverConfig, const json& ou
     const bool printLogs = getOptional<bool>(solverConfig, "printLogs", false);
     const bool runSingleThreaded = getOptional<bool>(solverConfig, "runSingleThreaded", false);
 
-    const std::pair<Vector2, Vector2>& bbox = scene.bbox;
     const zombie::GeometricQueries<2>& queries = scene.queries;
     const zombie::PDE<float, 2>& pde = scene.pde;
     bool solveDoubleSided = scene.isDoubleSided;
 
     // setup solution domain
     std::vector<zombie::SamplePoint<float, 2>> samplePts;
-    createSolutionGrid(samplePts, queries, bbox.first, bbox.second, solveDoubleSided, gridRes);
+    createSolutionGrid(samplePts, queries, solveDoubleSided, gridRes);
 
     // initialize solver and estimate solution
     ProgressBar pb(gridRes*gridRes);
@@ -100,14 +99,13 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
     const float radiusClampForKernels = getOptional<float>(solverConfig, "radiusClampForKernels", 0.0f);
     const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
 
-    const std::pair<Vector2, Vector2>& bbox = scene.bbox;
     const zombie::GeometricQueries<2>& queries = scene.queries;
     const zombie::PDE<float, 2>& pde = scene.pde;
     bool solveDoubleSided = scene.isDoubleSided;
 
     // initialize evaluation points
     std::vector<zombie::bvc::EvaluationPoint<float, 2>> evalPts;
-    createEvaluationGrid<zombie::bvc::EvaluationPoint<float, 2>>(evalPts, queries, bbox.first, bbox.second, gridRes);
+    createEvaluationGrid<zombie::bvc::EvaluationPoint<float, 2>>(evalPts, queries, gridRes);
 
     // initialize boundary and domain samplers
     std::function<bool(const Vector2&)> insideSolveRegionBoundarySampler = [&queries](const Vector2& x) -> bool {
@@ -133,9 +131,10 @@ void runBoundaryValueCaching(const Scene& scene, const json& solverConfig, const
             return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
         };
 
-        float regionVolume = solveDoubleSided ? (bbox.second - bbox.first).prod() : std::fabs(queries.computeSignedDomainVolume());
-        domainSampler = std::make_unique<zombie::UniformDomainSampler<float, 2>>(queries, insideSolveRegionDomainSampler,
-                                                                                 bbox.first, bbox.second, regionVolume);
+        float regionVolume = solveDoubleSided ? (queries.domainMax - queries.domainMin).prod() :
+                                                std::fabs(queries.computeDomainSignedVolume());
+        domainSampler = std::make_unique<zombie::UniformDomainSampler<float, 2>>(
+            queries, insideSolveRegionDomainSampler, queries.domainMin, queries.domainMax, regionVolume);
     }
 
     // solve using boundary value caching
@@ -211,14 +210,13 @@ void runReverseWalkOnStars(const Scene& scene, const json& solverConfig, const j
     const float radiusClampForKernels = getOptional<float>(solverConfig, "radiusClampForKernels", 0.0f);
     const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
 
-    const std::pair<Vector2, Vector2>& bbox = scene.bbox;
     const zombie::GeometricQueries<2>& queries = scene.queries;
     const zombie::PDE<float, 2>& pde = scene.pde;
     bool solveDoubleSided = scene.isDoubleSided;
 
     // initialize evaluation points
     std::vector<zombie::rws::EvaluationPoint<float, 2>> evalPts;
-    createEvaluationGrid<zombie::rws::EvaluationPoint<float, 2>>(evalPts, queries, bbox.first, bbox.second, gridRes);
+    createEvaluationGrid<zombie::rws::EvaluationPoint<float, 2>>(evalPts, queries, gridRes);
 
     // initialize boundary and domain samplers
     std::function<bool(const Vector2&)> insideSolveRegionBoundarySampler = {};
@@ -249,9 +247,10 @@ void runReverseWalkOnStars(const Scene& scene, const json& solverConfig, const j
             return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
         };
 
-        float regionVolume = solveDoubleSided ? (bbox.second - bbox.first).prod() : std::fabs(queries.computeSignedDomainVolume());
-        domainSampler = std::make_unique<zombie::UniformDomainSampler<float, 2>>(queries, insideSolveRegionDomainSampler,
-                                                                                 bbox.first, bbox.second, regionVolume);
+        float regionVolume = solveDoubleSided ? (queries.domainMax - queries.domainMin).prod() :
+                                                std::fabs(queries.computeDomainSignedVolume());
+        domainSampler = std::make_unique<zombie::UniformDomainSampler<float, 2>>(
+            queries, insideSolveRegionDomainSampler, queries.domainMin, queries.domainMax, regionVolume);
     }
 
     // solve using reverse walk on stars

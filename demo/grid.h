@@ -36,15 +36,14 @@ void writeSolution(const std::string& filename,
 
 void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
                         const zombie::GeometricQueries<2>& queries,
-                        const Vector2& bMin, const Vector2& bMax,
                         bool solveDoubleSided, const int gridRes)
 {
     // create a grid of sample points
-    Vector2 extent = bMax - bMin;
+    Vector2 extent = queries.domainMax - queries.domainMin;
     for (int i = 0; i < gridRes; i++) {
         for (int j = 0; j < gridRes; j++) {
-            Vector2 pt((i/float(gridRes))*extent.x() + bMin.x(),
-                       (j/float(gridRes))*extent.y() + bMin.y());
+            Vector2 pt((i/float(gridRes))*extent.x() + queries.domainMin.x(),
+                       (j/float(gridRes))*extent.y() + queries.domainMin.y());
             zombie::EstimationQuantity estimationQuantity = solveDoubleSided || queries.insideDomain(pt, true) ?
                                                             zombie::EstimationQuantity::Solution:
                                                             zombie::EstimationQuantity::None;
@@ -112,15 +111,14 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
 template <typename EvaluationPointType>
 void createEvaluationGrid(std::vector<EvaluationPointType>& evalPts,
                           const zombie::GeometricQueries<2>& queries,
-                          const Vector2& bMin, const Vector2& bMax,
                           const int gridRes)
 {
     // create a grid of evaluation points
-    Vector2 extent = bMax - bMin;
+    Vector2 extent = queries.domainMax - queries.domainMin;
     for (int i = 0; i < gridRes; i++) {
         for (int j = 0; j < gridRes; j++) {
-            Vector2 pt((i/float(gridRes))*extent.x() + bMin.x(),
-                       (j/float(gridRes))*extent.y() + bMin.y());
+            Vector2 pt((i/float(gridRes))*extent.x() + queries.domainMin.x(),
+                       (j/float(gridRes))*extent.y() + queries.domainMin.y());
             float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
             float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
 

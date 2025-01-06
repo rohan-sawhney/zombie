@@ -21,7 +21,6 @@ public:
     Scene(const json& config);
 
     // members
-    std::pair<Vector2, Vector2> bbox;
     std::vector<Vector2> vertices;
     std::vector<Vector2> absorbingBoundaryVertices;
     std::vector<Vector2> reflectingBoundaryVertices;
@@ -62,8 +61,7 @@ protected:
 // Implementation
 
 Scene::Scene(const json& config):
-isDoubleSided(getOptional<bool>(config, "isDoubleSided", false)),
-queries(getOptional<bool>(config, "isWatertight", true))
+isDoubleSided(getOptional<bool>(config, "isDoubleSided", false))
 {
     // load config settings
     const std::string boundaryFile = getRequired<std::string>(config, "boundary");
@@ -75,6 +73,7 @@ queries(getOptional<bool>(config, "isWatertight", true))
     bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
     absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
     robinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
+    queries.domainIsWatertight = getOptional<bool>(config, "isWatertight", true);
 
     // load images specifying boundary conditions and source term
     isReflectingBoundary = std::make_shared<Image<1>>(isReflectingBoundaryFile);
@@ -93,13 +92,15 @@ void Scene::loadOBJ(const std::string& filename, bool normalize, bool flipOrient
     zombie::loadBoundaryMesh<2>(filename, vertices, segments);
     if (normalize) zombie::normalize<2>(vertices);
     if (flipOrientation) zombie::flipOrientation(segments);
-    bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
+    std::pair<Vector2, Vector2> bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
+    queries.domainMin = bbox.first;
+    queries.domainMax = bbox.second;
 }
 
 void Scene::setupPDE()
 {
-    const Vector2& bMin = bbox.first;
-    const Vector2& bMax = bbox.second;
+    const Vector2& bMin = queries.domainMin;
+    const Vector2& bMax = queries.domainMax;
     float maxLength = (bMax - bMin).maxCoeff();
 
     pde.source = [this, &bMin, maxLength](const Vector2& x) -> float {
@@ -132,8 +133,11 @@ void Scene::populateGeometricQueries()
                                      absorbingBoundaryVertices, absorbingBoundarySegments,
                                      reflectingBoundaryVertices, reflectingBoundarySegments);
 
-    // build acceleration structures for absorbing and reflecting boundaries
+    // build acceleration structure and populate geometric queries for absorbing boundary
     absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryVertices, absorbingBoundarySegments);
+    zombie::populateGeometricQueriesForAbsorbingBoundary<2>(absorbingBoundaryHandler, queries);
+
+    // build acceleration structure and populate geometric queries for reflecting boundary
     ignoreCandidateSilhouette = [this](float dihedralAngle, int index) -> bool {
         // ignore convex vertices/edges for closest silhouette point tests when solving an interior problem;
         // NOTE: for complex scenes with both open and closed meshes, the primitive index argument
@@ -141,33 +145,23 @@ void Scene::populateGeometricQueries()
         // vertex/edge should be ignored as a candidate for silhouette tests.
         return this->isDoubleSided ? false : dihedralAngle < 1e-3f;
     };
-    if (robinCoeff > 0.0f) {
-        std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
-        std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
-        reflectingRobinBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices,
-                                                                  reflectingBoundarySegments,
-                                                                  ignoreCandidateSilhouette, false,
-                                                                  minRobinCoeffValues, maxRobinCoeffValues);
-
-    } else {
-        reflectingNeumannBoundaryHandler.buildAccelerationStructure(reflectingBoundaryVertices,
-                                                                    reflectingBoundarySegments,
-                                                                    ignoreCandidateSilhouette, true);
-    }
-
-    // populate geometric queries
     branchTraversalWeight = [this](float r2) -> float {
         float r = std::max(std::sqrt(r2), 1e-2f);
         return std::fabs(this->harmonicGreensFn.evaluate(r));
     };
     if (robinCoeff > 0.0f) {
-        zombie::populateGeometricQueries<2, true>(absorbingBoundaryHandler,
-                                                  reflectingRobinBoundaryHandler,
-                                                  branchTraversalWeight, bbox, queries);
+        std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
+        std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
+        reflectingRobinBoundaryHandler.buildAccelerationStructure(
+            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette, false,
+            minRobinCoeffValues, maxRobinCoeffValues);
+        zombie::populateGeometricQueriesForReflectingBoundary<2, true>(
+            reflectingRobinBoundaryHandler, branchTraversalWeight, queries);
 
     } else {
-        zombie::populateGeometricQueries<2, false>(absorbingBoundaryHandler,
-                                                   reflectingNeumannBoundaryHandler,
-                                                   branchTraversalWeight, bbox, queries);
+        reflectingNeumannBoundaryHandler.buildAccelerationStructure(
+            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette, true);
+        zombie::populateGeometricQueriesForReflectingBoundary<2, false>(
+            reflectingNeumannBoundaryHandler, branchTraversalWeight, queries);
     }
 }
