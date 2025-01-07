@@ -24,6 +24,11 @@ using Vector = Eigen::Matrix<float, DIM, 1>;
 using Vector2 = Vector<2>;
 using Vector3 = Vector<3>;
 
+template<size_t DIM>
+using Vectori = Eigen::Matrix<int, DIM, 1>;
+using Vector2i = Vectori<2>;
+using Vector3i = Vectori<3>;
+
 template <size_t DIM>
 class SphereSampler {
 public:

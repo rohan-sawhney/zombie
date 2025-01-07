@@ -41,6 +41,14 @@ protected:
     float solveRegionVolume;
 };
 
+template <typename T, size_t DIM>
+std::unique_ptr<DomainSampler<T, DIM>> createUniformDomainSampler(
+                                        const GeometricQueries<DIM>& queries,
+                                        const std::function<bool(const Vector<DIM>&)>& insideSolveRegion,
+                                        const Vector<DIM>& solveRegionMin,
+                                        const Vector<DIM>& solveRegionMax,
+                                        float solveRegionVolume);
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 // FUTURE:
@@ -93,6 +101,19 @@ inline void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, std::vec
             samplePts.emplace_back(samplePt);
         }
     }
+}
+
+template <typename T, size_t DIM>
+std::unique_ptr<DomainSampler<T, DIM>> createUniformDomainSampler(
+                                        const GeometricQueries<DIM>& queries,
+                                        const std::function<bool(const Vector<DIM>&)>& insideSolveRegion,
+                                        const Vector<DIM>& solveRegionMin,
+                                        const Vector<DIM>& solveRegionMax,
+                                        float solveRegionVolume)
+{
+    return std::unique_ptr<UniformDomainSampler<T, DIM>>(
+            new UniformDomainSampler<T, DIM>(
+                queries, insideSolveRegion, solveRegionMin, solveRegionMax, solveRegionVolume));
 }
 
 } // zombie

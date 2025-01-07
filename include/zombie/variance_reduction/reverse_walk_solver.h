@@ -55,9 +55,9 @@ public:
     // constructor
     ReverseWalkOnStarsSolver(const PDE<T, DIM>& pde_,
                              const GeometricQueries<DIM>& queries_,
-                             BoundarySampler<T, DIM> *absorbingBoundarySampler_,
-                             BoundarySampler<T, DIM> *reflectingBoundarySampler_,
-                             DomainSampler<T, DIM> *domainSampler_,
+                             const std::unique_ptr<BoundarySampler<T, DIM>>& absorbingBoundarySampler_,
+                             const std::unique_ptr<BoundarySampler<T, DIM>>& reflectingBoundarySampler_,
+                             const std::unique_ptr<DomainSampler<T, DIM>>& domainSampler_,
                              const float& normalOffsetForAbsorbingBoundary_,
                              const float& radiusClamp_,
                              const float& kernelRegularization_,
@@ -87,9 +87,9 @@ protected:
     // members
     const PDE<T, DIM>& pde;
     const GeometricQueries<DIM>& queries;
-    BoundarySampler<T, DIM> *absorbingBoundarySampler;
-    BoundarySampler<T, DIM> *reflectingBoundarySampler;
-    DomainSampler<T, DIM> *domainSampler;
+    const std::unique_ptr<BoundarySampler<T, DIM>>& absorbingBoundarySampler;
+    const std::unique_ptr<BoundarySampler<T, DIM>>& reflectingBoundarySampler;
+    const std::unique_ptr<DomainSampler<T, DIM>>& domainSampler;
     const float& normalOffsetForAbsorbingBoundary;
     std::vector<EvaluationPoint<T, DIM>>& evalPts;
     NearestNeighborFinder nearestNeighborFinder;
@@ -246,9 +246,9 @@ void splatContribution(const WalkState<T, DIM>& state,
 template <typename T, size_t DIM, typename NearestNeighborFinder>
 inline ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::ReverseWalkOnStarsSolver(const PDE<T, DIM>& pde_,
                                                                                          const GeometricQueries<DIM>& queries_,
-                                                                                         BoundarySampler<T, DIM> *absorbingBoundarySampler_,
-                                                                                         BoundarySampler<T, DIM> *reflectingBoundarySampler_,
-                                                                                         DomainSampler<T, DIM> *domainSampler_,
+                                                                                         const std::unique_ptr<BoundarySampler<T, DIM>>& absorbingBoundarySampler_,
+                                                                                         const std::unique_ptr<BoundarySampler<T, DIM>>& reflectingBoundarySampler_,
+                                                                                         const std::unique_ptr<DomainSampler<T, DIM>>& domainSampler_,
                                                                                          const float& normalOffsetForAbsorbingBoundary_,
                                                                                          const float& radiusClamp_,
                                                                                          const float& kernelRegularization_,
@@ -295,7 +295,7 @@ inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::generateSam
                                                                                      int domainSampleCount,
                                                                                      bool solveDoubleSided)
 {
-    if (absorbingBoundarySampler != nullptr) {
+    if (absorbingBoundarySampler) {
         absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, false),
                                                   SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
                                                   absorbingBoundarySamplePts, false);
@@ -306,7 +306,7 @@ inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::generateSam
         }
     }
 
-    if (reflectingBoundarySampler != nullptr) {
+    if (reflectingBoundarySampler) {
         reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, false),
                                                    SampleType::OnReflectingBoundary, 0.0f, reflectingBoundarySamplePts, false);
         if (solveDoubleSided) {
@@ -315,7 +315,7 @@ inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::generateSam
         }
     }
 
-    if (domainSampler != nullptr) {
+    if (domainSampler) {
         domainSampler->generateSamples(domainSampleCount, domainSamplePts);
     }
 }

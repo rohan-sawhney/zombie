@@ -24,9 +24,9 @@ public:
     std::vector<Vector2> vertices;
     std::vector<Vector2> absorbingBoundaryVertices;
     std::vector<Vector2> reflectingBoundaryVertices;
-    std::vector<std::vector<size_t>> segments;
-    std::vector<std::vector<size_t>> absorbingBoundarySegments;
-    std::vector<std::vector<size_t>> reflectingBoundarySegments;
+    std::vector<Vector2i> segments;
+    std::vector<Vector2i> absorbingBoundarySegments;
+    std::vector<Vector2i> reflectingBoundarySegments;
     const bool solveDoubleSided;
     zombie::PDE<float, 2> pde;
     zombie::GeometricQueries<2> queries;
@@ -91,7 +91,7 @@ void ModelProblem::loadOBJ(const std::string& filename, bool normalize, bool fli
 {
     zombie::loadBoundaryMesh<2>(filename, vertices, segments);
     if (normalize) zombie::normalize<2>(vertices);
-    if (flipOrientation) zombie::flipOrientation(segments);
+    if (flipOrientation) zombie::flipOrientation<2>(segments);
     std::pair<Vector2, Vector2> bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
     queries.domainMin = bbox.first;
     queries.domainMax = bbox.second;

@@ -24,13 +24,14 @@ namespace zombie {
 template <size_t DIM>
 void loadBoundaryMesh(const std::string& objFile,
                       std::vector<Vector<DIM>>& positions,
-                      std::vector<std::vector<size_t>>& indices);
+                      std::vector<Vectori<DIM>>& indices);
 
 // mesh utility functions
 template <size_t DIM>
 void normalize(std::vector<Vector<DIM>>& positions);
 
-void flipOrientation(std::vector<std::vector<size_t>>& indices);
+template <size_t DIM>
+void flipOrientation(std::vector<Vectori<DIM>>& indices);
 
 template <size_t DIM>
 std::pair<Vector<DIM>, Vector<DIM>> computeBoundingBox(const std::vector<Vector<DIM>>& positions,
@@ -42,11 +43,11 @@ std::pair<Vector<DIM>, Vector<DIM>> computeBoundingBox(const std::vector<Vector<
 template <size_t DIM>
 void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onReflectingBoundary,
                            const std::vector<Vector<DIM>>& positions,
-                           const std::vector<std::vector<size_t>>& indices,
+                           const std::vector<Vectori<DIM>>& indices,
                            std::vector<Vector<DIM>>& absorbingPositions,
-                           std::vector<std::vector<size_t>>& absorbingIndices,
+                           std::vector<Vectori<DIM>>& absorbingIndices,
                            std::vector<Vector<DIM>>& reflectingPositions,
-                           std::vector<std::vector<size_t>>& reflectingIndices);
+                           std::vector<Vectori<DIM>>& reflectingIndices);
 
 // Helper class to build an acceleration structure to perform geometric queries such as
 // ray intersection, closest point, etc. against a mesh. Also provides a utility function
@@ -64,7 +65,7 @@ public:
     // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
     // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
-                                    const std::vector<std::vector<size_t>>& indices,
+                                    const std::vector<Vectori<DIM>>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
                                     bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
@@ -93,7 +94,7 @@ void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useR
 template <size_t DIM>
 void loadBoundaryMesh(const std::string& objFile,
                       std::vector<Vector<DIM>>& positions,
-                      std::vector<std::vector<size_t>>& indices)
+                      std::vector<Vectori<DIM>>& indices)
 {
     std::cerr << "loadBoundaryMesh: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
@@ -102,7 +103,7 @@ void loadBoundaryMesh(const std::string& objFile,
 template <>
 void loadBoundaryMesh<2>(const std::string& objFile,
                          std::vector<Vector2>& positions,
-                         std::vector<std::vector<size_t>>& indices)
+                         std::vector<Vector2i>& indices)
 {
     // load file
     fcpw::PolygonSoup<2> soup;
@@ -118,7 +119,7 @@ void loadBoundaryMesh<2>(const std::string& objFile,
         size_t i = soup.indices[2*l + 0];
         size_t j = soup.indices[2*l + 1];
 
-        indices.emplace_back(std::vector<size_t>{i, j});
+        indices.emplace_back(Vector2i(i, j));
     }
 
     for (int v = 0; v < V; v++) {
@@ -129,7 +130,7 @@ void loadBoundaryMesh<2>(const std::string& objFile,
 template <>
 void loadBoundaryMesh<3>(const std::string& objFile,
                          std::vector<Vector3>& positions,
-                         std::vector<std::vector<size_t>>& indices)
+                         std::vector<Vector3i>& indices)
 {
     // load file
     fcpw::PolygonSoup<3> soup;
@@ -146,7 +147,7 @@ void loadBoundaryMesh<3>(const std::string& objFile,
         size_t j = soup.indices[3*t + 1];
         size_t k = soup.indices[3*t + 2];
 
-        indices.emplace_back(std::vector<size_t>{i, j, k});
+        indices.emplace_back(Vector3i(i, j, k));
     }
 
     for (int v = 0; v < V; v++) {
@@ -175,7 +176,8 @@ void normalize(std::vector<Vector<DIM>>& positions)
     }
 }
 
-void flipOrientation(std::vector<std::vector<size_t>>& indices)
+template <size_t DIM>
+void flipOrientation(std::vector<Vectori<DIM>>& indices)
 {
     for (int i = 0; i < (int)indices.size(); i++) {
         std::swap(indices[i][0], indices[i][1]);
@@ -204,12 +206,12 @@ std::pair<Vector<DIM>, Vector<DIM>> computeBoundingBox(const std::vector<Vector<
 
 template <size_t DIM>
 Vector<DIM> computePrimitiveMidpoint(const std::vector<Vector<DIM>>& positions,
-                                     const std::vector<std::vector<size_t>>& indices,
+                                     const std::vector<Vectori<DIM>>& indices,
                                      size_t primitiveIndex)
 {
     Vector<DIM> pMid = Vector<DIM>::Zero();
     for (int j = 0; j < DIM; j++) {
-        size_t vIndex = indices[primitiveIndex][j];
+        int vIndex = indices[primitiveIndex][j];
         const Vector<DIM>& p = positions[vIndex];
 
         pMid += p;
@@ -221,13 +223,13 @@ Vector<DIM> computePrimitiveMidpoint(const std::vector<Vector<DIM>>& positions,
 template <size_t DIM>
 void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onReflectingBoundary,
                            const std::vector<Vector<DIM>>& positions,
-                           const std::vector<std::vector<size_t>>& indices,
+                           const std::vector<Vectori<DIM>>& indices,
                            std::vector<Vector<DIM>>& absorbingPositions,
-                           std::vector<std::vector<size_t>>& absorbingIndices,
+                           std::vector<Vectori<DIM>>& absorbingIndices,
                            std::vector<Vector<DIM>>& reflectingPositions,
-                           std::vector<std::vector<size_t>>& reflectingIndices)
+                           std::vector<Vectori<DIM>>& reflectingIndices)
 {
-    std::vector<size_t> index(DIM, -1);
+    Vectori<DIM> index = Vectori<DIM>::Constant(-1);
     std::unordered_map<size_t, size_t> absorbingBoundaryMap, reflectingBoundaryMap;
     absorbingPositions.clear();
     absorbingIndices.clear();
@@ -239,7 +241,7 @@ void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onRefl
 
         if (onReflectingBoundary(pMid)) {
             for (int j = 0; j < DIM; j++) {
-                size_t vIndex = indices[i][j];
+                int vIndex = indices[i][j];
                 const Vector<DIM>& p = positions[vIndex];
 
                 if (reflectingBoundaryMap.find(vIndex) == reflectingBoundaryMap.end()) {
@@ -254,7 +256,7 @@ void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onRefl
 
         } else {
             for (int j = 0; j < DIM; j++) {
-                size_t vIndex = indices[i][j];
+                int vIndex = indices[i][j];
                 const Vector<DIM>& p = positions[vIndex];
 
                 if (absorbingBoundaryMap.find(vIndex) == absorbingBoundaryMap.end()) {
@@ -281,7 +283,7 @@ FcpwBoundaryHandler<DIM, useRobinConditions>::FcpwBoundaryHandler()
 
 template <size_t DIM, bool useRobinConditions>
 void FcpwBoundaryHandler<DIM, useRobinConditions>::buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
-                                                                              const std::vector<std::vector<size_t>>& indices,
+                                                                              const std::vector<Vectori<DIM>>& indices,
                                                                               std::function<bool(float, int)> ignoreCandidateSilhouette,
                                                                               bool computeSilhouettes,
                                                                               const std::vector<float>& minRobinCoeffValues,
@@ -317,7 +319,7 @@ public:
     // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
     // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
-                                    const std::vector<std::vector<size_t>>& indices,
+                                    const std::vector<Vector2i>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
                                     bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
@@ -342,8 +344,7 @@ public:
 
             // specify the line segment indices
             for (int i = 0; i < L; i++) {
-                fcpw::Vector2i index(indices[i][0], indices[i][1]);
-                scene.setObjectLineSegment(index, i, 0);
+                scene.setObjectLineSegment(indices[i], i, 0);
             }
 
             // compute silhouettes
@@ -383,7 +384,7 @@ public:
     // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
     // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
-                                    const std::vector<std::vector<size_t>>& indices,
+                                    const std::vector<Vector3i>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
                                     bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
@@ -408,8 +409,7 @@ public:
 
             // specify the triangle indices
             for (int i = 0; i < T; i++) {
-                fcpw::Vector3i index(indices[i][0], indices[i][1], indices[i][2]);
-                scene.setObjectTriangle(index, i, 0);
+                scene.setObjectTriangle(indices[i], i, 0);
             }
 
             // compute silhouettes
@@ -455,7 +455,7 @@ public:
     // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
     // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
-                                    const std::vector<std::vector<size_t>>& indices,
+                                    const std::vector<Vector2i>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
                                     bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
@@ -604,7 +604,7 @@ public:
     // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
     // mesh faces instead of a BVH for brute force geometric queries.
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
-                                    const std::vector<std::vector<size_t>>& indices,
+                                    const std::vector<Vector3i>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette={},
                                     bool computeSilhouettes=false,
                                     const std::vector<float>& minRobinCoeffValues={},
