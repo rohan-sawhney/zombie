@@ -9,6 +9,7 @@
 #pragma once
 
 #include <zombie/core/geometric_queries.h>
+#include <zombie/core/distributions.h>
 #include <cmath>
 #include <fcpw/utilities/scene_loader.h>
 #include <zombie/utils/robin_boundary_bvh/baseline.h>
@@ -36,6 +37,12 @@ void flipOrientation(std::vector<Vectori<DIM>>& indices);
 template <size_t DIM>
 std::pair<Vector<DIM>, Vector<DIM>> computeBoundingBox(const std::vector<Vector<DIM>>& positions,
                                                        bool makeSquare, float scale);
+
+template <size_t DIM>
+void addBoundingBoxToBoundaryMesh(const Vector<DIM>& boundingBoxMin,
+                                  const Vector<DIM>& boundingBoxMax,
+                                  std::vector<Vector<DIM>>& positions,
+                                  std::vector<Vectori<DIM>>& indices);
 
 // partitions boundary mesh into absorbing and reflecting parts using primitive centroids---
 // this assumes the boundary discretization is perfectly adapted to the boundary conditions,
@@ -72,10 +79,13 @@ public:
                                     const std::vector<float>& maxRobinCoeffValues={},
                                     bool buildBvh=true, bool enableBvhVectorization=false);
 
-    // updates the Robin coefficients for the mesh
+    // updates the Robin coefficients on a boundary mesh
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues);
 };
+
+std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided = false,
+                                                                     float silhouettePrecision = 1e-3);
 
 // populates the GeometricQueries structure
 template <size_t DIM>
@@ -86,6 +96,8 @@ template <size_t DIM, bool useRobinConditions>
 void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
                                                    const std::function<float(float)>& branchTraversalWeight,
                                                    GeometricQueries<DIM>& geometricQueries);
+
+std::function<float(float)> getBranchTraversalWeight(float minRadialDist = 1e-2f);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -202,6 +214,92 @@ std::pair<Vector<DIM>, Vector<DIM>> computeBoundingBox(const std::vector<Vector<
     }
 
     return std::make_pair(bbox.pMin, bbox.pMax);
+}
+
+template <size_t DIM>
+void buildBoundingBoxMesh(const Vector<DIM>& boundingBoxMin,
+                          const Vector<DIM>& boundingBoxMax,
+                          std::vector<Vector<DIM>>& positions,
+                          std::vector<Vectori<DIM>>& indices)
+{
+    // do nothing
+}
+
+template <>
+void buildBoundingBoxMesh<2>(const Vector2& boundingBoxMin,
+                             const Vector2& boundingBoxMax,
+                             std::vector<Vector2>& positions,
+                             std::vector<Vector2i>& indices)
+{
+    positions.clear();
+    positions.emplace_back(boundingBoxMin);
+    positions.emplace_back(Vector2(boundingBoxMax(0), boundingBoxMin(1)));
+    positions.emplace_back(boundingBoxMax);
+    positions.emplace_back(Vector2(boundingBoxMin(0), boundingBoxMax(1)));
+
+    indices.clear();
+    indices.emplace_back(Vector2i(0, 1));
+    indices.emplace_back(Vector2i(1, 2));
+    indices.emplace_back(Vector2i(2, 3));
+    indices.emplace_back(Vector2i(3, 0));
+}
+
+template <>
+void buildBoundingBoxMesh<3>(const Vector3& boundingBoxMin,
+                             const Vector3& boundingBoxMax,
+                             std::vector<Vector3>& positions,
+                             std::vector<Vector3i>& indices)
+{
+    positions.clear();
+    positions.emplace_back(boundingBoxMin);
+    positions.emplace_back(Vector3(boundingBoxMax(0), boundingBoxMin(1), boundingBoxMin(2)));
+    positions.emplace_back(Vector3(boundingBoxMax(0), boundingBoxMax(1), boundingBoxMin(2)));
+    positions.emplace_back(Vector3(boundingBoxMin(0), boundingBoxMax(1), boundingBoxMin(2)));
+    positions.emplace_back(Vector3(boundingBoxMin(0), boundingBoxMin(1), boundingBoxMax(2)));
+    positions.emplace_back(Vector3(boundingBoxMax(0), boundingBoxMin(1), boundingBoxMax(2)));
+    positions.emplace_back(boundingBoxMax);
+    positions.emplace_back(Vector3(boundingBoxMin(0), boundingBoxMax(1), boundingBoxMax(2)));
+
+    indices.clear();
+    indices.emplace_back(Vector3i(0, 2, 1));
+    indices.emplace_back(Vector3i(0, 3, 2));
+    indices.emplace_back(Vector3i(0, 5, 4));
+    indices.emplace_back(Vector3i(0, 1, 5));
+    indices.emplace_back(Vector3i(0, 7, 3));
+    indices.emplace_back(Vector3i(0, 4, 7));
+    indices.emplace_back(Vector3i(6, 7, 4));
+    indices.emplace_back(Vector3i(6, 4, 5));
+    indices.emplace_back(Vector3i(6, 5, 1));
+    indices.emplace_back(Vector3i(6, 1, 2));
+    indices.emplace_back(Vector3i(6, 2, 3));
+    indices.emplace_back(Vector3i(6, 3, 7));
+}
+
+template <size_t DIM>
+void addBoundingBoxToBoundaryMesh(const Vector<DIM>& boundingBoxMin,
+                                  const Vector<DIM>& boundingBoxMax,
+                                  std::vector<Vector<DIM>>& positions,
+                                  std::vector<Vectori<DIM>>& indices)
+{
+    // build box
+    std::vector<Vector<DIM>> boxPositions;
+    std::vector<Vectori<DIM>> boxIndices;
+    buildBoundingBoxMesh<DIM>(boundingBoxMin, boundingBoxMax, boxPositions, boxIndices);
+
+    // append box positions and indices
+    int V = (int)positions.size();
+    for (int i = 0; i < (int)boxPositions.size(); i++) {
+        positions.emplace_back(boxPositions[i]);
+    }
+
+    for (int i = 0; i < (int)boxIndices.size(); i++) {
+        Vectori<DIM> boxIndex = boxIndices[i];
+        for (int j = 0; j < DIM; j++) {
+            boxIndex[j] += V;
+        }
+
+        indices.emplace_back(boxIndex);
+    }
 }
 
 template <size_t DIM>
@@ -761,6 +859,17 @@ public:
     std::vector<fcpw::SilhouettePrimitive<3> *> silhouettePtrsStub;
 };
 
+std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided,
+                                                                     float silhouettePrecision) {
+    return [solveDoubleSided, silhouettePrecision](float dihedralAngle, int index) -> bool {
+        // ignore convex vertices/edges for closest silhouette point tests when solving an interior problem;
+        // NOTE: for complex scenes with both open and closed meshes, the primitive index argument
+        // (of an adjacent line segment/triangle in the scene) can be used to determine whether a
+        // vertex/edge should be ignored as a candidate for silhouette tests.
+        return solveDoubleSided ? false : dihedralAngle < silhouettePrecision;
+    };
+}
+
 template <size_t DIM>
 void populateGeometricQueriesForAbsorbingBoundary(FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
                                                   GeometricQueries<DIM>& geometricQueries)
@@ -1089,6 +1198,15 @@ void populateGeometricQueriesForReflectingBoundary<3, true>(FcpwBoundaryHandler<
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
     }
+}
+
+std::function<float(float)> getBranchTraversalWeight(float minRadialDist)
+{
+    HarmonicGreensFnFreeSpace<3> harmonicGreensFn;
+    return [harmonicGreensFn, minRadialDist](float r2) -> float {
+        float r = std::max(std::sqrt(r2), minRadialDist);
+        return std::fabs(harmonicGreensFn.evaluate(r));
+    };
 }
 
 } // zombie

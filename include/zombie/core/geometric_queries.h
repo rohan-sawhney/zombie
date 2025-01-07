@@ -7,7 +7,7 @@
 // For surface meshes in 2D and 3D, the FcpwBoundaryHandler class provides a
 // convenient way to populate the GeometricQueries interface; refer to the
 // 'populateGeometricQueriesForAbsorbingBoundary' and 'populateGeometricQueriesForReflectingBoundary'
-// functions in fcpw_boundary_handler.h for details.
+// functions in fcpw_geometric_queries.h for details.
 
 #pragma once
 
@@ -60,6 +60,10 @@ struct GeometricQueries {
                      const Vector<DIM>& domainMin_,
                      const Vector<DIM>& domainMax_);
 
+    // members
+    bool domainIsWatertight;
+    Vector<DIM> domainMin, domainMax;
+
     // computes the distance to the boundary
     std::function<float(const Vector<DIM>&, bool)> computeDistToAbsorbingBoundary;
     std::function<float(const Vector<DIM>&, bool)> computeDistToReflectingBoundary;
@@ -107,10 +111,6 @@ struct GeometricQueries {
     std::function<float()> computeAbsorbingBoundarySignedVolume;
     std::function<float()> computeReflectingBoundarySignedVolume;
     std::function<float()> computeDomainSignedVolume; // set automatically
-
-    // members
-    bool domainIsWatertight;
-    Vector<DIM> domainMin, domainMax;
 
 protected:
     // default implementation for populating queries

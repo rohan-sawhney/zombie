@@ -52,8 +52,6 @@ protected:
     std::shared_ptr<Image<1>> sourceValue;
     float absorptionCoeff, robinCoeff;
 
-    std::function<bool(float, int)> ignoreCandidateSilhouette;
-    zombie::HarmonicGreensFnFreeSpace<3> harmonicGreensFn;
     std::function<float(float)> branchTraversalWeight;
 };
 
@@ -138,17 +136,9 @@ void ModelProblem::populateGeometricQueries()
     zombie::populateGeometricQueriesForAbsorbingBoundary<2>(absorbingBoundaryHandler, queries);
 
     // build acceleration structure and populate geometric queries for reflecting boundary
-    ignoreCandidateSilhouette = [this](float dihedralAngle, int index) -> bool {
-        // ignore convex vertices/edges for closest silhouette point tests when solving an interior problem;
-        // NOTE: for complex scenes with both open and closed meshes, the primitive index argument
-        // (of an adjacent line segment/triangle in the scene) can be used to determine whether a
-        // vertex/edge should be ignored as a candidate for silhouette tests.
-        return this->solveDoubleSided ? false : dihedralAngle < 1e-3f;
-    };
-    branchTraversalWeight = [this](float r2) -> float {
-        float r = std::max(std::sqrt(r2), 1e-2f);
-        return std::fabs(this->harmonicGreensFn.evaluate(r));
-    };
+    std::function<bool(float, int)> ignoreCandidateSilhouette = zombie::getIgnoreCandidateSilhouetteCallback(solveDoubleSided);
+    branchTraversalWeight = zombie::getBranchTraversalWeight();
+
     if (robinCoeff > 0.0f) {
         std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
         std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
