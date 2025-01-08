@@ -97,7 +97,7 @@ void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useR
                                                    const std::function<float(float)>& branchTraversalWeight,
                                                    GeometricQueries<DIM>& geometricQueries);
 
-std::function<float(float)> getBranchTraversalWeight(float minRadialDist = 1e-2f);
+std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist = 1e-2f);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -1200,7 +1200,7 @@ void populateGeometricQueriesForReflectingBoundary<3, true>(FcpwBoundaryHandler<
     }
 }
 
-std::function<float(float)> getBranchTraversalWeight(float minRadialDist)
+std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist)
 {
     HarmonicGreensFnFreeSpace<3> harmonicGreensFn;
     return [harmonicGreensFn, minRadialDist](float r2) -> float {

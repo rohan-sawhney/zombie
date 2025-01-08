@@ -137,7 +137,7 @@ void ModelProblem::populateGeometricQueries()
 
     // build acceleration structure and populate geometric queries for reflecting boundary
     std::function<bool(float, int)> ignoreCandidateSilhouette = zombie::getIgnoreCandidateSilhouetteCallback(solveDoubleSided);
-    branchTraversalWeight = zombie::getBranchTraversalWeight();
+    branchTraversalWeight = zombie::getBranchTraversalWeightCallback();
 
     if (robinCoeff > 0.0f) {
         std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
