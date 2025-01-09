@@ -83,6 +83,11 @@ public:
     const std::vector<SamplePoint<T, DIM>>& getReflectingBoundarySamplePts(bool returnBoundaryNormalAligned = false) const;
     const std::vector<SamplePoint<T, DIM>>& getDomainSamplePts() const;
 
+    // returns the number of boundary and domain sample points
+    int getAbsorbingBoundarySampleCount(bool returnBoundaryNormalAligned = false) const;
+    int getReflectingBoundarySampleCount(bool returnBoundaryNormalAligned = false) const;
+    int getDomainSampleCount() const;
+
 protected:
     // members
     const PDE<T, DIM>& pde;
@@ -349,6 +354,26 @@ template <typename T, size_t DIM, typename NearestNeighborFinder>
 inline const std::vector<SamplePoint<T, DIM>>& ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::getDomainSamplePts() const
 {
     return domainSamplePts;
+}
+
+template <typename T, size_t DIM, typename NearestNeighborFinder>
+inline int ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::getAbsorbingBoundarySampleCount(bool returnBoundaryNormalAligned) const
+{
+    return returnBoundaryNormalAligned ? (int)absorbingBoundaryNormalAlignedSamplePts.size() :
+                                         (int)absorbingBoundarySamplePts.size();
+}
+
+template <typename T, size_t DIM, typename NearestNeighborFinder>
+inline int ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::getReflectingBoundarySampleCount(bool returnBoundaryNormalAligned) const
+{
+    return returnBoundaryNormalAligned ? (int)reflectingBoundaryNormalAlignedSamplePts.size() :
+                                         (int)reflectingBoundarySamplePts.size();
+}
+
+template <typename T, size_t DIM, typename NearestNeighborFinder>
+inline int ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::getDomainSampleCount() const
+{
+    return (int)domainSamplePts.size();
 }
 
 } // rws

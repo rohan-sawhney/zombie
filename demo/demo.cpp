@@ -281,11 +281,11 @@ void runReverseWalkOnStars(const ModelProblem& modelProblem, const json& solverC
     pb.finish();
 
     // save to file
-    saveEvaluationGrid(evalPts, reverseWalkOnStars.getAbsorbingBoundarySamplePts(false).size(),
-                       reverseWalkOnStars.getAbsorbingBoundarySamplePts(true).size(),
-                       reverseWalkOnStars.getReflectingBoundarySamplePts(false).size(),
-                       reverseWalkOnStars.getReflectingBoundarySamplePts(true).size(),
-                       reverseWalkOnStars.getDomainSamplePts().size(), pde, queries,
+    saveEvaluationGrid(evalPts, reverseWalkOnStars.getAbsorbingBoundarySampleCount(false),
+                       reverseWalkOnStars.getAbsorbingBoundarySampleCount(true),
+                       reverseWalkOnStars.getReflectingBoundarySampleCount(false),
+                       reverseWalkOnStars.getReflectingBoundarySampleCount(true),
+                       reverseWalkOnStars.getDomainSampleCount(), pde, queries,
                        solveDoubleSided, outputConfig);
 };
 
