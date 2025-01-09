@@ -188,7 +188,7 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
                                                                    const WalkSettings& walkSettings,
                                                                    const WalkState<T, DIM>& state) const
 {
-    if (state.onReflectingBoundary && state.prevDistance > std::numeric_limits<T>::epsilon()) {
+    if (state.onReflectingBoundary && state.prevDistance > std::numeric_limits<float>::epsilon()) {
         float robinCoeff = 0.0f;
         Vector<DIM> normal = state.currentNormal;
 

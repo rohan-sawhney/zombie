@@ -9,7 +9,7 @@
 #pragma once
 
 #include <zombie/point_estimation/reverse_walk_on_stars.h>
-#include "tbb/mutex.h"
+#include "tbb/spin_mutex.h"
 
 namespace zombie {
 
@@ -46,7 +46,7 @@ struct EvaluationPoint {
     T totalReflectingBoundaryContribution;
     T totalReflectingBoundaryNormalAlignedContribution;
     T totalSourceContribution;
-    std::unique_ptr<tbb::mutex> mutex;
+    std::shared_ptr<tbb::spin_mutex> mutex;
 };
 
 template <typename T, size_t DIM, typename NearestNeighborFinder>
@@ -125,7 +125,7 @@ inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
                                                 distToAbsorbingBoundary(distToAbsorbingBoundary_),
                                                 distToReflectingBoundary(distToReflectingBoundary_)
 {
-    mutex = std::make_unique<tbb::mutex>();
+    mutex = std::make_shared<tbb::spin_mutex>();
     reset();
 }
 
@@ -222,7 +222,7 @@ void splatContribution(const WalkState<T, DIM>& state,
             float weight = samplePtAlpha*state.throughput*G/sampleContribution.pdf;
 
             // add sample contribution to evaluation point
-            tbb::mutex::scoped_lock lock(*evalPt.mutex);
+            tbb::spin_mutex::scoped_lock lock(*evalPt.mutex);
             if (sampleContribution.type == SampleType::OnAbsorbingBoundary) {
                 weight /= normalOffsetForAbsorbingBoundary;
                 if (sampleContribution.boundaryNormalAligned) {
