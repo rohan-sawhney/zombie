@@ -182,7 +182,7 @@ void EvaluationPoint<T, DIM>::reset()
 
 template <typename T, size_t DIM, typename NearestNeighborFinder>
 void splatContribution(const WalkState<T, DIM>& state,
-                       const SampleContribution<T>& sampleContribution,
+                       const SamplePoint<T, DIM>& samplePt,
                        const GeometricQueries<DIM>& queries,
                        const NearestNeighborFinder& nearestNeighborFinder,
                        const PDE<T, DIM>& pde,
@@ -219,30 +219,30 @@ void splatContribution(const WalkState<T, DIM>& state,
                 G *= KernelRegularization<DIM>::regularizationForGreensFn(r);
             }
 
-            float weight = samplePtAlpha*state.throughput*G/sampleContribution.pdf;
+            float weight = samplePtAlpha*state.throughput*G/samplePt.pdf;
 
             // add sample contribution to evaluation point
             tbb::spin_mutex::scoped_lock lock(*evalPt.mutex);
-            if (sampleContribution.type == SampleType::OnAbsorbingBoundary) {
+            if (samplePt.type == SampleType::OnAbsorbingBoundary) {
                 weight /= normalOffsetForAbsorbingBoundary;
-                if (sampleContribution.boundaryNormalAligned) {
-                    evalPt.totalAbsorbingBoundaryNormalAlignedContribution += weight*sampleContribution.contribution;
+                if (samplePt.estimateBoundaryNormalAligned) {
+                    evalPt.totalAbsorbingBoundaryNormalAlignedContribution += weight*samplePt.contribution;
 
                 } else {
-                    evalPt.totalAbsorbingBoundaryContribution += weight*sampleContribution.contribution;
+                    evalPt.totalAbsorbingBoundaryContribution += weight*samplePt.contribution;
                     if (useSelfNormalization) evalPt.totalPoissonKernelContribution += weight;
                 }
 
-            } else if (sampleContribution.type == SampleType::OnReflectingBoundary) {
-                if (sampleContribution.boundaryNormalAligned) {
-                    evalPt.totalReflectingBoundaryNormalAlignedContribution += weight*sampleContribution.contribution;
+            } else if (samplePt.type == SampleType::OnReflectingBoundary) {
+                if (samplePt.estimateBoundaryNormalAligned) {
+                    evalPt.totalReflectingBoundaryNormalAlignedContribution += weight*samplePt.contribution;
 
                 } else {
-                    evalPt.totalReflectingBoundaryContribution += weight*sampleContribution.contribution;
+                    evalPt.totalReflectingBoundaryContribution += weight*samplePt.contribution;
                 }
 
-            } else if (sampleContribution.type == SampleType::InDomain) {
-                evalPt.totalSourceContribution += weight*sampleContribution.contribution;
+            } else if (samplePt.type == SampleType::InDomain) {
+                evalPt.totalSourceContribution += weight*samplePt.contribution;
             }
         }
     }

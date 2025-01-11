@@ -309,8 +309,7 @@ struct SamplePoint {
         robinCoeff = 0.0f;
         solution = T(0.0f);
         normalDerivative = T(0.0f);
-        source = T(0.0f);
-        robin = T(0.0f);
+        contribution = T(0.0f);
     }
 
     // members
@@ -325,8 +324,8 @@ struct SamplePoint {
     float distToAbsorbingBoundary;
     float distToReflectingBoundary;
     float firstSphereRadius;                              // populated by WoSt
-    float robinCoeff;                                     // not populated by WoSt, but available for downstream use (e.g. BVC)
-    T solution, normalDerivative, source, robin;          // not populated by WoSt, but available for downstream use (e.g. BVC)
+    float robinCoeff;                                     // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
+    T solution, normalDerivative, contribution;           // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
     bool estimateBoundaryNormalAligned;
 };
 

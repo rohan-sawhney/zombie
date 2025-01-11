@@ -19,17 +19,9 @@
 
 namespace zombie {
 
-template <typename T>
-struct SampleContribution {
-    T contribution;
-    SampleType type;
-    float pdf;
-    bool boundaryNormalAligned;
-};
-
 template <typename T, size_t DIM>
 using SplatContributionCallback = std::function<void(const WalkState<T, DIM>&,
-                                                     const SampleContribution<T>&)>;
+                                                     const SamplePoint<T, DIM>&)>;
 
 template <typename T, size_t DIM>
 class ReverseWalkOnStars {
@@ -61,7 +53,7 @@ protected:
     // performs a single reflecting random walk starting at the input point
     WalkCompletionCode walk(const PDE<T, DIM>& pde,
                             const WalkSettings& walkSettings,
-                            const SampleContribution<T>& contribution,
+                            const SamplePoint<T, DIM>& samplePt,
                             float distToAbsorbingBoundary,
                             pcg32& sampler, WalkState<T, DIM>& state) const;
 
@@ -86,16 +78,11 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                                               const WalkSettings& walkSettings,
                                               SamplePoint<T, DIM>& samplePt) const
 {
-    // set the sample contribution
-    SampleContribution<T> sampleContribution;
-    sampleContribution.type = samplePt.type;
-    sampleContribution.pdf = samplePt.pdf;
-    sampleContribution.boundaryNormalAligned = samplePt.estimateBoundaryNormalAligned;
+    // set sample contribution
     bool didSetContribution = true;
-
     if (samplePt.type == SampleType::InDomain &&
         !walkSettings.ignoreSourceContribution) {
-        sampleContribution.contribution = pde.source(samplePt.pt);
+        samplePt.contribution = pde.source(samplePt.pt);
 
     } else if (samplePt.type == SampleType::OnAbsorbingBoundary &&
                !walkSettings.ignoreAbsorbingBoundaryContribution) {
@@ -108,13 +95,13 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
         bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                 signedDistance > 0.0f;
-        sampleContribution.contribution = pde.dirichlet(pt, returnBoundaryNormalAlignedValue);
+        samplePt.contribution = pde.dirichlet(pt, returnBoundaryNormalAlignedValue);
 
     } else if (samplePt.type == SampleType::OnReflectingBoundary &&
                !walkSettings.ignoreReflectingBoundaryContribution) {
         bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                 samplePt.estimateBoundaryNormalAligned;
-        sampleContribution.contribution = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
+        samplePt.contribution = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
 
     } else {
         didSetContribution = false;
@@ -145,7 +132,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
         }
 
         // perform walk
-        WalkCompletionCode code = walk(pde, walkSettings, sampleContribution,
+        WalkCompletionCode code = walk(pde, walkSettings, samplePt,
                                        samplePt.distToAbsorbingBoundary,
                                        samplePt.sampler, state);
     }
@@ -213,7 +200,7 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
 template <typename T, size_t DIM>
 inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
                                                            const WalkSettings& walkSettings,
-                                                           const SampleContribution<T>& contribution,
+                                                           const SamplePoint<T, DIM>& samplePt,
                                                            float distToAbsorbingBoundary,
                                                            pcg32& sampler, WalkState<T, DIM>& state) const
 {
@@ -258,8 +245,8 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
         // update the ball center and radius
         state.greensFn->updateBall(state.currentPt, starRadius);
 
-        // splat contribution within the current star-shaped region
-        splatContribution(state, contribution);
+        // splat sample contribution within the current star-shaped region
+        splatContribution(state, samplePt);
 
         // sample a direction uniformly
         Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(sampler);

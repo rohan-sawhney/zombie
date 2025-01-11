@@ -345,14 +345,14 @@ inline void BoundaryValueCaching<T, DIM>::setSourceValues(const PDE<T, DIM>& pde
     int nSamplePoints = (int)samplePts.size();
     if (runSingleThreaded) {
         for (int i = 0; i < nSamplePoints; i++) {
-            samplePts[i].source = pde.source(samplePts[i].pt);
+            samplePts[i].contribution = pde.source(samplePts[i].pt);
             samplePts[i].estimationQuantity = EstimationQuantity::None;
         }
 
     } else {
         auto run = [&](const tbb::blocked_range<int>& range) {
             for (int i = range.begin(); i < range.end(); ++i) {
-                samplePts[i].source = pde.source(samplePts[i].pt);
+                samplePts[i].contribution = pde.source(samplePts[i].pt);
                 samplePts[i].estimationQuantity = EstimationQuantity::None;
             }
         };
@@ -634,7 +634,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
                     samplePt.normalDerivative = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
 
                 } else {
-                    samplePt.robin = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
+                    samplePt.contribution = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
                     if (samplePt.robinCoeff > robinCoeffCutoffForNormalDerivative) {
                         samplePt.normalDerivative = samplePt.statistics.getEstimatedDerivative();
                     }
@@ -676,7 +676,7 @@ inline void BoundaryValueCaching<T, DIM>::splatBoundaryData(const SamplePoint<T,
     // compute the contribution of the boundary sample
     const T& solution = samplePt.solution;
     const T& normalDerivative = samplePt.normalDerivative;
-    const T& robin = samplePt.robin;
+    const T& robin = samplePt.contribution;
     const Vector<DIM>& pt = samplePt.pt;
     Vector<DIM> n = samplePt.normal*(samplePt.estimateBoundaryNormalAligned ? -1.0f : 1.0f);
     float pdf = samplePt.pdf;
@@ -763,7 +763,7 @@ inline void BoundaryValueCaching<T, DIM>::splatSourceData(const SamplePoint<T, D
                                                           EvaluationPoint<T, DIM>& evalPt) const
 {
     // compute the contribution of the source sample
-    const T& source = samplePt.source;
+    const T& source = samplePt.contribution;
     const Vector<DIM>& pt = samplePt.pt;
     float pdf = samplePt.pdf;
 
