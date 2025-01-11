@@ -207,22 +207,8 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         estimateBoundaryNormalAligned;
                 T h = pde.robin(boundarySample.pt, returnBoundaryNormalAlignedValue);
-                if (state.onReflectingBoundary) {
-                    // subtract control variate
-                    T hControl = pde.robin(state.currentPt, returnBoundaryNormalAlignedValue);
-                    h -= boundarySample.normal.dot(state.currentNormal)*hControl;
-                }
-
                 state.totalReflectingBoundaryContribution += state.throughput*alpha*G*h/boundarySample.pdf;
             }
-        }
-
-        if (state.onReflectingBoundary) {
-            // compute the control variate for the reflecting boundary contribution;
-            // hemispherical sampling causes the alpha term to be cancelled out
-            T hControl = pde.robin(state.currentPt, flipNormalOrientation);
-            Vector<DIM> directionToSample = intersectionPt.pt - state.currentPt;
-            state.totalReflectingBoundaryContribution -= state.throughput*directionToSample.dot(state.currentNormal)*hControl;
         }
     }
 }

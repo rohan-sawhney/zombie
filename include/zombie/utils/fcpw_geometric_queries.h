@@ -654,14 +654,14 @@ public:
     // updates the Robin coefficients for the mesh
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
-        if (baseline != nullptr) {
+        if (baseline) {
             baseline->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
 
 #ifdef FCPW_USE_ENOKI
-        } else if (mbvh != nullptr) {
+        } else if (mbvh) {
             mbvh->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
 #endif
-        } else if (bvh != nullptr) {
+        } else if (bvh) {
             bvh->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
         }
     }
@@ -830,14 +830,14 @@ public:
     // updates the Robin coefficients for the mesh
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
-        if (baseline != nullptr) {
+        if (baseline) {
             baseline->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
 
 #ifdef FCPW_USE_ENOKI
-        } else if (mbvh != nullptr) {
+        } else if (mbvh) {
             mbvh->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
 #endif
-        } else if (bvh != nullptr) {
+        } else if (bvh) {
             bvh->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
         }
     }
@@ -875,7 +875,7 @@ void populateGeometricQueriesForAbsorbingBoundary(FcpwBoundaryHandler<DIM, false
                                                   GeometricQueries<DIM>& geometricQueries)
 {
     fcpw::Aggregate<DIM> *absorbingBoundaryAggregate = absorbingBoundaryHandler.scene.getSceneData()->aggregate.get();
-    if (absorbingBoundaryAggregate != nullptr) {
+    if (absorbingBoundaryAggregate) {
         geometricQueries.computeDistToAbsorbingBoundary = [absorbingBoundaryAggregate](
                                                           const Vector<DIM>& x, bool computeSignedDistance) -> float {
             Vector<DIM> queryPt = x;
@@ -950,7 +950,7 @@ void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggre
                                                    const std::function<float(float)>& branchTraversalWeight,
                                                    GeometricQueries<DIM>& geometricQueries)
 {
-    if (reflectingBoundaryAggregate != nullptr) {
+    if (reflectingBoundaryAggregate) {
         geometricQueries.computeDistToReflectingBoundary = [reflectingBoundaryAggregate](
                                                            const Vector<DIM>& x, bool computeSignedDistance) -> float {
             Vector<DIM> queryPt = x;
@@ -1049,7 +1049,7 @@ template <size_t DIM, typename NeumannBoundaryAggregateType>
 void populateStarRadiusQueryForNeumannBoundary(const NeumannBoundaryAggregateType *reflectingBoundaryAggregate,
                                                GeometricQueries<DIM>& geometricQueries)
 {
-    if (reflectingBoundaryAggregate != nullptr) {
+    if (reflectingBoundaryAggregate) {
         geometricQueries.computeStarRadiusForReflectingBoundary = [reflectingBoundaryAggregate](
                                                                   const Vector<DIM>& x, float minRadius, float maxRadius,
                                                                   float silhouettePrecision, bool flipNormalOrientation) -> float {
@@ -1072,7 +1072,7 @@ template <size_t DIM, typename RobinBoundaryAggregateType>
 void populateStarRadiusQueryForRobinBoundary(const RobinBoundaryAggregateType *reflectingBoundaryAggregate,
                                              GeometricQueries<DIM>& geometricQueries)
 {
-    if (reflectingBoundaryAggregate != nullptr) {
+    if (reflectingBoundaryAggregate) {
         geometricQueries.computeStarRadiusForReflectingBoundary = [reflectingBoundaryAggregate](
                                                                   const Vector<DIM>& x, float minRadius, float maxRadius,
                                                                   float silhouettePrecision, bool flipNormalOrientation) -> float {
@@ -1132,7 +1132,7 @@ void populateGeometricQueriesForReflectingBoundary<2, true>(FcpwBoundaryHandler<
                                                             GeometricQueries<2>& geometricQueries)
 {
     using PrimitiveBound = FcpwBoundaryHandler<2, true>::PrimitiveBound;
-    if (reflectingBoundaryHandler.baseline != nullptr) {
+    if (reflectingBoundaryHandler.baseline) {
         using RobinAggregateType = RobinBaseline<2, RobinLineSegment<PrimitiveBound>>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.baseline.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
@@ -1141,7 +1141,7 @@ void populateGeometricQueriesForReflectingBoundary<2, true>(FcpwBoundaryHandler<
             reflectingBoundaryAggregate, geometricQueries);
 
 #ifdef FCPW_USE_ENOKI
-    } else if (reflectingBoundaryHandler.mbvh != nullptr) {
+    } else if (reflectingBoundaryHandler.mbvh) {
         using WideNodeBound = FcpwBoundaryHandler<2, true>::WideNodeBound;
         using RobinAggregateType = RobinMbvh<FCPW_SIMD_WIDTH, 2,
                                              RobinLineSegment<PrimitiveBound>,
@@ -1152,7 +1152,7 @@ void populateGeometricQueriesForReflectingBoundary<2, true>(FcpwBoundaryHandler<
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 #endif
-    } else if (reflectingBoundaryHandler.bvh != nullptr) {
+    } else if (reflectingBoundaryHandler.bvh) {
         using NodeBound = FcpwBoundaryHandler<2, true>::NodeBound;
         using RobinAggregateType = RobinBvh<2, RobinBvhNode<2>, RobinLineSegment<PrimitiveBound>, NodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.bvh.get();
@@ -1169,7 +1169,7 @@ void populateGeometricQueriesForReflectingBoundary<3, true>(FcpwBoundaryHandler<
                                                             GeometricQueries<3>& geometricQueries)
 {
     using PrimitiveBound = FcpwBoundaryHandler<3, true>::PrimitiveBound;
-    if (reflectingBoundaryHandler.baseline != nullptr) {
+    if (reflectingBoundaryHandler.baseline) {
         using RobinAggregateType = RobinBaseline<3, RobinTriangle<PrimitiveBound>>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.baseline.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
@@ -1178,7 +1178,7 @@ void populateGeometricQueriesForReflectingBoundary<3, true>(FcpwBoundaryHandler<
             reflectingBoundaryAggregate, geometricQueries);
 
 #ifdef FCPW_USE_ENOKI
-    } else if (reflectingBoundaryHandler.mbvh != nullptr) {
+    } else if (reflectingBoundaryHandler.mbvh) {
         using WideNodeBound = FcpwBoundaryHandler<3, true>::WideNodeBound;
         using RobinAggregateType = RobinMbvh<FCPW_SIMD_WIDTH, 3,
                                              RobinTriangle<PrimitiveBound>,
@@ -1189,7 +1189,7 @@ void populateGeometricQueriesForReflectingBoundary<3, true>(FcpwBoundaryHandler<
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 #endif
-    } else if (reflectingBoundaryHandler.bvh != nullptr) {
+    } else if (reflectingBoundaryHandler.bvh) {
         using NodeBound = FcpwBoundaryHandler<3, true>::NodeBound;
         using RobinAggregateType = RobinBvh<3, RobinBvhNode<3>, RobinTriangle<PrimitiveBound>, NodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.bvh.get();
