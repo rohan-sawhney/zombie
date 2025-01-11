@@ -12,6 +12,9 @@ namespace zombie {
 template <typename T, size_t DIM>
 class DomainSampler {
 public:
+    // destructor
+    virtual ~DomainSampler() {};
+
     // generates sample points inside the user-specified solve region
     virtual void generateSamples(int nSamples, std::vector<SamplePoint<T, DIM>>& samplePts) = 0;
 };

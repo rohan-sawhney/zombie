@@ -15,8 +15,7 @@
 #pragma once
 
 #include <zombie/point_estimation/common.h>
-#include "tbb/parallel_for.h"
-#include "tbb/blocked_range.h"
+#include "oneapi/tbb/parallel_for.h"
 
 namespace zombie {
 

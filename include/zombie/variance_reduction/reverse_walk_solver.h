@@ -9,7 +9,7 @@
 #pragma once
 
 #include <zombie/point_estimation/reverse_walk_on_stars.h>
-#include "tbb/spin_mutex.h"
+#include "oneapi/tbb/spin_mutex.h"
 
 namespace zombie {
 

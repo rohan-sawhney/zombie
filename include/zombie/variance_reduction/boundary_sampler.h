@@ -14,6 +14,9 @@ namespace zombie {
 template <typename T, size_t DIM>
 class BoundarySampler {
 public:
+    // destructor
+    virtual ~BoundarySampler() {};
+
     // performs any sampler specific initialization
     virtual void initialize(float normalOffsetForBoundary, bool solveDoubleSided) = 0;
 
