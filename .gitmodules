@@ -4,9 +4,6 @@
 [submodule "deps/pcg32"]
 	path = deps/pcg32
 	url = https://github.com/wjakob/pcg32.git
-[submodule "deps/tbb"]
-	path = deps/tbb
-	url = https://github.com/wjakob/tbb.git
 [submodule "deps/nanoflann"]
 	path = deps/nanoflann
 	url = https://github.com/jlblancoc/nanoflann.git
