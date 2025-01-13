@@ -44,3 +44,8 @@ protected:
     std::atomic_int completedWork;
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 };
+
+std::function<void(int, int)> getReportProgressCallback(ProgressBar& pb)
+{
+    return [&pb](int i, int tid) -> void { pb.report(i, tid); };
+}

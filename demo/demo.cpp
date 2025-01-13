@@ -40,7 +40,7 @@ void runWalkOnStars(const ModelProblem& modelProblem, const json& solverConfig, 
 
     // initialize solver and estimate solution
     ProgressBar pb(gridRes*gridRes);
-    std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
+    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
 
     zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
                                       epsilonShellForReflectingBoundary,
@@ -140,7 +140,7 @@ void runBoundaryValueCaching(const ModelProblem& modelProblem, const json& solve
     // solve using boundary value caching
     int totalWork = 2.0f*(absorbingBoundaryCacheSize + reflectingBoundaryCacheSize) + domainCacheSize;
     ProgressBar pb(totalWork);
-    std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
+    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
 
     zombie::bvc::BoundaryValueCachingSolver<float, 2> boundaryValueCaching(
         queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
@@ -257,7 +257,7 @@ void runReverseWalkOnStars(const ModelProblem& modelProblem, const json& solverC
     // solve using reverse walk on stars
     int totalWork = absorbingBoundarySampleCount + reflectingBoundarySampleCount + domainSampleCount;
     ProgressBar pb(totalWork);
-    std::function<void(int, int)> reportProgress = [&pb](int i, int tid) -> void { pb.report(i, tid); };
+    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
 
     zombie::rws::ReverseWalkOnStarsSolver<float, 2, zombie::NearestNeighborFinder<2>> reverseWalkOnStars(
         pde, queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler,
