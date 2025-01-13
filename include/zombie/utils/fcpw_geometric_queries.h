@@ -100,7 +100,7 @@ void populateGeometricQueriesForAbsorbingBoundary(FcpwBoundaryHandler<DIM, false
 
 template <size_t DIM, bool useRobinConditions>
 void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
-                                                   const std::function<float(float)>& branchTraversalWeight,
+                                                   std::function<float(float)> branchTraversalWeight,
                                                    GeometricQueries<DIM>& geometricQueries);
 
 std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist = 1e-2f);
@@ -985,7 +985,7 @@ void populateGeometricQueriesForAbsorbingBoundary(FcpwBoundaryHandler<DIM, false
 
 template <size_t DIM, typename ReflectingBoundaryAggregateType>
 void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggregateType *reflectingBoundaryAggregate,
-                                                   const std::function<float(float)>& branchTraversalWeight,
+                                                   std::function<float(float)> branchTraversalWeight,
                                                    GeometricQueries<DIM>& geometricQueries)
 {
     if (reflectingBoundaryAggregate) {
@@ -1061,7 +1061,7 @@ void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggre
 
             return !reflectingBoundaryAggregate->hasLineOfSight(pt1, pt2);
         };
-        geometricQueries.sampleReflectingBoundary = [reflectingBoundaryAggregate, &branchTraversalWeight](
+        geometricQueries.sampleReflectingBoundary = [reflectingBoundaryAggregate, branchTraversalWeight](
                                                     const Vector<DIM>& x, float radius, const Vector<DIM>& randNums,
                                                     BoundarySample<DIM>& boundarySample) -> bool {
             Vector<DIM> queryPt = x;
@@ -1129,7 +1129,7 @@ void populateStarRadiusQueryForRobinBoundary(const RobinBoundaryAggregateType *r
 
 template <size_t DIM, bool useRobinConditions>
 void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
-                                                   const std::function<float(float)>& branchTraversalWeight,
+                                                   std::function<float(float)> branchTraversalWeight,
                                                    GeometricQueries<DIM>& geometricQueries)
 {
     std::cerr << "populateGeometricQueriesForReflectingBoundary: Unsupported dimension: " << DIM
@@ -1140,7 +1140,7 @@ void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useR
 
 template <>
 void populateGeometricQueriesForReflectingBoundary<2, false>(FcpwBoundaryHandler<2, false>& reflectingBoundaryHandler,
-                                                             const std::function<float(float)>& branchTraversalWeight,
+                                                             std::function<float(float)> branchTraversalWeight,
                                                              GeometricQueries<2>& geometricQueries)
 {
     fcpw::Aggregate<2> *reflectingBoundaryAggregate =
@@ -1153,7 +1153,7 @@ void populateGeometricQueriesForReflectingBoundary<2, false>(FcpwBoundaryHandler
 
 template <>
 void populateGeometricQueriesForReflectingBoundary<3, false>(FcpwBoundaryHandler<3, false>& reflectingBoundaryHandler,
-                                                             const std::function<float(float)>& branchTraversalWeight,
+                                                             std::function<float(float)> branchTraversalWeight,
                                                              GeometricQueries<3>& geometricQueries)
 {
     fcpw::Aggregate<3> *reflectingBoundaryAggregate =
@@ -1166,7 +1166,7 @@ void populateGeometricQueriesForReflectingBoundary<3, false>(FcpwBoundaryHandler
 
 template <>
 void populateGeometricQueriesForReflectingBoundary<2, true>(FcpwBoundaryHandler<2, true>& reflectingBoundaryHandler,
-                                                            const std::function<float(float)>& branchTraversalWeight,
+                                                            std::function<float(float)> branchTraversalWeight,
                                                             GeometricQueries<2>& geometricQueries)
 {
     using PrimitiveBound = FcpwBoundaryHandler<2, true>::PrimitiveBound;
@@ -1203,7 +1203,7 @@ void populateGeometricQueriesForReflectingBoundary<2, true>(FcpwBoundaryHandler<
 
 template <>
 void populateGeometricQueriesForReflectingBoundary<3, true>(FcpwBoundaryHandler<3, true>& reflectingBoundaryHandler,
-                                                            const std::function<float(float)>& branchTraversalWeight,
+                                                            std::function<float(float)> branchTraversalWeight,
                                                             GeometricQueries<3>& geometricQueries)
 {
     using PrimitiveBound = FcpwBoundaryHandler<3, true>::PrimitiveBound;

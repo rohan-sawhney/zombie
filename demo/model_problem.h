@@ -51,8 +51,6 @@ protected:
     std::shared_ptr<Image<1>> reflectingBoundaryValue;
     std::shared_ptr<Image<1>> sourceValue;
     float absorptionCoeff, robinCoeff;
-
-    std::function<float(float)> branchTraversalWeight;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +135,7 @@ void ModelProblem::populateGeometricQueries()
 
     // build acceleration structure and populate geometric queries for reflecting boundary
     std::function<bool(float, int)> ignoreCandidateSilhouette = zombie::getIgnoreCandidateSilhouetteCallback(solveDoubleSided);
-    branchTraversalWeight = zombie::getBranchTraversalWeightCallback();
+    std::function<float(float)> branchTraversalWeight = zombie::getBranchTraversalWeightCallback();
 
     if (robinCoeff > 0.0f) {
         std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
