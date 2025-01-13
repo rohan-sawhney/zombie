@@ -272,7 +272,7 @@ enum class EstimationQuantity {
 
 template <typename T, size_t DIM>
 struct SamplePoint {
-    // constructor
+    // constructors
     SamplePoint() {
         pt = Vector<DIM>::Zero();
         normal = Vector<DIM>::Zero();

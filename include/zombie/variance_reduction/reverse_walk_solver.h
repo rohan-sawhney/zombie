@@ -17,7 +17,8 @@ namespace rws {
 
 template <typename T, size_t DIM>
 struct EvaluationPoint {
-    // constructor
+    // constructors
+    EvaluationPoint();
     EvaluationPoint(const Vector<DIM>& pt_,
                     const Vector<DIM>& normal_,
                     SampleType type_,
@@ -114,6 +115,18 @@ protected:
 //   interior Poisson problems with pure Dirichlet or mixed Dirichet/Neumann boundary conditions)
 // - splat gradient estimates (challenge is again with Poisson kernel on Dirichlet boundary, rather
 //   than Greens function for reflecting Neumann/Robin boundaries and source term)
+
+template <typename T, size_t DIM>
+inline EvaluationPoint<T, DIM>::EvaluationPoint():
+pt(Vector<DIM>::Zero()),
+normal(Vector<DIM>::Zero()),
+type(SampleType::InDomain),
+distToAbsorbingBoundary(0.0f),
+distToReflectingBoundary(0.0f)
+{
+    mutex = std::make_shared<tbb::spin_mutex>();
+    reset();
+}
 
 template <typename T, size_t DIM>
 inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,

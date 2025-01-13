@@ -15,7 +15,8 @@ namespace bvc {
 
 template <typename T, size_t DIM>
 struct EvaluationPoint {
-    // constructor
+    // constructors
+    EvaluationPoint();
     EvaluationPoint(const Vector<DIM>& pt_,
                     const Vector<DIM>& normal_,
                     SampleType type_,
@@ -243,6 +244,17 @@ protected:
 // - virtual boundary creation and estimation
 // - bias correction/compensation
 // - Barnes-Hut acceleration for splatting
+
+template <typename T, size_t DIM>
+inline EvaluationPoint<T, DIM>::EvaluationPoint():
+pt(Vector<DIM>::Zero()),
+normal(Vector<DIM>::Zero()),
+type(SampleType::InDomain),
+distToAbsorbingBoundary(0.0f),
+distToReflectingBoundary(0.0f)
+{
+
+}
 
 template <typename T, size_t DIM>
 inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
