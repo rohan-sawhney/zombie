@@ -26,6 +26,12 @@ template <size_t DIM>
 void loadBoundaryMesh(const std::string& objFile,
                       std::vector<Vector<DIM>>& positions,
                       std::vector<Vectori<DIM>>& indices);
+template <size_t DIM>
+void loadTexturedBoundaryMesh(const std::string& objFile,
+                              std::vector<Vector<DIM>>& positions,
+                              std::vector<Vector<DIM-1>>& textureCoordinates,
+                              std::vector<Vectori<DIM>>& indices,
+                              std::vector<Vectori<DIM>>& textureIndices);
 
 // mesh utility functions
 template <size_t DIM>
@@ -122,9 +128,8 @@ void loadBoundaryMesh<2>(const std::string& objFile,
     fcpw::loadLineSegmentSoupFromOBJFile(objFile, soup);
 
     // collect mesh positions and indices
-    positions.clear();
+    positions = soup.positions;
     indices.clear();
-    int V = (int)soup.positions.size();
     int L = (int)soup.indices.size()/2;
 
     for (int l = 0; l < L; l++) {
@@ -132,10 +137,6 @@ void loadBoundaryMesh<2>(const std::string& objFile,
         size_t j = soup.indices[2*l + 1];
 
         indices.emplace_back(Vector2i(i, j));
-    }
-
-    for (int v = 0; v < V; v++) {
-        positions.emplace_back(soup.positions[v]);
     }
 }
 
@@ -149,9 +150,8 @@ void loadBoundaryMesh<3>(const std::string& objFile,
     fcpw::loadTriangleSoupFromOBJFile(objFile, soup);
 
     // collect mesh positions and indices
-    positions.clear();
+    positions = soup.positions;
     indices.clear();
-    int V = (int)soup.positions.size();
     int T = (int)soup.indices.size()/3;
 
     for (int t = 0; t < T; t++) {
@@ -161,9 +161,47 @@ void loadBoundaryMesh<3>(const std::string& objFile,
 
         indices.emplace_back(Vector3i(i, j, k));
     }
+}
 
-    for (int v = 0; v < V; v++) {
-        positions.emplace_back(soup.positions[v]);
+template <size_t DIM>
+void loadTexturedBoundaryMesh(const std::string& objFile,
+                              std::vector<Vector<DIM>>& positions,
+                              std::vector<Vector<DIM-1>>& textureCoordinates,
+                              std::vector<Vectori<DIM>>& indices,
+                              std::vector<Vectori<DIM>>& textureIndices)
+{
+    std::cerr << "loadTexturedBoundaryMesh: Unsupported dimension: " << DIM << std::endl;
+    exit(EXIT_FAILURE);
+}
+
+template <>
+void loadTexturedBoundaryMesh<3>(const std::string& objFile,
+                                 std::vector<Vector3>& positions,
+                                 std::vector<Vector2>& textureCoordinates,
+                                 std::vector<Vector3i>& indices,
+                                 std::vector<Vector3i>& textureIndices)
+{
+    // load file
+    fcpw::PolygonSoup<3> soup;
+    fcpw::loadTriangleSoupFromOBJFile(objFile, soup);
+
+    // collect mesh positions, texture coordinates and indices
+    positions = soup.positions;
+    textureCoordinates = soup.textureCoordinates;
+    indices.clear();
+    textureIndices.clear();
+    int T = (int)soup.indices.size()/3;
+
+    for (int t = 0; t < T; t++) {
+        size_t i = soup.indices[3*t + 0];
+        size_t j = soup.indices[3*t + 1];
+        size_t k = soup.indices[3*t + 2];
+        size_t ti = soup.tIndices[3*t + 0];
+        size_t tj = soup.tIndices[3*t + 1];
+        size_t tk = soup.tIndices[3*t + 2];
+
+        indices.emplace_back(Vector3i(i, j, k));
+        textureIndices.emplace_back(Vector3i(ti, tj, tk));
     }
 }
 
