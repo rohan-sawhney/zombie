@@ -24,7 +24,7 @@ class UniformDomainSampler: public DomainSampler<T, DIM> {
 public:
     // constructor
     UniformDomainSampler(const GeometricQueries<DIM>& queries_,
-                         const std::function<bool(const Vector<DIM>&)>& insideSolveRegion_,
+                         std::function<bool(const Vector<DIM>&)> insideSolveRegion_,
                          const Vector<DIM>& solveRegionMin_,
                          const Vector<DIM>& solveRegionMax_,
                          float solveRegionVolume_);
@@ -38,7 +38,7 @@ protected:
     // members
     pcg32 sampler;
     const GeometricQueries<DIM>& queries;
-    const std::function<bool(const Vector<DIM>&)>& insideSolveRegion;
+    std::function<bool(const Vector<DIM>&)> insideSolveRegion;
     const Vector<DIM>& solveRegionMin;
     const Vector<DIM>& solveRegionMax;
     float solveRegionVolume;
@@ -47,7 +47,7 @@ protected:
 template <typename T, size_t DIM>
 std::unique_ptr<DomainSampler<T, DIM>> createUniformDomainSampler(
                                         const GeometricQueries<DIM>& queries,
-                                        const std::function<bool(const Vector<DIM>&)>& insideSolveRegion,
+                                        std::function<bool(const Vector<DIM>&)> insideSolveRegion,
                                         const Vector<DIM>& solveRegionMin,
                                         const Vector<DIM>& solveRegionMax,
                                         float solveRegionVolume);
@@ -60,7 +60,7 @@ std::unique_ptr<DomainSampler<T, DIM>> createUniformDomainSampler(
 
 template <typename T, size_t DIM>
 inline UniformDomainSampler<T, DIM>::UniformDomainSampler(const GeometricQueries<DIM>& queries_,
-                                                          const std::function<bool(const Vector<DIM>&)>& insideSolveRegion_,
+                                                          std::function<bool(const Vector<DIM>&)> insideSolveRegion_,
                                                           const Vector<DIM>& solveRegionMin_,
                                                           const Vector<DIM>& solveRegionMax_,
                                                           float solveRegionVolume_):
@@ -109,7 +109,7 @@ inline void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, std::vec
 template <typename T, size_t DIM>
 std::unique_ptr<DomainSampler<T, DIM>> createUniformDomainSampler(
                                         const GeometricQueries<DIM>& queries,
-                                        const std::function<bool(const Vector<DIM>&)>& insideSolveRegion,
+                                        std::function<bool(const Vector<DIM>&)> insideSolveRegion,
                                         const Vector<DIM>& solveRegionMin,
                                         const Vector<DIM>& solveRegionMax,
                                         float solveRegionVolume)

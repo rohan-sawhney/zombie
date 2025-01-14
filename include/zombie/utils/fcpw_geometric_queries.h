@@ -54,7 +54,7 @@ void addBoundingBoxToBoundaryMesh(const Vector<DIM>& boundingBoxMin,
 // this assumes the boundary discretization is perfectly adapted to the boundary conditions,
 // which isn't always a correct assumption
 template <size_t DIM>
-void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onReflectingBoundary,
+void partitionBoundaryMesh(std::function<bool(const Vector<DIM>&)> onReflectingBoundary,
                            const std::vector<Vector<DIM>>& positions,
                            const std::vector<Vectori<DIM>>& indices,
                            std::vector<Vector<DIM>>& absorbingPositions,
@@ -357,7 +357,7 @@ Vector<DIM> computePrimitiveMidpoint(const std::vector<Vector<DIM>>& positions,
 }
 
 template <size_t DIM>
-void partitionBoundaryMesh(const std::function<bool(const Vector<DIM>&)>& onReflectingBoundary,
+void partitionBoundaryMesh(std::function<bool(const Vector<DIM>&)> onReflectingBoundary,
                            const std::vector<Vector<DIM>>& positions,
                            const std::vector<Vectori<DIM>>& indices,
                            std::vector<Vector<DIM>>& absorbingPositions,

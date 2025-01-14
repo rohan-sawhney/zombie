@@ -37,7 +37,7 @@ public:
     UniformLineSegmentBoundarySampler(const std::vector<Vector2>& positions_,
                                       const std::vector<Vector2i>& indices_,
                                       const GeometricQueries<2>& queries_,
-                                      const std::function<bool(const Vector2&)>& insideSolveRegion_,
+                                      std::function<bool(const Vector2&)> insideSolveRegion_,
                                       bool computeWeightedNormals=false);
 
     // performs sampler specific initialization
@@ -70,7 +70,7 @@ private:
     const std::vector<Vector2>& positions;
     const std::vector<Vector2i>& indices;
     const GeometricQueries<2>& queries;
-    const std::function<bool(const Vector2&)>& insideSolveRegion;
+    std::function<bool(const Vector2&)> insideSolveRegion;
     std::vector<Vector2> normals;
     CDFTable cdfTable, cdfTableNormalAligned;
     float boundaryArea, boundaryAreaNormalAligned;
@@ -81,7 +81,7 @@ std::unique_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
                                         const std::vector<Vector2>& positions,
                                         const std::vector<Vector2i>& indices,
                                         const GeometricQueries<2>& queries,
-                                        const std::function<bool(const Vector2&)>& insideSolveRegion,
+                                        std::function<bool(const Vector2&)> insideSolveRegion,
                                         bool computeWeightedNormals=false);
 
 template <typename T>
@@ -91,7 +91,7 @@ public:
     UniformTriangleBoundarySampler(const std::vector<Vector3>& positions_,
                                    const std::vector<Vector3i>& indices_,
                                    const GeometricQueries<3>& queries_,
-                                   const std::function<bool(const Vector3&)>& insideSolveRegion_,
+                                   std::function<bool(const Vector3&)> insideSolveRegion_,
                                    bool computeWeightedNormals=false);
 
     // performs sampler specific initialization
@@ -124,7 +124,7 @@ private:
     const std::vector<Vector3>& positions;
     const std::vector<Vector3i>& indices;
     const GeometricQueries<3>& queries;
-    const std::function<bool(const Vector3&)>& insideSolveRegion;
+    std::function<bool(const Vector3&)> insideSolveRegion;
     std::vector<Vector3> normals;
     CDFTable cdfTable, cdfTableNormalAligned;
     float boundaryArea, boundaryAreaNormalAligned;
@@ -135,7 +135,7 @@ std::unique_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
                                         const std::vector<Vector3>& positions,
                                         const std::vector<Vector3i>& indices,
                                         const GeometricQueries<3>& queries,
-                                        const std::function<bool(const Vector3&)>& insideSolveRegion,
+                                        std::function<bool(const Vector3&)> insideSolveRegion,
                                         bool computeWeightedNormals=false);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +181,7 @@ template <typename T>
 inline UniformLineSegmentBoundarySampler<T>::UniformLineSegmentBoundarySampler(const std::vector<Vector2>& positions_,
                                                                                const std::vector<Vector2i>& indices_,
                                                                                const GeometricQueries<2>& queries_,
-                                                                               const std::function<bool(const Vector2&)>& insideSolveRegion_,
+                                                                               std::function<bool(const Vector2&)> insideSolveRegion_,
                                                                                bool computeWeightedNormals):
                                                                                positions(positions_), indices(indices_),
                                                                                queries(queries_), insideSolveRegion(insideSolveRegion_),
@@ -345,7 +345,7 @@ std::unique_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
                                         const std::vector<Vector2>& positions,
                                         const std::vector<Vector2i>& indices,
                                         const GeometricQueries<2>& queries,
-                                        const std::function<bool(const Vector2&)>& insideSolveRegion,
+                                        std::function<bool(const Vector2&)> insideSolveRegion,
                                         bool computeWeightedNormals)
 {
     return std::unique_ptr<UniformLineSegmentBoundarySampler<T>>(
@@ -400,7 +400,7 @@ template <typename T>
 inline UniformTriangleBoundarySampler<T>::UniformTriangleBoundarySampler(const std::vector<Vector3>& positions_,
                                                                          const std::vector<Vector3i>& indices_,
                                                                          const GeometricQueries<3>& queries_,
-                                                                         const std::function<bool(const Vector3&)>& insideSolveRegion_,
+                                                                         std::function<bool(const Vector3&)> insideSolveRegion_,
                                                                          bool computeWeightedNormals):
                                                                          positions(positions_), indices(indices_),
                                                                          queries(queries_), insideSolveRegion(insideSolveRegion_),
@@ -575,7 +575,7 @@ std::unique_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
                                         const std::vector<Vector3>& positions,
                                         const std::vector<Vector3i>& indices,
                                         const GeometricQueries<3>& queries,
-                                        const std::function<bool(const Vector3&)>& insideSolveRegion,
+                                        std::function<bool(const Vector3&)> insideSolveRegion,
                                         bool computeWeightedNormals)
 {
     return std::unique_ptr<UniformTriangleBoundarySampler<T>>(
