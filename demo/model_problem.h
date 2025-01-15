@@ -42,9 +42,9 @@ protected:
     void populateGeometricQueries();
 
     // members
-    zombie::FcpwBoundaryHandler<2, false> absorbingBoundaryHandler;
-    zombie::FcpwBoundaryHandler<2, false> reflectingNeumannBoundaryHandler;
-    zombie::FcpwBoundaryHandler<2, true> reflectingRobinBoundaryHandler;
+    zombie::FcpwDirichletBoundaryHandler<2> absorbingBoundaryHandler;
+    zombie::FcpwNeumannBoundaryHandler<2> reflectingNeumannBoundaryHandler;
+    zombie::FcpwRobinBoundaryHandler<2> reflectingRobinBoundaryHandler;
 
     std::shared_ptr<Image<1>> isReflectingBoundary;
     std::shared_ptr<Image<1>> absorbingBoundaryValue;
@@ -131,7 +131,7 @@ void ModelProblem::populateGeometricQueries()
 
     // build acceleration structure and populate geometric queries for absorbing boundary
     absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryVertices, absorbingBoundarySegments);
-    zombie::populateGeometricQueriesForAbsorbingBoundary<2>(absorbingBoundaryHandler, queries);
+    zombie::populateGeometricQueriesForDirichletBoundary<2>(absorbingBoundaryHandler, queries);
 
     // build acceleration structure and populate geometric queries for reflecting boundary
     std::function<bool(float, int)> ignoreCandidateSilhouette = zombie::getIgnoreCandidateSilhouetteCallback(solveDoubleSided);
@@ -141,15 +141,15 @@ void ModelProblem::populateGeometricQueries()
         std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
         std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
         reflectingRobinBoundaryHandler.buildAccelerationStructure(
-            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette, false,
+            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette,
             minRobinCoeffValues, maxRobinCoeffValues);
-        zombie::populateGeometricQueriesForReflectingBoundary<2, true>(
+        zombie::populateGeometricQueriesForRobinBoundary<2>(
             reflectingRobinBoundaryHandler, branchTraversalWeight, queries);
 
     } else {
         reflectingNeumannBoundaryHandler.buildAccelerationStructure(
-            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette, true);
-        zombie::populateGeometricQueriesForReflectingBoundary<2, false>(
+            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette);
+        zombie::populateGeometricQueriesForNeumannBoundary<2>(
             reflectingNeumannBoundaryHandler, branchTraversalWeight, queries);
     }
 }

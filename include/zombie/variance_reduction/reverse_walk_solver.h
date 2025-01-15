@@ -293,17 +293,12 @@ inline ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::ReverseWalkOnSta
 template <typename T, size_t DIM, typename NearestNeighborFinder>
 inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::modifiedEvaluationPoints()
 {
+    // initialize nearest neigbhbor finder with positions of evaluation points
     std::vector<Vector<DIM>> positions;
     for (auto& evalPt: evalPts) {
         positions.push_back(evalPt.pt);
-
-        if (evalPt.type == SampleType::OnAbsorbingBoundary) {
-            // assign solution values to evaluation points on the absorbing boundary
-            evalPt.totalAbsorbingBoundaryContribution = pde.dirichlet(evalPt.pt, false);
-        }
     }
 
-    // initialize nearest neigbhbor finder with positions of evaluation points
     nearestNeighborFinder.buildAccelerationStructure(positions);
 }
 
@@ -349,6 +344,14 @@ inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::solve(const
     reverseWalkOnStars.solve(pde, walkSettings, reflectingBoundarySamplePts, runSingleThreaded, reportProgress);
     reverseWalkOnStars.solve(pde, walkSettings, reflectingBoundaryNormalAlignedSamplePts, runSingleThreaded, reportProgress);
     reverseWalkOnStars.solve(pde, walkSettings, domainSamplePts, runSingleThreaded, reportProgress);
+
+    // assign solution values to evaluation points on the absorbing boundary
+    for (auto& evalPt: evalPts) {
+        if (evalPt.type == SampleType::OnAbsorbingBoundary) {
+            evalPt.totalAbsorbingBoundaryContribution = !walkSettings.ignoreAbsorbingBoundaryContribution ?
+                                                        pde.dirichlet(evalPt.pt, false) : T(0.0f);
+        }
+    }
 }
 
 template <typename T, size_t DIM, typename NearestNeighborFinder>

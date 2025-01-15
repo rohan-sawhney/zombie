@@ -329,4 +329,16 @@ struct SamplePoint {
     bool estimateBoundaryNormalAligned;
 };
 
+template <typename T, size_t DIM>
+std::function<void(const WalkState<T, DIM>&)> getEmptyWalkStateCallback()
+{
+    return {};
+}
+
+template <typename T, size_t DIM>
+std::function<T(const WalkState<T, DIM>&)> getEmptyTerminalContributionCallback()
+{
+    return {};
+}
+
 } // zombie

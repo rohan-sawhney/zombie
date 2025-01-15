@@ -6,8 +6,7 @@
 //
 // For surface meshes in 2D and 3D, the FcpwBoundaryHandler class provides a
 // convenient way to populate the GeometricQueries interface; refer to the
-// 'populateGeometricQueriesForAbsorbingBoundary' and 'populateGeometricQueriesForReflectingBoundary'
-// functions in fcpw_geometric_queries.h for details.
+// 'populateGeometricQueriesForBoundary' functions in fcpw_geometric_queries.h for details.
 
 #pragma once
 

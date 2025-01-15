@@ -19,10 +19,11 @@ namespace zombie {
 template <typename T, size_t DIM>
 class WalkOnSpheres {
 public:
-    // constructor
+    // constructors
+    WalkOnSpheres(const GeometricQueries<DIM>& queries_);
     WalkOnSpheres(const GeometricQueries<DIM>& queries_,
-                  std::function<void(const WalkState<T, DIM>&)> walkStateCallback_={},
-                  std::function<T(const WalkState<T, DIM>&)> terminalContributionCallback_={});
+                  std::function<void(const WalkState<T, DIM>&)> walkStateCallback_,
+                  std::function<T(const WalkState<T, DIM>&)> terminalContributionCallback_);
 
     // solves the given PDE at the input point; NOTE: assumes the point does not
     // lie on the boundary when estimating the gradient
@@ -77,6 +78,14 @@ protected:
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
+
+template <typename T, size_t DIM>
+inline WalkOnSpheres<T, DIM>::WalkOnSpheres(const GeometricQueries<DIM>& queries_):
+                                            queries(queries_), walkStateCallback({}),
+                                            terminalContributionCallback({})
+{
+    // do nothing
+}
 
 template <typename T, size_t DIM>
 inline WalkOnSpheres<T, DIM>::WalkOnSpheres(const GeometricQueries<DIM>& queries_,

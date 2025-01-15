@@ -52,7 +52,8 @@ areRobinConditionsPureNeumann(true),
 source({}),
 dirichlet({}),
 robin({}),
-robinCoeff({})
+robinCoeff({}),
+hasReflectingBoundaryConditions({})
 {
     hasNonZeroRobinCoeff = [this](const Vector<DIM>& x) {
         if (this->robinCoeff) {

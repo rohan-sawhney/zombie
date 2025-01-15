@@ -663,7 +663,8 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
 
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         signedDistance > 0.0f;
-                T dirichlet = pde.dirichlet(pt, returnBoundaryNormalAlignedValue);
+                T dirichlet = !walkSettings.ignoreAbsorbingBoundaryContribution ?
+                              pde.dirichlet(pt, returnBoundaryNormalAlignedValue) : T(0.0f);
 
                 samplePt.normalDerivative = dirichlet - samplePt.solution;
                 samplePt.normalDerivative /= std::fabs(signedDistance);

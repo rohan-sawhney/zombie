@@ -1,10 +1,9 @@
 // This file provides utility functions to load 2D or 3D boundary meshes from OBJ files,
 // normalize mesh positions to lie within a unit sphere, swap mesh indices to flip orientation,
-// and compute the bounding box of a mesh. The FcpwBoundaryHandler class builds an
-// acceleration structure to perform geometric queries against a mesh, while the
-// 'populateGeometricQueriesForAbsorbingBoundary' and 'populateGeometricQueriesForReflectingBoundary'
+// and compute the bounding box of a mesh. The FcpwBoundaryHandler class builds an acceleration
+// structure to perform geometric queries against a mesh, while the 'populateGeometricQueriesForBoundary'
 // functions populate the GeometricQueries structure using FcpwBoundaryHandler objects for the
-// absorbing (Dirichlet) and reflecting (Neumann or Robin) boundaries (resp).
+// absorbing (Dirichlet) and reflecting (Neumann or Robin) boundaries.
 
 #pragma once
 
@@ -62,46 +61,74 @@ void partitionBoundaryMesh(std::function<bool(const Vector<DIM>&)> onReflectingB
                            std::vector<Vector<DIM>>& reflectingPositions,
                            std::vector<Vectori<DIM>>& reflectingIndices);
 
-// Helper class to build an acceleration structure to perform geometric queries such as
-// ray intersection, closest point, etc. against a mesh. Also provides a utility function
-// to update Robin coefficients after building the acceleration structure.
-template <size_t DIM, bool useRobinConditions>
-class FcpwBoundaryHandler {
+// Helper classes to build an acceleration structure to perform geometric queries such as
+// ray intersections, closest points, etc. against a boundary mesh with Dirichlet, Neumann
+// and Robin conditions.
+template <size_t DIM>
+class FcpwDirichletBoundaryHandler {
 public:
     // constructor
-    FcpwBoundaryHandler();
+    FcpwDirichletBoundaryHandler();
 
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
-    // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
-    // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
-    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries.
+    // a set of positions and indices. Uses a simple list of mesh faces for brute-force geometric
+    // queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
                                     const std::vector<Vectori<DIM>>& indices,
-                                    std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false,
-                                    const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={},
+                                    bool buildBvh=true, bool enableBvhVectorization=false);
+};
+
+template <size_t DIM>
+class FcpwNeumannBoundaryHandler {
+public:
+    // constructor
+    FcpwNeumannBoundaryHandler();
+
+    // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
+    // a set of positions and indices. Uses a simple list of mesh faces for brute-force geometric
+    // queries when buildBvh is false.
+    void buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
+                                    const std::vector<Vectori<DIM>>& indices,
+                                    std::function<bool(float, int)> ignoreCandidateSilhouette,
+                                    bool buildBvh=true, bool enableBvhVectorization=false);
+};
+
+template <size_t DIM>
+class FcpwRobinBoundaryHandler {
+public:
+    // constructor
+    FcpwRobinBoundaryHandler();
+
+    // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
+    // a set of positions, indices, and min and max coefficients per mesh face. Uses a simple
+    // list of mesh faces for brute-force geometric queries when buildBvh is false.
+    void buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
+                                    const std::vector<Vectori<DIM>>& indices,
+                                    std::function<bool(float, int)> ignoreCandidateSilhouette,
+                                    const std::vector<float>& minRobinCoeffValues,
+                                    const std::vector<float>& maxRobinCoeffValues,
                                     bool buildBvh=true, bool enableBvhVectorization=false);
 
-    // updates the Robin coefficients on a boundary mesh
+    // updates the Robin coefficients on the boundary mesh
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues);
 };
 
 std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided = false,
-                                                                     float silhouettePrecision = 1e-3);
+                                                                     float silhouettePrecision = 1e-3f);
 
 // populates the GeometricQueries structure
 template <size_t DIM>
-void populateGeometricQueriesForAbsorbingBoundary(FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
+void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<DIM>& dirichletBoundaryHandler,
                                                   GeometricQueries<DIM>& geometricQueries);
-
-template <size_t DIM, bool useRobinConditions>
-void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
-                                                   std::function<float(float)> branchTraversalWeight,
-                                                   GeometricQueries<DIM>& geometricQueries);
+template <size_t DIM>
+void populateGeometricQueriesForNeumannBoundary(FcpwNeumannBoundaryHandler<DIM>& neumannBoundaryHandler,
+                                                std::function<float(float)> branchTraversalWeight,
+                                                GeometricQueries<DIM>& geometricQueries);
+template <size_t DIM>
+void populateGeometricQueriesForRobinBoundary(FcpwRobinBoundaryHandler<DIM>& robinBoundaryHandler,
+                                              std::function<float(float)> branchTraversalWeight,
+                                              GeometricQueries<DIM>& geometricQueries);
 
 std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist = 1e-2f);
 
@@ -408,99 +435,46 @@ void partitionBoundaryMesh(std::function<bool(const Vector<DIM>&)> onReflectingB
     }
 }
 
-template <size_t DIM, bool useRobinConditions>
-FcpwBoundaryHandler<DIM, useRobinConditions>::FcpwBoundaryHandler()
+template <size_t DIM>
+FcpwDirichletBoundaryHandler<DIM>::FcpwDirichletBoundaryHandler()
 {
-    std::cerr << "FcpwBoundaryHandler: Unsupported dimension: " << DIM
-              << ", useRobinConditions: " << useRobinConditions
-              << std::endl;
+    std::cerr << "FcpwDirichletBoundaryHandler: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
 }
 
-template <size_t DIM, bool useRobinConditions>
-void FcpwBoundaryHandler<DIM, useRobinConditions>::buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
-                                                                              const std::vector<Vectori<DIM>>& indices,
-                                                                              std::function<bool(float, int)> ignoreCandidateSilhouette,
-                                                                              bool computeSilhouettes,
-                                                                              const std::vector<float>& minRobinCoeffValues,
-                                                                              const std::vector<float>& maxRobinCoeffValues,
-                                                                              bool buildBvh, bool enableBvhVectorization)
+template <size_t DIM>
+void FcpwDirichletBoundaryHandler<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
+                                                                   const std::vector<Vectori<DIM>>& indices,
+                                                                   bool buildBvh, bool enableBvhVectorization)
 {
-    std::cerr << "FcpwBoundaryHandler::buildAccelerationStructure: Unsupported dimension: " << DIM
-              << ", useRobinConditions: " << useRobinConditions
-              << std::endl;
-    exit(EXIT_FAILURE);
-}
-
-template <size_t DIM, bool useRobinConditions>
-void FcpwBoundaryHandler<DIM, useRobinConditions>::updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
-                                                                           const std::vector<float>& maxRobinCoeffValues)
-{
-    std::cerr << "FcpwBoundaryHandler::updateRobinCoefficients: Unsupported dimension: " << DIM
-              << ", useRobinConditions: " << useRobinConditions
-              << std::endl;
+    std::cerr << "FcpwDirichletBoundaryHandler::buildAccelerationStructure: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
 }
 
 template <>
-class FcpwBoundaryHandler<2, false> {
+class FcpwDirichletBoundaryHandler<2> {
 public:
     // constructor
-    FcpwBoundaryHandler() {}
+    FcpwDirichletBoundaryHandler() {}
 
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
-    // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
-    // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
-    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries.
+    // a set of positions and indices. Uses a simple list of mesh faces for brute-force geometric
+    // queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
                                     const std::vector<Vector2i>& indices,
-                                    std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false,
-                                    const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={},
                                     bool buildBvh=true, bool enableBvhVectorization=false) {
         if (positions.size() > 0) {
-            // scene geometry is made up of line segments
-            std::vector<std::vector<fcpw::PrimitiveType>> objectTypes(
-                1, std::vector<fcpw::PrimitiveType>{fcpw::PrimitiveType::LineSegment});
-            scene.setObjectTypes(objectTypes);
-
-            // set the vertex and line segment count
-            int V = (int)positions.size();
-            int L = (int)indices.size();
-            scene.setObjectVertexCount(V, 0);
-            scene.setObjectLineSegmentCount(L, 0);
-
-            // specify the vertex positions
-            for (int i = 0; i < V; i++) {
-                scene.setObjectVertex(positions[i], i, 0);
-            }
-
-            // specify the line segment indices
-            for (int i = 0; i < L; i++) {
-                scene.setObjectLineSegment(indices[i], i, 0);
-            }
-
-            // compute silhouettes
-            if (computeSilhouettes) {
-                scene.computeSilhouettes(ignoreCandidateSilhouette);
-            }
-
+            // load positions and indices
+            scene.setObjectCount(1);
+            scene.setObjectVertices(positions, 0);
+            scene.setObjectLineSegments(indices, 0);
+            
             // build aggregate
             fcpw::AggregateType aggregateType = buildBvh ?
                                                 fcpw::AggregateType::Bvh_SurfaceArea :
                                                 fcpw::AggregateType::Baseline;
             scene.build(aggregateType, enableBvhVectorization, true, true);
         }
-    }
-
-    // updates the Robin coefficients for the mesh
-    void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
-                                 const std::vector<float>& maxRobinCoeffValues) {
-        std::cerr << "FcpwBoundaryHandler<2, false>::updateRobinCoefficients: not supported!" << std::endl;
-        exit(EXIT_FAILURE);
     }
 
     // member
@@ -508,50 +482,22 @@ public:
 };
 
 template <>
-class FcpwBoundaryHandler<3, false> {
+class FcpwDirichletBoundaryHandler<3> {
 public:
     // constructor
-    FcpwBoundaryHandler() {}
+    FcpwDirichletBoundaryHandler() {}
 
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
-    // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
-    // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
-    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries.
+    // a set of positions and indices. Uses a simple list of mesh faces for brute-force geometric
+    // queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
                                     const std::vector<Vector3i>& indices,
-                                    std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false,
-                                    const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={},
                                     bool buildBvh=true, bool enableBvhVectorization=false) {
         if (positions.size() > 0) {
-            // scene geometry is made up of triangles
-            std::vector<std::vector<fcpw::PrimitiveType>> objectTypes(
-                1, std::vector<fcpw::PrimitiveType>{fcpw::PrimitiveType::Triangle});
-            scene.setObjectTypes(objectTypes);
-
-            // set the vertex and triangle count
-            int V = (int)positions.size();
-            int T = (int)indices.size();
-            scene.setObjectVertexCount(V, 0);
-            scene.setObjectTriangleCount(T, 0);
-
-            // specify the vertex positions
-            for (int i = 0; i < V; i++) {
-                scene.setObjectVertex(positions[i], i, 0);
-            }
-
-            // specify the triangle indices
-            for (int i = 0; i < T; i++) {
-                scene.setObjectTriangle(indices[i], i, 0);
-            }
-
-            // compute silhouettes
-            if (computeSilhouettes) {
-                scene.computeSilhouettes(ignoreCandidateSilhouette);
-            }
+            // load positions and indices
+            scene.setObjectCount(1);
+            scene.setObjectVertices(positions, 0);
+            scene.setObjectTriangles(indices, 0);
 
             // build aggregate
             fcpw::AggregateType aggregateType = buildBvh ?
@@ -561,22 +507,127 @@ public:
         }
     }
 
-    // updates the Robin coefficients for the mesh
-    void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
-                                 const std::vector<float>& maxRobinCoeffValues) {
-        std::cerr << "FcpwBoundaryHandler<3, false>::updateRobinCoefficients: not supported!" << std::endl;
-        exit(EXIT_FAILURE);
+    // member
+    fcpw::Scene<3> scene;
+};
+
+template <size_t DIM>
+FcpwNeumannBoundaryHandler<DIM>::FcpwNeumannBoundaryHandler()
+{
+    std::cerr << "FcpwNeumannBoundaryHandler: Unsupported dimension: " << DIM << std::endl;
+    exit(EXIT_FAILURE);
+}
+
+template <size_t DIM>
+void FcpwNeumannBoundaryHandler<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
+                                                                 const std::vector<Vectori<DIM>>& indices,
+                                                                 std::function<bool(float, int)> ignoreCandidateSilhouette,
+                                                                 bool buildBvh, bool enableBvhVectorization)
+{
+    std::cerr << "FcpwNeumannBoundaryHandler::buildAccelerationStructure: Unsupported dimension: " << DIM << std::endl;
+    exit(EXIT_FAILURE);
+}
+
+template <>
+class FcpwNeumannBoundaryHandler<2> {
+public:
+    // constructor
+    FcpwNeumannBoundaryHandler() {}
+
+    // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
+    // a set of positions and indices. Uses a simple list of mesh faces for brute-force geometric
+    // queries when buildBvh is false.
+    void buildAccelerationStructure(const std::vector<Vector2>& positions,
+                                    const std::vector<Vector2i>& indices,
+                                    std::function<bool(float, int)> ignoreCandidateSilhouette,
+                                    bool buildBvh=true, bool enableBvhVectorization=false) {
+        if (positions.size() > 0) {
+            // load positions and indices
+            scene.setObjectCount(1);
+            scene.setObjectVertices(positions, 0);
+            scene.setObjectLineSegments(indices, 0);
+
+            // compute silhouettes
+            scene.computeSilhouettes(ignoreCandidateSilhouette);
+            
+            // build aggregate
+            fcpw::AggregateType aggregateType = buildBvh ?
+                                                fcpw::AggregateType::Bvh_SurfaceArea :
+                                                fcpw::AggregateType::Baseline;
+            scene.build(aggregateType, enableBvhVectorization, true, true);
+        }
+    }
+
+    // member
+    fcpw::Scene<2> scene;
+};
+
+template <>
+class FcpwNeumannBoundaryHandler<3> {
+public:
+    // constructor
+    FcpwNeumannBoundaryHandler() {}
+
+    // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
+    // a set of positions and indices. Uses a simple list of mesh faces for brute-force geometric
+    // queries when buildBvh is false.
+    void buildAccelerationStructure(const std::vector<Vector3>& positions,
+                                    const std::vector<Vector3i>& indices,
+                                    std::function<bool(float, int)> ignoreCandidateSilhouette,
+                                    bool buildBvh=true, bool enableBvhVectorization=false) {
+        if (positions.size() > 0) {
+            // load positions and indices
+            scene.setObjectCount(1);
+            scene.setObjectVertices(positions, 0);
+            scene.setObjectTriangles(indices, 0);
+
+            // compute silhouettes
+            scene.computeSilhouettes(ignoreCandidateSilhouette);
+            
+            // build aggregate
+            fcpw::AggregateType aggregateType = buildBvh ?
+                                                fcpw::AggregateType::Bvh_SurfaceArea :
+                                                fcpw::AggregateType::Baseline;
+            scene.build(aggregateType, enableBvhVectorization, true, true);
+        }
     }
 
     // member
     fcpw::Scene<3> scene;
 };
 
+template <size_t DIM>
+FcpwRobinBoundaryHandler<DIM>::FcpwRobinBoundaryHandler()
+{
+    std::cerr << "FcpwRobinBoundaryHandler: Unsupported dimension: " << DIM << std::endl;
+    exit(EXIT_FAILURE);
+}
+
+template <size_t DIM>
+void FcpwRobinBoundaryHandler<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
+                                                               const std::vector<Vectori<DIM>>& indices,
+                                                               std::function<bool(float, int)> ignoreCandidateSilhouette,
+                                                               const std::vector<float>& minRobinCoeffValues,
+                                                               const std::vector<float>& maxRobinCoeffValues,
+                                                               bool buildBvh, bool enableBvhVectorization)
+{
+    std::cerr << "FcpwRobinBoundaryHandler::buildAccelerationStructure: Unsupported dimension: " << DIM << std::endl;
+    exit(EXIT_FAILURE);
+}
+
+template <size_t DIM>
+void FcpwRobinBoundaryHandler<DIM>::updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
+                                                            const std::vector<float>& maxRobinCoeffValues)
+{
+    std::cerr << "FcpwRobinBoundaryHandler::updateRobinCoefficients: Unsupported dimension: " << DIM << std::endl;
+    exit(EXIT_FAILURE);
+}
+
 template <>
-class FcpwBoundaryHandler<2, true> {
+class FcpwRobinBoundaryHandler<2> {
 public:
     // constructor
-    FcpwBoundaryHandler() {
+    FcpwRobinBoundaryHandler() {
         baseline = nullptr;
         bvh = nullptr;
 #ifdef FCPW_USE_ENOKI
@@ -585,17 +636,13 @@ public:
     }
 
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
-    // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
-    // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
-    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries.
+    // a set of positions, indices, and min and max coefficients per mesh face. Uses a simple
+    // list of mesh faces for brute-force geometric queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
                                     const std::vector<Vector2i>& indices,
-                                    std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false,
-                                    const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={},
+                                    std::function<bool(float, int)> ignoreCandidateSilhouette,
+                                    const std::vector<float>& minRobinCoeffValues,
+                                    const std::vector<float>& maxRobinCoeffValues,
                                     bool buildBvh=true, bool enableBvhVectorization=false) {
         if (positions.size() > 0) {
             struct VertexFaceAdjacency {
@@ -607,7 +654,7 @@ public:
             int V = (int)positions.size();
             int L = (int)indices.size();
             if (minRobinCoeffValues.size() != L || maxRobinCoeffValues.size() != L) {
-                std::cerr << "FcpwBoundaryHandler<2, true>::buildAccelerationStructure: invalid Robin coefficient sizes!" << std::endl;
+                std::cerr << "FcpwRobinBoundaryHandler<2>::buildAccelerationStructure: invalid Robin coefficient sizes!" << std::endl;
                 exit(EXIT_FAILURE);
             }
 
@@ -689,7 +736,7 @@ public:
         }
     }
 
-    // updates the Robin coefficients for the mesh
+    // updates the Robin coefficients on the boundary mesh
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
         if (baseline) {
@@ -722,10 +769,10 @@ public:
 };
 
 template <>
-class FcpwBoundaryHandler<3, true> {
+class FcpwRobinBoundaryHandler<3> {
 public:
     // constructor
-    FcpwBoundaryHandler() {
+    FcpwRobinBoundaryHandler() {
         baseline = nullptr;
         bvh = nullptr;
 #ifdef FCPW_USE_ENOKI
@@ -734,17 +781,13 @@ public:
     }
 
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
-    // a set of positions and indices. For problems with Dirichlet or Robin boundary conditions,
-    // set computeSilhouettes to false, while for problems with Neumann boundary conditions,
-    // set computeSilhouettes to true. For Robin conditions, additionally provide min and max
-    // Robin coefficients per mesh face. Setting buildBvh to false builds a simple list of
-    // mesh faces instead of a BVH for brute force geometric queries.
+    // a set of positions, indices, and min and max coefficients per mesh face. Uses a simple
+    // list of mesh faces for brute-force geometric queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
                                     const std::vector<Vector3i>& indices,
-                                    std::function<bool(float, int)> ignoreCandidateSilhouette={},
-                                    bool computeSilhouettes=false,
-                                    const std::vector<float>& minRobinCoeffValues={},
-                                    const std::vector<float>& maxRobinCoeffValues={},
+                                    std::function<bool(float, int)> ignoreCandidateSilhouette,
+                                    const std::vector<float>& minRobinCoeffValues,
+                                    const std::vector<float>& maxRobinCoeffValues,
                                     bool buildBvh=true, bool enableBvhVectorization=false) {
         if (positions.size() > 0) {
             struct EdgeFaceAdjacency {
@@ -756,7 +799,7 @@ public:
             int V = (int)positions.size();
             int T = (int)indices.size();
             if (minRobinCoeffValues.size() != T || maxRobinCoeffValues.size() != T) {
-                std::cerr << "FcpwBoundaryHandler<3, true>::buildAccelerationStructure: invalid Robin coefficient sizes!" << std::endl;
+                std::cerr << "FcpwRobinBoundaryHandler<3>::buildAccelerationStructure: invalid Robin coefficient sizes!" << std::endl;
                 exit(EXIT_FAILURE);
             }
 
@@ -865,7 +908,7 @@ public:
         }
     }
 
-    // updates the Robin coefficients for the mesh
+    // updates the Robin coefficients on the boundary mesh
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
         if (baseline) {
@@ -909,10 +952,10 @@ std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveD
 }
 
 template <size_t DIM>
-void populateGeometricQueriesForAbsorbingBoundary(FcpwBoundaryHandler<DIM, false>& absorbingBoundaryHandler,
+void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<DIM>& dirichletBoundaryHandler,
                                                   GeometricQueries<DIM>& geometricQueries)
 {
-    fcpw::Aggregate<DIM> *absorbingBoundaryAggregate = absorbingBoundaryHandler.scene.getSceneData()->aggregate.get();
+    fcpw::Aggregate<DIM> *absorbingBoundaryAggregate = dirichletBoundaryHandler.scene.getSceneData()->aggregate.get();
     if (absorbingBoundaryAggregate) {
         geometricQueries.computeDistToAbsorbingBoundary = [absorbingBoundaryAggregate](
                                                           const Vector<DIM>& x, bool computeSignedDistance) -> float {
@@ -1127,73 +1170,58 @@ void populateStarRadiusQueryForRobinBoundary(const RobinBoundaryAggregateType *r
     }
 }
 
-template <size_t DIM, bool useRobinConditions>
-void populateGeometricQueriesForReflectingBoundary(FcpwBoundaryHandler<DIM, useRobinConditions>& reflectingBoundaryHandler,
-                                                   std::function<float(float)> branchTraversalWeight,
-                                                   GeometricQueries<DIM>& geometricQueries)
+template <size_t DIM>
+void populateGeometricQueriesForNeumannBoundary(FcpwNeumannBoundaryHandler<DIM>& neumannBoundaryHandler,
+                                                std::function<float(float)> branchTraversalWeight,
+                                                GeometricQueries<DIM>& geometricQueries)
 {
-    std::cerr << "populateGeometricQueriesForReflectingBoundary: Unsupported dimension: " << DIM
-              << ", useRobinConditions: " << useRobinConditions
-              << std::endl;
+    fcpw::Aggregate<DIM> *reflectingBoundaryAggregate =
+        neumannBoundaryHandler.scene.getSceneData()->aggregate.get();
+    populateGeometricQueriesForReflectingBoundary<DIM, fcpw::Aggregate<DIM>>(
+        reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
+    populateStarRadiusQueryForNeumannBoundary<DIM, fcpw::Aggregate<DIM>>(
+        reflectingBoundaryAggregate, geometricQueries);
+}
+
+template <size_t DIM>
+void populateGeometricQueriesForRobinBoundary(FcpwRobinBoundaryHandler<DIM>& robinBoundaryHandler,
+                                              std::function<float(float)> branchTraversalWeight,
+                                              GeometricQueries<DIM>& geometricQueries)
+{
+    std::cerr << "populateGeometricQueriesForRobinBoundary: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
 }
 
 template <>
-void populateGeometricQueriesForReflectingBoundary<2, false>(FcpwBoundaryHandler<2, false>& reflectingBoundaryHandler,
-                                                             std::function<float(float)> branchTraversalWeight,
-                                                             GeometricQueries<2>& geometricQueries)
+void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler<2>& robinBoundaryHandler,
+                                                 std::function<float(float)> branchTraversalWeight,
+                                                 GeometricQueries<2>& geometricQueries)
 {
-    fcpw::Aggregate<2> *reflectingBoundaryAggregate =
-        reflectingBoundaryHandler.scene.getSceneData()->aggregate.get();
-    populateGeometricQueriesForReflectingBoundary<2, fcpw::Aggregate<2>>(
-        reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
-    populateStarRadiusQueryForNeumannBoundary<2, fcpw::Aggregate<2>>(
-        reflectingBoundaryAggregate, geometricQueries);
-}
-
-template <>
-void populateGeometricQueriesForReflectingBoundary<3, false>(FcpwBoundaryHandler<3, false>& reflectingBoundaryHandler,
-                                                             std::function<float(float)> branchTraversalWeight,
-                                                             GeometricQueries<3>& geometricQueries)
-{
-    fcpw::Aggregate<3> *reflectingBoundaryAggregate =
-        reflectingBoundaryHandler.scene.getSceneData()->aggregate.get();
-    populateGeometricQueriesForReflectingBoundary<3, fcpw::Aggregate<3>>(
-        reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
-    populateStarRadiusQueryForNeumannBoundary<3, fcpw::Aggregate<3>>(
-        reflectingBoundaryAggregate, geometricQueries);
-}
-
-template <>
-void populateGeometricQueriesForReflectingBoundary<2, true>(FcpwBoundaryHandler<2, true>& reflectingBoundaryHandler,
-                                                            std::function<float(float)> branchTraversalWeight,
-                                                            GeometricQueries<2>& geometricQueries)
-{
-    using PrimitiveBound = FcpwBoundaryHandler<2, true>::PrimitiveBound;
-    if (reflectingBoundaryHandler.baseline) {
+    using PrimitiveBound = FcpwRobinBoundaryHandler<2>::PrimitiveBound;
+    if (robinBoundaryHandler.baseline) {
         using RobinAggregateType = RobinBaseline<2, RobinLineSegment<PrimitiveBound>>;
-        RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.baseline.get();
+        RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.baseline.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 
 #ifdef FCPW_USE_ENOKI
-    } else if (reflectingBoundaryHandler.mbvh) {
-        using WideNodeBound = FcpwBoundaryHandler<2, true>::WideNodeBound;
+    } else if (robinBoundaryHandler.mbvh) {
+        using WideNodeBound = FcpwRobinBoundaryHandler<2>::WideNodeBound;
         using RobinAggregateType = RobinMbvh<FCPW_SIMD_WIDTH, 2,
                                              RobinLineSegment<PrimitiveBound>,
                                              RobinMbvhNode<2>, WideNodeBound>;
-        RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.mbvh.get();
+        RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.mbvh.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 #endif
-    } else if (reflectingBoundaryHandler.bvh) {
-        using NodeBound = FcpwBoundaryHandler<2, true>::NodeBound;
+    } else if (robinBoundaryHandler.bvh) {
+        using NodeBound = FcpwRobinBoundaryHandler<2>::NodeBound;
         using RobinAggregateType = RobinBvh<2, RobinBvhNode<2>, RobinLineSegment<PrimitiveBound>, NodeBound>;
-        RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.bvh.get();
+        RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.bvh.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
@@ -1202,35 +1230,35 @@ void populateGeometricQueriesForReflectingBoundary<2, true>(FcpwBoundaryHandler<
 }
 
 template <>
-void populateGeometricQueriesForReflectingBoundary<3, true>(FcpwBoundaryHandler<3, true>& reflectingBoundaryHandler,
-                                                            std::function<float(float)> branchTraversalWeight,
-                                                            GeometricQueries<3>& geometricQueries)
+void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler<3>& robinBoundaryHandler,
+                                                 std::function<float(float)> branchTraversalWeight,
+                                                 GeometricQueries<3>& geometricQueries)
 {
-    using PrimitiveBound = FcpwBoundaryHandler<3, true>::PrimitiveBound;
-    if (reflectingBoundaryHandler.baseline) {
+    using PrimitiveBound = FcpwRobinBoundaryHandler<3>::PrimitiveBound;
+    if (robinBoundaryHandler.baseline) {
         using RobinAggregateType = RobinBaseline<3, RobinTriangle<PrimitiveBound>>;
-        RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.baseline.get();
+        RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.baseline.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 
 #ifdef FCPW_USE_ENOKI
-    } else if (reflectingBoundaryHandler.mbvh) {
-        using WideNodeBound = FcpwBoundaryHandler<3, true>::WideNodeBound;
+    } else if (robinBoundaryHandler.mbvh) {
+        using WideNodeBound = FcpwRobinBoundaryHandler<3>::WideNodeBound;
         using RobinAggregateType = RobinMbvh<FCPW_SIMD_WIDTH, 3,
                                              RobinTriangle<PrimitiveBound>,
                                              RobinMbvhNode<3>, WideNodeBound>;
-        RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.mbvh.get();
+        RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.mbvh.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 #endif
-    } else if (reflectingBoundaryHandler.bvh) {
-        using NodeBound = FcpwBoundaryHandler<3, true>::NodeBound;
+    } else if (robinBoundaryHandler.bvh) {
+        using NodeBound = FcpwRobinBoundaryHandler<3>::NodeBound;
         using RobinAggregateType = RobinBvh<3, RobinBvhNode<3>, RobinTriangle<PrimitiveBound>, NodeBound>;
-        RobinAggregateType *reflectingBoundaryAggregate = reflectingBoundaryHandler.bvh.get();
+        RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.bvh.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
