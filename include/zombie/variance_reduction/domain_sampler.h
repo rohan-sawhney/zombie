@@ -39,8 +39,8 @@ protected:
     pcg32 sampler;
     const GeometricQueries<DIM>& queries;
     std::function<bool(const Vector<DIM>&)> insideSolveRegion;
-    const Vector<DIM>& solveRegionMin;
-    const Vector<DIM>& solveRegionMax;
+    Vector<DIM> solveRegionMin;
+    Vector<DIM> solveRegionMax;
     float solveRegionVolume;
 };
 
