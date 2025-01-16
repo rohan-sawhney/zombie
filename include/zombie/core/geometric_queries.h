@@ -60,6 +60,8 @@ struct GeometricQueries {
                      const Vector<DIM>& domainMax_);
 
     // members
+    bool hasAbsorbingBoundary;
+    bool hasReflectingBoundary;
     bool domainIsWatertight;
     Vector<DIM> domainMin, domainMax;
 
@@ -101,9 +103,10 @@ struct GeometricQueries {
     std::function<float(const Vector<DIM>&, float, float, float, bool)> computeStarRadiusForReflectingBoundary;
 
     // checks if a point is inside the domain (assuming it is watertight)
-    std::function<bool(const Vector<DIM>&, bool)> insideDomain; // set automatically
+    std::function<bool(const Vector<DIM>&)> insideDomain; // set automatically
 
-    // checks if a point is outside the bounding domain
+    // checks if a point is inside or outside the bounding domain
+    std::function<bool(const Vector<DIM>&)> insideBoundingDomain; // set automatically
     std::function<bool(const Vector<DIM>&)> outsideBoundingDomain; // set automatically
 
     // computes the signed volume of the domain
@@ -121,6 +124,8 @@ protected:
 
 template <size_t DIM>
 inline GeometricQueries<DIM>::GeometricQueries():
+hasAbsorbingBoundary(false),
+hasReflectingBoundary(false),
 domainIsWatertight(true),
 domainMin(Vector<DIM>::Constant(std::numeric_limits<float>::lowest())),
 domainMax(Vector<DIM>::Constant(std::numeric_limits<float>::max()))
@@ -132,6 +137,8 @@ template <size_t DIM>
 inline GeometricQueries<DIM>::GeometricQueries(bool domainIsWatertight_,
                                                const Vector<DIM>& domainMin_,
                                                const Vector<DIM>& domainMax_):
+hasAbsorbingBoundary(false),
+hasReflectingBoundary(false),
 domainIsWatertight(domainIsWatertight_),
 domainMin(domainMin_),
 domainMax(domainMax_)
@@ -343,24 +350,24 @@ inline void GeometricQueries<DIM>::populate()
                                                 float silhouettePrecision, bool flipNormalOrientation) -> float {
         return maxRadius;
     };
-    insideDomain = [this](const Vector<DIM>& x, bool useRayIntersections) -> bool {
+    insideDomain = [this](const Vector<DIM>& x) -> bool {
         if (!this->domainIsWatertight) return true;
-        if (useRayIntersections) {
-            bool isInside = true;
-            Vector<DIM> zero = Vector<DIM>::Zero();
-            for (size_t i = 0; i < DIM; i++) {
-                Vector<DIM> dir = zero;
-                dir(i) = 1.0f;
-                std::vector<IntersectionPoint<DIM>> is;
-                int hits = this->intersectBoundaryAllHits(x, zero, dir, std::numeric_limits<float>::max(),
-                                                          false, false, is);
-                isInside = isInside && (hits%2 == 1);
-            }
-
-            return isInside;
+        bool isInside = true;
+        Vector<DIM> zero = Vector<DIM>::Zero();
+        for (size_t i = 0; i < DIM; i++) {
+            Vector<DIM> dir = zero;
+            dir(i) = 1.0f;
+            std::vector<IntersectionPoint<DIM>> is;
+            int hits = this->intersectBoundaryAllHits(x, zero, dir, std::numeric_limits<float>::max(),
+                                                      false, false, is);
+            isInside = isInside && (hits%2 == 1);
         }
 
-        return this->computeDistToBoundary(x, true) < 0.0f;
+        return isInside; // return this->computeDistToBoundary(x, true) < 0.0f;
+    };
+    insideBoundingDomain = [this](const Vector<DIM>& x) -> bool {
+        return (x.array() >= this->domainMin.array()).all() &&
+               (x.array() <= this->domainMax.array()).all();
     };
     outsideBoundingDomain = [this](const Vector<DIM>& x) -> bool {
         return (x.array() < this->domainMin.array()).any() ||

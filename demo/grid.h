@@ -44,7 +44,7 @@ void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
         for (int j = 0; j < gridRes; j++) {
             Vector2 pt((i/float(gridRes))*extent.x() + queries.domainMin.x(),
                        (j/float(gridRes))*extent.y() + queries.domainMin.y());
-            zombie::EstimationQuantity estimationQuantity = solveDoubleSided || queries.insideDomain(pt, true) ?
+            zombie::EstimationQuantity estimationQuantity = solveDoubleSided || queries.insideDomain(pt) ?
                                                             zombie::EstimationQuantity::Solution:
                                                             zombie::EstimationQuantity::None;
             float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
@@ -84,7 +84,7 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
             int idx = i*gridRes + j;
 
             // model problem data
-            float inDomain = queries.insideDomain(samplePts[idx].pt, true) ? 1 : 0;
+            float inDomain = solveDoubleSided || queries.insideDomain(samplePts[idx].pt) ? 1 : 0;
             float distToAbsorbingBoundary = samplePts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = samplePts[idx].distToReflectingBoundary;
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
@@ -96,10 +96,8 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
 
             // solution data
             float value = samplePts[idx].statistics.getEstimatedSolution();
-            bool maskOutValue = (!inDomain && !solveDoubleSided) ||
-                                std::min(std::abs(distToAbsorbingBoundary),
-                                         std::abs(distToReflectingBoundary))
-                                < boundaryDistanceMask;
+            bool maskOutValue = !inDomain || std::min(std::abs(distToAbsorbingBoundary),
+                                                      std::abs(distToReflectingBoundary)) < boundaryDistanceMask;
             solution->get(j, i) = Array3(maskOutValue ? 0.0f : value);
         }
     }
@@ -156,7 +154,7 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
             int idx = i*gridRes + j;
 
             // model problem data
-            float inDomain = queries.insideDomain(evalPts[idx].pt, true) ? 1 : 0;
+            float inDomain = solveDoubleSided || queries.insideDomain(evalPts[idx].pt) ? 1 : 0;
             float distToAbsorbingBoundary = evalPts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = evalPts[idx].distToReflectingBoundary;
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
@@ -168,10 +166,8 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
 
             // solution data
             float value = evalPts[idx].getEstimatedSolution();
-            bool maskOutValue = (!inDomain && !solveDoubleSided) ||
-                                std::min(std::abs(distToAbsorbingBoundary),
-                                         std::abs(distToReflectingBoundary))
-                                < boundaryDistanceMask;
+            bool maskOutValue = !inDomain || std::min(std::abs(distToAbsorbingBoundary),
+                                                      std::abs(distToReflectingBoundary)) < boundaryDistanceMask;
             solution->get(j, i) = Array3(maskOutValue ? 0.0f : value);
         }
     }
@@ -208,7 +204,7 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
             int idx = i*gridRes + j;
 
             // model problem data
-            float inDomain = queries.insideDomain(evalPts[idx].pt, true) ? 1 : 0;
+            float inDomain = solveDoubleSided || queries.insideDomain(evalPts[idx].pt) ? 1 : 0;
             float distToAbsorbingBoundary = evalPts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = evalPts[idx].distToReflectingBoundary;
             boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
@@ -224,10 +220,8 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
                                                             nReflectingBoundarySamples,
                                                             nReflectingBoundaryNormalAlignedSamples,
                                                             nSourceSamples);
-            bool maskOutValue = (!inDomain && !solveDoubleSided) ||
-                                std::min(std::abs(distToAbsorbingBoundary),
-                                         std::abs(distToReflectingBoundary))
-                                < boundaryDistanceMask;
+            bool maskOutValue = !inDomain || std::min(std::abs(distToAbsorbingBoundary),
+                                                      std::abs(distToReflectingBoundary)) < boundaryDistanceMask;
             solution->get(j, i) = Array3(maskOutValue ? 0.0f : value);
         }
     }

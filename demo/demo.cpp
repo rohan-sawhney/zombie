@@ -108,36 +108,37 @@ void runBoundaryValueCaching(const ModelProblem& modelProblem, const json& solve
     createEvaluationGrid<zombie::bvc::EvaluationPoint<float, 2>>(evalPts, queries, gridRes);
 
     // initialize boundary samplers
-    std::function<bool(const Vector2&)> insideSolveRegionBoundarySampler = [&queries](const Vector2& x) -> bool {
-        return !queries.outsideBoundingDomain(x);
-    };
-
     std::unique_ptr<zombie::BoundarySampler<float, 2>> absorbingBoundarySampler =
         zombie::createUniformLineSegmentBoundarySampler<float>(
             modelProblem.absorbingBoundaryVertices, modelProblem.absorbingBoundarySegments,
-            queries, insideSolveRegionBoundarySampler);
+            queries, queries.insideBoundingDomain);
     absorbingBoundarySampler->initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
 
     std::unique_ptr<zombie::BoundarySampler<float, 2>> reflectingBoundarySampler =
         zombie::createUniformLineSegmentBoundarySampler<float>(
             modelProblem.reflectingBoundaryVertices, modelProblem.reflectingBoundarySegments,
-            queries, insideSolveRegionBoundarySampler);
+            queries, queries.insideBoundingDomain);
     reflectingBoundarySampler->initialize(normalOffsetForReflectingBoundary, solveDoubleSided);
 
     // initialize domain sampler
-    std::function<bool(const Vector2&)> insideSolveRegionDomainSampler = [&queries, solveDoubleSided](const Vector2& x) -> bool {
-        return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
-    };
-    float regionVolume = solveDoubleSided ? (queries.domainMax - queries.domainMin).prod() :
-                                            std::fabs(queries.computeDomainSignedVolume());
+    std::function<bool(const Vector2&)> insideSolveRegionDomainSampler;
+    float solveRegionVolume = 0.0f;
+    if (solveDoubleSided) {
+        insideSolveRegionDomainSampler = queries.insideBoundingDomain;
+        solveRegionVolume = (queries.domainMax - queries.domainMin).prod();
+
+    } else {
+        insideSolveRegionDomainSampler = queries.insideDomain;
+        solveRegionVolume = std::fabs(queries.computeDomainSignedVolume());
+    }
 
     std::unique_ptr<zombie::DomainSampler<float, 2>> domainSampler =
         zombie::createUniformDomainSampler<float, 2>(queries, insideSolveRegionDomainSampler,
                                                      queries.domainMin, queries.domainMax,
-                                                     regionVolume);
+                                                     solveRegionVolume);
+    if (ignoreSourceContribution) domainCacheSize = 0;
 
     // solve using boundary value caching
-    if (ignoreSourceContribution) domainCacheSize = 0;
     int totalWork = 2.0f*(absorbingBoundaryCacheSize + reflectingBoundaryCacheSize) + domainCacheSize;
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
@@ -218,38 +219,39 @@ void runReverseWalkOnStars(const ModelProblem& modelProblem, const json& solverC
     createEvaluationGrid<zombie::rws::EvaluationPoint<float, 2>>(evalPts, queries, gridRes);
 
     // initialize boundary samplers
-    std::function<bool(const Vector2&)> insideSolveRegionBoundarySampler = [&queries](const Vector2& x) -> bool {
-        return !queries.outsideBoundingDomain(x);
-    };
-
     std::unique_ptr<zombie::BoundarySampler<float, 2>> absorbingBoundarySampler =
         zombie::createUniformLineSegmentBoundarySampler<float>(
             modelProblem.absorbingBoundaryVertices, modelProblem.absorbingBoundarySegments,
-            queries, insideSolveRegionBoundarySampler);
+            queries, queries.insideBoundingDomain);
     absorbingBoundarySampler->initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
+    if (ignoreAbsorbingBoundaryContribution) absorbingBoundarySampleCount = 0;
 
     std::unique_ptr<zombie::BoundarySampler<float, 2>> reflectingBoundarySampler =
         zombie::createUniformLineSegmentBoundarySampler<float>(
             modelProblem.reflectingBoundaryVertices, modelProblem.reflectingBoundarySegments,
-            queries, insideSolveRegionBoundarySampler);
+            queries, queries.insideBoundingDomain);
     reflectingBoundarySampler->initialize(0.0f, solveDoubleSided);
+    if (ignoreReflectingBoundaryContribution) reflectingBoundarySampleCount = 0;
 
     // initialize domain sampler
-    std::function<bool(const Vector2&)> insideSolveRegionDomainSampler = [&queries, solveDoubleSided](const Vector2& x) -> bool {
-        return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
-    };
-    float regionVolume = solveDoubleSided ? (queries.domainMax - queries.domainMin).prod() :
-                                            std::fabs(queries.computeDomainSignedVolume());
+    std::function<bool(const Vector2&)> insideSolveRegionDomainSampler;
+    float solveRegionVolume = 0.0f;
+    if (solveDoubleSided) {
+        insideSolveRegionDomainSampler = queries.insideBoundingDomain;
+        solveRegionVolume = (queries.domainMax - queries.domainMin).prod();
+
+    } else {
+        insideSolveRegionDomainSampler = queries.insideDomain;
+        solveRegionVolume = std::fabs(queries.computeDomainSignedVolume());
+    }
 
     std::unique_ptr<zombie::DomainSampler<float, 2>> domainSampler =
         zombie::createUniformDomainSampler<float, 2>(queries, insideSolveRegionDomainSampler,
                                                      queries.domainMin, queries.domainMax,
-                                                     regionVolume);
+                                                     solveRegionVolume);
+    if (ignoreSourceContribution) domainSampleCount = 0;
 
     // solve using reverse walk on stars
-    if (ignoreAbsorbingBoundaryContribution) absorbingBoundarySampleCount = 0;
-    if (ignoreReflectingBoundaryContribution) reflectingBoundarySampleCount = 0;
-    if (ignoreSourceContribution) domainSampleCount = 0;
     int totalWork = absorbingBoundarySampleCount + reflectingBoundarySampleCount + domainSampleCount;
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);

@@ -957,6 +957,7 @@ void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<D
 {
     fcpw::Aggregate<DIM> *absorbingBoundaryAggregate = dirichletBoundaryHandler.scene.getSceneData()->aggregate.get();
     if (absorbingBoundaryAggregate) {
+        geometricQueries.hasAbsorbingBoundary = true;
         geometricQueries.computeDistToAbsorbingBoundary = [absorbingBoundaryAggregate](
                                                           const Vector<DIM>& x, bool computeSignedDistance) -> float {
             Vector<DIM> queryPt = x;
@@ -1032,6 +1033,7 @@ void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggre
                                                    GeometricQueries<DIM>& geometricQueries)
 {
     if (reflectingBoundaryAggregate) {
+        geometricQueries.hasReflectingBoundary = true;
         geometricQueries.computeDistToReflectingBoundary = [reflectingBoundaryAggregate](
                                                            const Vector<DIM>& x, bool computeSignedDistance) -> float {
             Vector<DIM> queryPt = x;
