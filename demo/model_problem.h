@@ -35,6 +35,9 @@ protected:
     // loads boundary mesh from OBJ file
     void loadOBJ(const std::string& filename, bool normalize, bool flipOrientation);
 
+    // partitions boundary mesh into absorbing and reflecting parts
+    void partitionBoundaryMesh();
+
     // setup PDE
     void setupPDE();
 
@@ -80,6 +83,7 @@ solveDoubleSided(getOptional<bool>(config, "solveDoubleSided", false))
     // load boundary mesh, build acceleration structures and set geometric queries and PDE inputs
     loadOBJ(geometryFile, normalize, flipOrientation);
     setupPDE();
+    partitionBoundaryMesh();
     populateGeometricQueries();
 }
 
@@ -122,13 +126,18 @@ void ModelProblem::setupPDE()
     pde.absorptionCoeff = absorptionCoeff;
 }
 
-void ModelProblem::populateGeometricQueries()
+void ModelProblem::partitionBoundaryMesh()
 {
-    // partition boundary vertices and indices into absorbing and reflecting parts
+    // use zombie's default partitioning function, which assumes the boundary discretization
+    // is perfectly adapted to the boundary conditions; this isn't always a correct assumption
+    // and the user might want to override this function for their specific problem
     zombie::partitionBoundaryMesh<2>(pde.hasReflectingBoundaryConditions, vertices, segments,
                                      absorbingBoundaryVertices, absorbingBoundarySegments,
                                      reflectingBoundaryVertices, reflectingBoundarySegments);
+}
 
+void ModelProblem::populateGeometricQueries()
+{
     // build acceleration structure and populate geometric queries for absorbing boundary
     absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryVertices, absorbingBoundarySegments);
     zombie::populateGeometricQueriesForDirichletBoundary<2>(absorbingBoundaryHandler, queries);
@@ -138,6 +147,8 @@ void ModelProblem::populateGeometricQueries()
     std::function<float(float)> branchTraversalWeight = zombie::getBranchTraversalWeightCallback();
 
     if (robinCoeff > 0.0f) {
+        // despite using a constant Robin coefficient here, the implementation supports
+        // varying coefficients over the boundary
         std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
         std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
         reflectingRobinBoundaryHandler.buildAccelerationStructure(
