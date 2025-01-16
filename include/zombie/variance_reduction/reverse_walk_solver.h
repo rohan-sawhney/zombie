@@ -308,29 +308,25 @@ inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::generateSam
                                                                                      int domainSampleCount,
                                                                                      bool solveDoubleSided)
 {
-    if (absorbingBoundarySampler) {
-        absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, false),
+    absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, false),
+                                              SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
+                                              absorbingBoundarySamplePts, false);
+    if (solveDoubleSided) {
+        absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, true),
                                                   SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
-                                                  absorbingBoundarySamplePts, false);
-        if (solveDoubleSided) {
-            absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, true),
-                                                      SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
-                                                      absorbingBoundaryNormalAlignedSamplePts, true);
-        }
+                                                  absorbingBoundaryNormalAlignedSamplePts, true);
     }
 
-    if (reflectingBoundarySampler) {
-        reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, false),
-                                                   SampleType::OnReflectingBoundary, 0.0f, reflectingBoundarySamplePts, false);
-        if (solveDoubleSided) {
-            reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, true),
-                                                       SampleType::OnReflectingBoundary, 0.0f, reflectingBoundaryNormalAlignedSamplePts, true);
-        }
+    reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, false),
+                                               SampleType::OnReflectingBoundary, 0.0f,
+                                               reflectingBoundarySamplePts, false);
+    if (solveDoubleSided) {
+        reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, true),
+                                                   SampleType::OnReflectingBoundary, 0.0f,
+                                                   reflectingBoundaryNormalAlignedSamplePts, true);
     }
 
-    if (domainSampler) {
-        domainSampler->generateSamples(domainSampleCount, domainSamplePts);
-    }
+    domainSampler->generateSamples(domainSampleCount, domainSamplePts);
 }
 
 template <typename T, size_t DIM, typename NearestNeighborFinder>

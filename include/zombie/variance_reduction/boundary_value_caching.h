@@ -850,9 +850,7 @@ inline void BoundaryValueCachingSolver<T, DIM>::generateSamples(int absorbingBou
                                                    reflectingBoundaryCacheNormalAligned, true);
     }
 
-    if (domainSampler) {
-        domainSampler->generateSamples(domainCacheSize, domainCache);
-    }
+    domainSampler->generateSamples(domainCacheSize, domainCache);
 }
 
 template <typename T, size_t DIM>
