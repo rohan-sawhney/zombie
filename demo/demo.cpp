@@ -124,7 +124,7 @@ void runBoundaryValueCaching(const ModelProblem& modelProblem, const json& solve
             queries, insideSolveRegionBoundarySampler);
     reflectingBoundarySampler->initialize(normalOffsetForReflectingBoundary, solveDoubleSided);
 
-    // initialize domain samplers
+    // initialize domain sampler
     std::function<bool(const Vector2&)> insideSolveRegionDomainSampler = [&queries, solveDoubleSided](const Vector2& x) -> bool {
         return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
     };
@@ -234,7 +234,7 @@ void runReverseWalkOnStars(const ModelProblem& modelProblem, const json& solverC
             queries, insideSolveRegionBoundarySampler);
     reflectingBoundarySampler->initialize(0.0f, solveDoubleSided);
 
-    // initialize domain samplers
+    // initialize domain sampler
     std::function<bool(const Vector2&)> insideSolveRegionDomainSampler = [&queries, solveDoubleSided](const Vector2& x) -> bool {
         return solveDoubleSided ? !queries.outsideBoundingDomain(x) : queries.insideDomain(x, true);
     };
