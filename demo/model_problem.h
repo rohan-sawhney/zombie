@@ -27,7 +27,7 @@ public:
     std::vector<Vector2i> segments;
     std::vector<Vector2i> absorbingBoundarySegments;
     std::vector<Vector2i> reflectingBoundarySegments;
-    const bool solveDoubleSided;
+    bool solveDoubleSided;
     zombie::PDE<float, 2> pde;
     zombie::GeometricQueries<2> queries;
 
@@ -49,36 +49,30 @@ protected:
     zombie::FcpwNeumannBoundaryHandler<2> reflectingNeumannBoundaryHandler;
     zombie::FcpwRobinBoundaryHandler<2> reflectingRobinBoundaryHandler;
 
-    std::shared_ptr<Image<1>> isReflectingBoundary;
-    std::shared_ptr<Image<1>> absorbingBoundaryValue;
-    std::shared_ptr<Image<1>> reflectingBoundaryValue;
-    std::shared_ptr<Image<1>> sourceValue;
-    float absorptionCoeff, robinCoeff;
+    Image<1> isReflectingBoundary;
+    Image<1> absorbingBoundaryValue;
+    Image<1> reflectingBoundaryValue;
+    Image<1> sourceValue;
+    float robinCoeff, absorptionCoeff;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-ModelProblem::ModelProblem(const json& config):
-solveDoubleSided(getOptional<bool>(config, "solveDoubleSided", false))
+ModelProblem::ModelProblem(const json& config)
 {
     // load config settings
-    const std::string geometryFile = getRequired<std::string>(config, "geometry");
-    const std::string isReflectingBoundaryFile = getRequired<std::string>(config, "isReflectingBoundary");
-    const std::string absorbingBoundaryValueFile = getRequired<std::string>(config, "absorbingBoundaryValue");
-    const std::string reflectingBoundaryValueFile = getRequired<std::string>(config, "reflectingBoundaryValue");
-    const std::string sourceValueFile = getRequired<std::string>(config, "sourceValue");
+    std::string geometryFile = getRequired<std::string>(config, "geometry");
     bool normalize = getOptional<bool>(config, "normalizeDomain", true);
     bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
-    absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
+    isReflectingBoundary = Image<1>(getRequired<std::string>(config, "isReflectingBoundary"));
+    absorbingBoundaryValue = Image<1>(getRequired<std::string>(config, "absorbingBoundaryValue"));
+    reflectingBoundaryValue = Image<1>(getRequired<std::string>(config, "reflectingBoundaryValue"));
+    sourceValue = Image<1>(getRequired<std::string>(config, "sourceValue"));
     robinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
+    absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
+    solveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
     queries.domainIsWatertight = getOptional<bool>(config, "IsWatertightDomain", true);
-
-    // load images specifying boundary conditions and source term
-    isReflectingBoundary = std::make_shared<Image<1>>(isReflectingBoundaryFile);
-    absorbingBoundaryValue = std::make_shared<Image<1>>(absorbingBoundaryValueFile);
-    reflectingBoundaryValue = std::make_shared<Image<1>>(reflectingBoundaryValueFile);
-    sourceValue = std::make_shared<Image<1>>(sourceValueFile);
 
     // load boundary mesh, build acceleration structures and set geometric queries and PDE inputs
     loadOBJ(geometryFile, normalize, flipOrientation);
@@ -105,22 +99,22 @@ void ModelProblem::setupPDE()
 
     pde.source = [this, &bMin, maxLength](const Vector2& x) -> float {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->sourceValue->get(uv)[0];
+        return this->sourceValue.get(uv)[0];
     };
     pde.dirichlet = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->absorbingBoundaryValue->get(uv)[0];
+        return this->absorbingBoundaryValue.get(uv)[0];
     };
     pde.robin = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->reflectingBoundaryValue->get(uv)[0];
+        return this->reflectingBoundaryValue.get(uv)[0];
     };
     pde.robinCoeff = [this](const Vector2& x, bool _) -> float {
         return this->robinCoeff;
     };
     pde.hasReflectingBoundaryConditions = [this, &bMin, maxLength](const Vector2& x) -> bool {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->isReflectingBoundary->get(uv)[0] > 0;
+        return this->isReflectingBoundary.get(uv)[0] > 0;
     };
     pde.areRobinConditionsPureNeumann = robinCoeff == 0.0f;
     pde.absorptionCoeff = absorptionCoeff;

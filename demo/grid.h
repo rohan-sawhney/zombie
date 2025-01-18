@@ -60,8 +60,8 @@ void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
 }
 
 void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePts,
-                      const zombie::PDE<float, 2>& pde,
                       const zombie::GeometricQueries<2>& queries,
+                      const zombie::PDE<float, 2>& pde,
                       const bool solveDoubleSided, const json& config)
 {
     // read settings from config
@@ -132,8 +132,8 @@ void createEvaluationGrid(std::vector<EvaluationPointType>& evalPts,
 }
 
 void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>>& evalPts,
-                        const zombie::PDE<float, 2>& pde,
                         const zombie::GeometricQueries<2>& queries,
+                        const zombie::PDE<float, 2>& pde,
                         const bool solveDoubleSided, const json& config)
 {
     // read settings from config
@@ -182,10 +182,9 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
 }
 
 void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>>& evalPts,
-                        int nAbsorbingBoundarySamples, int nAbsorbingBoundaryNormalAlignedSamples,
-                        int nReflectingBoundarySamples, int nReflectingBoundaryNormalAlignedSamples,
-                        int nSourceSamples, const zombie::PDE<float, 2>& pde,
+                        const std::vector<int>& sampleCounts,
                         const zombie::GeometricQueries<2>& queries,
+                        const zombie::PDE<float, 2>& pde,
                         const bool solveDoubleSided, const json& config)
 {
     // read settings from config
@@ -203,6 +202,12 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
     std::shared_ptr<Image<3>> solution = std::make_shared<Image<3>>(gridRes, gridRes);
     std::shared_ptr<Image<3>> boundaryDistance = std::make_shared<Image<3>>(gridRes, gridRes);
     std::shared_ptr<Image<3>> boundaryData = std::make_shared<Image<3>>(gridRes, gridRes);
+    int absorbingBoundarySampleCount = sampleCounts[0];
+    int absorbingBoundaryNormalAlignedSampleCount = sampleCounts[1];
+    int reflectingBoundarySampleCount = sampleCounts[2];
+    int reflectingBoundaryNormalAlignedSampleCount = sampleCounts[3];
+    int domainSampleCount = sampleCounts[4];
+
     for (int i = 0; i < gridRes; i++) {
         for (int j = 0; j < gridRes; j++) {
             int idx = i*gridRes + j;
@@ -221,11 +226,11 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
             boundaryData->get(j, i) = Array3(dirichletVal, robinVal, sourceVal);
 
             // solution data
-            float value = evalPts[idx].getEstimatedSolution(nAbsorbingBoundarySamples,
-                                                            nAbsorbingBoundaryNormalAlignedSamples,
-                                                            nReflectingBoundarySamples,
-                                                            nReflectingBoundaryNormalAlignedSamples,
-                                                            nSourceSamples);
+            float value = evalPts[idx].getEstimatedSolution(absorbingBoundarySampleCount,
+                                                            absorbingBoundaryNormalAlignedSampleCount,
+                                                            reflectingBoundarySampleCount,
+                                                            reflectingBoundaryNormalAlignedSampleCount,
+                                                            domainSampleCount);
             bool maskOutValue = !inDomain || std::min(std::abs(distToAbsorbingBoundary),
                                                       std::abs(distToReflectingBoundary)) < boundaryDistanceMask;
             solution->get(j, i) = Array3(maskOutValue ? 0.0f : value);
