@@ -84,10 +84,12 @@ void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePt
             int idx = i*gridRes + j;
 
             // model problem data
-            float inDomain = solveDoubleSided || queries.insideDomain(samplePts[idx].pt) ? 1 : 0;
+            bool inDomain = solveDoubleSided || queries.insideDomain(samplePts[idx].pt);
             float distToAbsorbingBoundary = samplePts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = samplePts[idx].distToReflectingBoundary;
-            boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
+            boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary,
+                                                 distToReflectingBoundary,
+                                                 inDomain ? 1.0f : 0.0f);
 
             float dirichletVal = pde.dirichlet(samplePts[idx].pt, false);
             float robinVal = pde.robin(samplePts[idx].pt, false);
@@ -154,10 +156,12 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
             int idx = i*gridRes + j;
 
             // model problem data
-            float inDomain = solveDoubleSided || queries.insideDomain(evalPts[idx].pt) ? 1 : 0;
+            bool inDomain = solveDoubleSided || queries.insideDomain(evalPts[idx].pt);
             float distToAbsorbingBoundary = evalPts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = evalPts[idx].distToReflectingBoundary;
-            boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
+            boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary,
+                                                 distToReflectingBoundary,
+                                                 inDomain ? 1.0f : 0.0f);
 
             float dirichletVal = pde.dirichlet(evalPts[idx].pt, false);
             float robinVal = pde.robin(evalPts[idx].pt, false);
@@ -204,10 +208,12 @@ void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>
             int idx = i*gridRes + j;
 
             // model problem data
-            float inDomain = solveDoubleSided || queries.insideDomain(evalPts[idx].pt) ? 1 : 0;
+            bool inDomain = solveDoubleSided || queries.insideDomain(evalPts[idx].pt);
             float distToAbsorbingBoundary = evalPts[idx].distToAbsorbingBoundary;
             float distToReflectingBoundary = evalPts[idx].distToReflectingBoundary;
-            boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary, distToReflectingBoundary, inDomain);
+            boundaryDistance->get(j, i) = Array3(distToAbsorbingBoundary,
+                                                 distToReflectingBoundary,
+                                                 inDomain ? 1.0f : 0.0f);
 
             float dirichletVal = pde.dirichlet(evalPts[idx].pt, false);
             float robinVal = pde.robin(evalPts[idx].pt, false);
