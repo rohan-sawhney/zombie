@@ -1,6 +1,6 @@
-// This file is the entry point for the 2D demo application demonstrating how to use Zombie.
+// This file is the entry point for a 2D demo application demonstrating how to use Zombie.
 // It reads a 'model problem' description from a JSON file, runs the WalkOnStars, BoundaryValueCaching
-// or ReverseWalkoOnStars solvers, and writes the result to a PMF or PNG file.
+// or ReverseWalkonOnStars solvers, and writes the result to a PMF or PNG file.
 
 #include "model_problem.h"
 #include "grid.h"
