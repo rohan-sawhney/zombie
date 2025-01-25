@@ -130,7 +130,7 @@ void runBoundaryValueCaching(const json& solverConfig,
     if (ignoreSourceContribution) domainCacheSize = 0;
 
     // solve using boundary value caching
-    int totalWork = 2.0f*(absorbingBoundaryCacheSize + reflectingBoundaryCacheSize) + domainCacheSize;
+    int totalWork = 2*(absorbingBoundaryCacheSize + reflectingBoundaryCacheSize) + domainCacheSize;
     ProgressBar pb(totalWork);
     std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
 

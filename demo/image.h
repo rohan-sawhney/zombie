@@ -127,25 +127,26 @@ template <size_t CHANNELS>
 void Image<CHANNELS>::read(const std::string& filename)
 {
     if (hasExtension(filename, "pfm"))  {
-        return readPFM(filename);
-    }
+        readPFM(filename);
 
-    if (hasExtension(filename, "png")) {
-        return readPNG(filename);
+    } else if (hasExtension(filename, "png")) {
+        readPNG(filename);
+    
+    } else {
+        std::cerr << filename << " not supported. Use PNG or PFM file format." << std::endl;
+        exit(EXIT_FAILURE);
     }
-
-    std::cerr << filename << " not supported. Use PNG or PFM file format." << std::endl;
-    exit(EXIT_FAILURE);
 }
 
 template <size_t CHANNELS>
 void Image<CHANNELS>::write(const std::string& filename)
 {
     if (hasExtension(filename, "pfm")) {
-        return writePFM(filename);
-    }
+        writePFM(filename);
 
-    return writePNG(filename);
+    } else {
+        writePNG(filename);
+    }
 }
 
 template <size_t CHANNELS>
@@ -202,6 +203,7 @@ template <size_t CHANNELS>
 void Image<CHANNELS>::readPNG(const std::string& filename)
 {
     int channels;
+    stbi_set_flip_vertically_on_load(1);
     unsigned char *tmpBuffer = stbi_load(filename.c_str(), &w, &h, &channels, CHANNELS);
     if (tmpBuffer == nullptr && stbi_failure_reason()) {
         stbi_image_free(tmpBuffer);
