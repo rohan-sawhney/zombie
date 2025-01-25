@@ -453,7 +453,7 @@ public:
 
     // samples a point on the surface of the ball
     Vector2 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector2 y = c + R*SphereSampler<2>::sampleUnitSphereUniform(sampler);
+        Vector2 y = c + SphereSampler<2>::sampleUnitSphereUniform(sampler)*R;
         pdf = 1.0f/(2.0f*M_PI);
 
         return y;
@@ -560,7 +560,7 @@ public:
 
     // samples a point on the surface of the ball
     Vector3 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector3 y = c + R*SphereSampler<3>::sampleUnitSphereUniform(sampler);
+        Vector3 y = c + SphereSampler<3>::sampleUnitSphereUniform(sampler)*R;
         pdf = 1.0f/(4.0f*M_PI);
 
         return y;
@@ -706,7 +706,7 @@ public:
 
     // samples a point on the surface of the ball
     Vector2 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector2 y = c + R*SphereSampler<2>::sampleUnitSphereUniform(sampler);
+        Vector2 y = c + SphereSampler<2>::sampleUnitSphereUniform(sampler)*R;
         pdf = 1.0f/(2.0f*M_PI);
 
         return y;
@@ -869,7 +869,7 @@ public:
 
     // samples a point on the surface of the ball
     Vector3 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector3 y = c + R*SphereSampler<3>::sampleUnitSphereUniform(sampler);
+        Vector3 y = c + SphereSampler<3>::sampleUnitSphereUniform(sampler)*R;
         pdf = 1.0f/(4.0f*M_PI);
 
         return y;

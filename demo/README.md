@@ -16,7 +16,7 @@ Next you can run either [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects
 ./demo/demo ../demo/model_problems/engine/rws.json
 ```
 
-The results will be saved to `zombie/model_problems/engine/solutions`.
+The results will be saved to `demo/model_problems/engine/solutions`.
 
 ## Custom Model Problem Creation
 

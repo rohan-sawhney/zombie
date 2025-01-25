@@ -23,7 +23,7 @@ public:
     WalkOnSpheres(const GeometricQueries<DIM>& queries_);
     WalkOnSpheres(const GeometricQueries<DIM>& queries_,
                   std::function<void(const WalkState<T, DIM>&)> walkStateCallback_,
-                  std::function<T(const WalkState<T, DIM>&)> terminalContributionCallback_);
+                  std::function<T(WalkCompletionCode, const WalkState<T, DIM>&)> terminalContributionCallback_);
 
     // solves the given PDE at the input point; NOTE: assumes the point does not
     // lie on the boundary when estimating the gradient
@@ -73,7 +73,7 @@ protected:
     // members
     const GeometricQueries<DIM>& queries;
     std::function<void(const WalkState<T, DIM>&)> walkStateCallback;
-    std::function<T(const WalkState<T, DIM>&)> terminalContributionCallback;
+    std::function<T(WalkCompletionCode, const WalkState<T, DIM>&)> terminalContributionCallback;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +90,7 @@ inline WalkOnSpheres<T, DIM>::WalkOnSpheres(const GeometricQueries<DIM>& queries
 template <typename T, size_t DIM>
 inline WalkOnSpheres<T, DIM>::WalkOnSpheres(const GeometricQueries<DIM>& queries_,
                                             std::function<void(const WalkState<T, DIM>&)> walkStateCallback_,
-                                            std::function<T(const WalkState<T, DIM>&)> terminalContributionCallback_):
+                                            std::function<T(WalkCompletionCode, const WalkState<T, DIM>&)> terminalContributionCallback_):
                                             queries(queries_), walkStateCallback(walkStateCallback_),
                                             terminalContributionCallback(terminalContributionCallback_)
 {
@@ -244,13 +244,13 @@ inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
                                                 signedDistance > 0.0f;
         return pde.dirichlet(state.currentPt, returnBoundaryNormalAlignedValue);
 
-    } else if (code == WalkCompletionCode::ExceededMaxWalkLength &&
-               terminalContributionCallback) {
+    } else if (terminalContributionCallback) {
         // get the user-specified terminal contribution
-        return terminalContributionCallback(state);
+        return terminalContributionCallback(code, state);
     }
 
-    // terminated with russian roulette or ignoring absorbing boundary values
+    // return 0 terminal contribution if ignoring absorbing boundary values,
+    // or if walk exceeds max walk length or is terminated with russian roulette
     return T(0.0f);
 }
 
@@ -309,9 +309,9 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
         WalkCompletionCode code = walk(pde, walkSettings, samplePt.firstSphereRadius,
                                        samplePt.sampler, state);
 
-        if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
-             code == WalkCompletionCode::TerminatedWithRussianRoulette) ||
-            (code == WalkCompletionCode::ExceededMaxWalkLength && terminalContributionCallback)) {
+        if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
+            code == WalkCompletionCode::TerminatedWithRussianRoulette ||
+            code == WalkCompletionCode::ExceededMaxWalkLength) {
             // compute the walk contribution
             T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
             T totalContribution = state.throughput*terminalContribution +
@@ -432,9 +432,9 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
             WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary,
                                            samplePt.sampler, state);
 
-            if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
-                 code == WalkCompletionCode::TerminatedWithRussianRoulette) ||
-                (code == WalkCompletionCode::ExceededMaxWalkLength && terminalContributionCallback)) {
+            if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
+                code == WalkCompletionCode::TerminatedWithRussianRoulette ||
+                code == WalkCompletionCode::ExceededMaxWalkLength) {
                 // compute the walk contribution
                 T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
                 T totalContribution = state.throughput*terminalContribution +
