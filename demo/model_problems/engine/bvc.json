@@ -16,16 +16,16 @@
         "ignoreSourceContribution": true
     },
     "modelProblem": {
-        "geometry": "../demo/model_problems/engine/data/geometry.obj",
-        "isReflectingBoundary": "../demo/model_problems/engine/data/is_reflecting_boundary.pfm",
-        "absorbingBoundaryValue": "../demo/model_problems/engine/data/absorbing_boundary_value.pfm",
-        "reflectingBoundaryValue": "../demo/model_problems/engine/data/reflecting_boundary_value.pfm",
-        "sourceValue": "../demo/model_problems/engine/data/source_value.pfm",
+        "geometry": "demo/model_problems/engine/data/geometry.obj",
+        "isReflectingBoundary": "demo/model_problems/engine/data/is_reflecting_boundary.pfm",
+        "absorbingBoundaryValue": "demo/model_problems/engine/data/absorbing_boundary_value.pfm",
+        "reflectingBoundaryValue": "demo/model_problems/engine/data/reflecting_boundary_value.pfm",
+        "sourceValue": "demo/model_problems/engine/data/source_value.pfm",
         "robinCoeff": 0.0,
         "absorptionCoeff": 0.0
     },
     "output": {
-        "solutionFile": "../demo/model_problems/engine/solutions/bvc.pfm",
+        "solutionFile": "demo/model_problems/engine/solutions/bvc.pfm",
         "gridRes": 256,
         "boundaryDistanceMask": 1e-2,
         "saveDebug": false,

@@ -17,8 +17,7 @@ namespace rws {
 
 template <typename T, size_t DIM>
 struct EvaluationPoint {
-    // constructors
-    EvaluationPoint();
+    // constructor
     EvaluationPoint(const Vector<DIM>& pt_,
                     const Vector<DIM>& normal_,
                     SampleType type_,
@@ -54,57 +53,50 @@ template <typename T, size_t DIM, typename NearestNeighborFinder>
 class ReverseWalkOnStarsSolver {
 public:
     // constructor
-    ReverseWalkOnStarsSolver(const PDE<T, DIM>& pde_,
-                             const GeometricQueries<DIM>& queries_,
-                             std::shared_ptr<BoundarySampler<T, DIM>> absorbingBoundarySampler_,
+    ReverseWalkOnStarsSolver(std::shared_ptr<BoundarySampler<T, DIM>> absorbingBoundarySampler_,
                              std::shared_ptr<BoundarySampler<T, DIM>> reflectingBoundarySampler_,
-                             std::shared_ptr<DomainSampler<T, DIM>> domainSampler_,
-                             const float& normalOffsetForAbsorbingBoundary_,
-                             const float& radiusClamp_,
-                             const float& kernelRegularization_,
-                             std::vector<EvaluationPoint<T, DIM>>& evalPts_);
-
-    // updates internal solver state after evaluation points have been modified
-    // (called automatically by the constructor)
-    void modifiedEvaluationPoints();
+                             std::shared_ptr<DomainSampler<T, DIM>> domainSampler_);
 
     // generates boundary and domain samples
     void generateSamples(int absorbingBoundarySampleCount,
                          int reflectingBoundarySampleCount,
                          int domainSampleCount,
+                         float normalOffsetForAbsorbingBoundary,
                          bool solveDoubleSided);
 
     // splats contributions to evaluation points
-    void solve(const WalkSettings& walkSettings,
+    void solve(const PDE<T, DIM>& pde,
+               const GeometricQueries<DIM>& queries,
+               const WalkSettings& walkSettings,
+               float normalOffsetForAbsorbingBoundary,
+               float radiusClamp,
+               float kernelRegularization,
+               std::vector<EvaluationPoint<T, DIM>>& evalPts,
+               bool updatedEvalPtLocations=true,
                bool runSingleThreaded=false,
                std::function<void(int,int)> reportProgress={});
 
     // returns the boundary and domain sample points
-    const std::vector<SamplePoint<T, DIM>>& getAbsorbingBoundarySamplePts(bool returnBoundaryNormalAligned = false) const;
-    const std::vector<SamplePoint<T, DIM>>& getReflectingBoundarySamplePts(bool returnBoundaryNormalAligned = false) const;
+    const std::vector<SamplePoint<T, DIM>>& getAbsorbingBoundarySamplePts(bool returnBoundaryNormalAligned=false) const;
+    const std::vector<SamplePoint<T, DIM>>& getReflectingBoundarySamplePts(bool returnBoundaryNormalAligned=false) const;
     const std::vector<SamplePoint<T, DIM>>& getDomainSamplePts() const;
 
     // returns the number of boundary and domain sample points
-    int getAbsorbingBoundarySampleCount(bool returnBoundaryNormalAligned = false) const;
-    int getReflectingBoundarySampleCount(bool returnBoundaryNormalAligned = false) const;
+    int getAbsorbingBoundarySampleCount(bool returnBoundaryNormalAligned=false) const;
+    int getReflectingBoundarySampleCount(bool returnBoundaryNormalAligned=false) const;
     int getDomainSampleCount() const;
 
 protected:
     // members
-    const PDE<T, DIM>& pde;
-    const GeometricQueries<DIM>& queries;
     std::shared_ptr<BoundarySampler<T, DIM>> absorbingBoundarySampler;
     std::shared_ptr<BoundarySampler<T, DIM>> reflectingBoundarySampler;
     std::shared_ptr<DomainSampler<T, DIM>> domainSampler;
-    const float& normalOffsetForAbsorbingBoundary;
-    std::vector<EvaluationPoint<T, DIM>>& evalPts;
-    NearestNeighborFinder nearestNeighborFinder;
-    SplatContributionCallback<T, DIM> splatContributionCallback;
     std::vector<SamplePoint<T, DIM>> absorbingBoundarySamplePts;
     std::vector<SamplePoint<T, DIM>> absorbingBoundaryNormalAlignedSamplePts;
     std::vector<SamplePoint<T, DIM>> reflectingBoundarySamplePts;
     std::vector<SamplePoint<T, DIM>> reflectingBoundaryNormalAlignedSamplePts;
     std::vector<SamplePoint<T, DIM>> domainSamplePts;
+    NearestNeighborFinder nearestNeighborFinder;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,18 +107,6 @@ protected:
 //   interior Poisson problems with pure Dirichlet or mixed Dirichet/Neumann boundary conditions)
 // - splat gradient estimates (challenge is again with Poisson kernel on Dirichlet boundary, rather
 //   than Greens function for reflecting Neumann/Robin boundaries and source term)
-
-template <typename T, size_t DIM>
-inline EvaluationPoint<T, DIM>::EvaluationPoint():
-pt(Vector<DIM>::Zero()),
-normal(Vector<DIM>::Zero()),
-type(SampleType::InDomain),
-distToAbsorbingBoundary(0.0f),
-distToReflectingBoundary(0.0f)
-{
-    mutex = std::make_shared<tbb::spin_mutex>();
-    reset();
-}
 
 template <typename T, size_t DIM>
 inline EvaluationPoint<T, DIM>::EvaluationPoint(const Vector<DIM>& pt_,
@@ -194,14 +174,52 @@ void EvaluationPoint<T, DIM>::reset()
 }
 
 template <typename T, size_t DIM, typename NearestNeighborFinder>
+inline ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::ReverseWalkOnStarsSolver(std::shared_ptr<BoundarySampler<T, DIM>> absorbingBoundarySampler_,
+                                                                                         std::shared_ptr<BoundarySampler<T, DIM>> reflectingBoundarySampler_,
+                                                                                         std::shared_ptr<DomainSampler<T, DIM>> domainSampler_):
+                                                                                         absorbingBoundarySampler(absorbingBoundarySampler_),
+                                                                                         reflectingBoundarySampler(reflectingBoundarySampler_),
+                                                                                         domainSampler(domainSampler_)
+{
+    // do nothing
+}
+
+template <typename T, size_t DIM, typename NearestNeighborFinder>
+inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::generateSamples(int absorbingBoundarySampleCount,
+                                                                                     int reflectingBoundarySampleCount,
+                                                                                     int domainSampleCount,
+                                                                                     float normalOffsetForAbsorbingBoundary,
+                                                                                     bool solveDoubleSided)
+{
+    absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, false),
+                                              SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
+                                              absorbingBoundarySamplePts, false);
+    if (solveDoubleSided) {
+        absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, true),
+                                                  SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
+                                                  absorbingBoundaryNormalAlignedSamplePts, true);
+    }
+
+    reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, false),
+                                               SampleType::OnReflectingBoundary, 0.0f,
+                                               reflectingBoundarySamplePts, false);
+    if (solveDoubleSided) {
+        reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, true),
+                                                   SampleType::OnReflectingBoundary, 0.0f,
+                                                   reflectingBoundaryNormalAlignedSamplePts, true);
+    }
+
+    domainSampler->generateSamples(domainSampleCount, domainSamplePts);
+}
+
+template <typename T, size_t DIM, typename NearestNeighborFinder>
 void splatContribution(const WalkState<T, DIM>& state,
                        const SamplePoint<T, DIM>& samplePt,
+                       const PDE<T, DIM>& pde,
                        const GeometricQueries<DIM>& queries,
                        const NearestNeighborFinder& nearestNeighborFinder,
-                       const PDE<T, DIM>& pde,
-                       const float& normalOffsetForAbsorbingBoundary,
-                       const float& radiusClamp,
-                       const float& kernelRegularization,
+                       float normalOffsetForAbsorbingBoundary,
+                       float radiusClamp, float kernelRegularization,
                        std::vector<EvaluationPoint<T, DIM>>& evalPts)
 {
     // perform nearest neighbor queries to determine evaluation points that lie
@@ -261,79 +279,38 @@ void splatContribution(const WalkState<T, DIM>& state,
 }
 
 template <typename T, size_t DIM, typename NearestNeighborFinder>
-inline ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::ReverseWalkOnStarsSolver(const PDE<T, DIM>& pde_,
-                                                                                         const GeometricQueries<DIM>& queries_,
-                                                                                         std::shared_ptr<BoundarySampler<T, DIM>> absorbingBoundarySampler_,
-                                                                                         std::shared_ptr<BoundarySampler<T, DIM>> reflectingBoundarySampler_,
-                                                                                         std::shared_ptr<DomainSampler<T, DIM>> domainSampler_,
-                                                                                         const float& normalOffsetForAbsorbingBoundary_,
-                                                                                         const float& radiusClamp_,
-                                                                                         const float& kernelRegularization_,
-                                                                                         std::vector<EvaluationPoint<T, DIM>>& evalPts_):
-                                                                                         pde(pde_), queries(queries_),
-                                                                                         absorbingBoundarySampler(absorbingBoundarySampler_),
-                                                                                         reflectingBoundarySampler(reflectingBoundarySampler_),
-                                                                                         domainSampler(domainSampler_),
-                                                                                         normalOffsetForAbsorbingBoundary(normalOffsetForAbsorbingBoundary_),
-                                                                                         evalPts(evalPts_)
-{
-    // build nearest neighbor acceleration structure
-    modifiedEvaluationPoints();
-
-    // bind splat contribution callback
-    splatContributionCallback = std::bind(&splatContribution<T, DIM, NearestNeighborFinder>,
-                                          std::placeholders::_1, std::placeholders::_2,
-                                          std::cref(queries), std::cref(nearestNeighborFinder),
-                                          std::cref(pde), std::cref(normalOffsetForAbsorbingBoundary_),
-                                          std::cref(radiusClamp_), std::cref(kernelRegularization_),
-                                          std::ref(evalPts));
-}
-
-template <typename T, size_t DIM, typename NearestNeighborFinder>
-inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::modifiedEvaluationPoints()
-{
-    // initialize nearest neigbhbor finder with positions of evaluation points
-    std::vector<Vector<DIM>> positions;
-    for (auto& evalPt: evalPts) {
-        positions.push_back(evalPt.pt);
-    }
-
-    nearestNeighborFinder.buildAccelerationStructure(positions);
-}
-
-template <typename T, size_t DIM, typename NearestNeighborFinder>
-inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::generateSamples(int absorbingBoundarySampleCount,
-                                                                                     int reflectingBoundarySampleCount,
-                                                                                     int domainSampleCount,
-                                                                                     bool solveDoubleSided)
-{
-    absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, false),
-                                              SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
-                                              absorbingBoundarySamplePts, false);
-    if (solveDoubleSided) {
-        absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundarySampleCount, true),
-                                                  SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
-                                                  absorbingBoundaryNormalAlignedSamplePts, true);
-    }
-
-    reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, false),
-                                               SampleType::OnReflectingBoundary, 0.0f,
-                                               reflectingBoundarySamplePts, false);
-    if (solveDoubleSided) {
-        reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundarySampleCount, true),
-                                                   SampleType::OnReflectingBoundary, 0.0f,
-                                                   reflectingBoundaryNormalAlignedSamplePts, true);
-    }
-
-    domainSampler->generateSamples(domainSampleCount, domainSamplePts);
-}
-
-template <typename T, size_t DIM, typename NearestNeighborFinder>
-inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::solve(const WalkSettings& walkSettings,
+inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::solve(const PDE<T, DIM>& pde,
+                                                                           const GeometricQueries<DIM>& queries,
+                                                                           const WalkSettings& walkSettings,
+                                                                           float normalOffsetForAbsorbingBoundary,
+                                                                           float radiusClamp,
+                                                                           float kernelRegularization,
+                                                                           std::vector<EvaluationPoint<T, DIM>>& evalPts,
+                                                                           bool updatedEvalPtLocations,
                                                                            bool runSingleThreaded,
                                                                            std::function<void(int,int)> reportProgress)
 {
+    // build nearest neighbor acceleration structure
+    if (updatedEvalPtLocations) {
+        std::vector<Vector<DIM>> positions;
+        for (auto& evalPt: evalPts) {
+            positions.push_back(evalPt.pt);
+        }
+
+        nearestNeighborFinder.buildAccelerationStructure(positions);
+    }
+
+    // bind splat contribution callback and initialize solver
+    SplatContributionCallback<T, DIM> splatContributionCallback = std::bind(&splatContribution<T, DIM, NearestNeighborFinder>,
+                                                                            std::placeholders::_1, std::placeholders::_2,
+                                                                            std::cref(pde), std::cref(queries),
+                                                                            std::cref(nearestNeighborFinder),
+                                                                            normalOffsetForAbsorbingBoundary,
+                                                                            radiusClamp, kernelRegularization,
+                                                                            std::ref(evalPts));
     ReverseWalkOnStars<T, DIM> reverseWalkOnStars(queries, splatContributionCallback);
+
+    // solve the PDE by splatting contributions from walks starting at the input sample points
     reverseWalkOnStars.solve(pde, walkSettings, absorbingBoundarySamplePts, runSingleThreaded, reportProgress);
     reverseWalkOnStars.solve(pde, walkSettings, absorbingBoundaryNormalAlignedSamplePts, runSingleThreaded, reportProgress);
     reverseWalkOnStars.solve(pde, walkSettings, reflectingBoundarySamplePts, runSingleThreaded, reportProgress);

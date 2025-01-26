@@ -245,12 +245,11 @@ void runReverseWalkOnStars(const json& solverConfig,
     std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
 
     zombie::rws::ReverseWalkOnStarsSolver<float, 2, zombie::NearestNeighborFinder<2>> reverseWalkOnStars(
-        pde, queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler,
-        normalOffsetForAbsorbingBoundary, radiusClampForKernels, regularizationForKernels, evalPts);
+                                        absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
 
     // generate boundary and domain samples
     reverseWalkOnStars.generateSamples(absorbingBoundarySampleCount, reflectingBoundarySampleCount,
-                                       domainSampleCount, solveDoubleSided);
+                                       domainSampleCount, normalOffsetForAbsorbingBoundary, solveDoubleSided);
 
     // splat contributions to evaluation points
     zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
@@ -262,7 +261,9 @@ void runReverseWalkOnStars(const json& solverConfig,
                                       ignoreAbsorbingBoundaryContribution,
                                       ignoreReflectingBoundaryContribution,
                                       ignoreSourceContribution, printLogs);
-    reverseWalkOnStars.solve(walkSettings, runSingleThreaded, reportProgress);
+    reverseWalkOnStars.solve(pde, queries, walkSettings, normalOffsetForAbsorbingBoundary,
+                             radiusClampForKernels, regularizationForKernels, evalPts,
+                             true, runSingleThreaded, reportProgress);
     pb.finish();
 
     // save samples counts
@@ -294,9 +295,10 @@ int main(int argc, const char *argv[])
     const json solverConfig = getRequired<json>(config, "solver");
     const json outputConfig = getRequired<json>(config, "output");
     const int gridRes = getRequired<int>(outputConfig, "gridRes");
+    const std::string zombieDirectoryPath = "../"; // local path to zombie directory
 
     // initialize model problem
-    ModelProblem modelProblem(modelProblemConfig);
+    ModelProblem modelProblem(modelProblemConfig, zombieDirectoryPath);
     const std::vector<Vector2>& absorbingBoundaryVertices = modelProblem.absorbingBoundaryVertices;
     const std::vector<Vector2i>& absorbingBoundarySegments = modelProblem.absorbingBoundarySegments;
     const std::vector<Vector2>& reflectingBoundaryVertices = modelProblem.reflectingBoundaryVertices;
@@ -314,7 +316,8 @@ int main(int argc, const char *argv[])
         runWalkOnStars(solverConfig, queries, pde, solveDoubleSided, samplePts);
 
         // save solution to disk
-        saveSolutionGrid(samplePts, queries, pde, solveDoubleSided, outputConfig);
+        saveSolutionGrid(samplePts, queries, pde, solveDoubleSided,
+                         outputConfig, zombieDirectoryPath);
 
     } else if (solverType == "bvc") {
         // create evaluation points on grid to compute solution on
@@ -327,7 +330,8 @@ int main(int argc, const char *argv[])
                                 queries, pde, solveDoubleSided, evalPts);
 
         // save solution to disk
-        saveEvaluationGrid(evalPts, queries, pde, solveDoubleSided, outputConfig);
+        saveEvaluationGrid(evalPts, queries, pde, solveDoubleSided,
+                           outputConfig, zombieDirectoryPath);
 
     } else if (solverType == "rws") {
         // create evaluation points on grid to compute solution on
@@ -341,7 +345,8 @@ int main(int argc, const char *argv[])
                               queries, pde, solveDoubleSided, evalPts, sampleCounts);
 
         // save solution to disk
-        saveEvaluationGrid(evalPts, sampleCounts, queries, pde, solveDoubleSided, outputConfig);
+        saveEvaluationGrid(evalPts, sampleCounts, queries, pde, solveDoubleSided,
+                           outputConfig, zombieDirectoryPath);
 
     } else {
         std::cerr << "Unknown solver type: " << solverType << std::endl;

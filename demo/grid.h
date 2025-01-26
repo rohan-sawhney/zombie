@@ -61,11 +61,11 @@ void createSolutionGrid(std::vector<zombie::SamplePoint<float, 2>>& samplePts,
 
 void saveSolutionGrid(const std::vector<zombie::SamplePoint<float, 2>>& samplePts,
                       const zombie::GeometricQueries<2>& queries,
-                      const zombie::PDE<float, 2>& pde,
-                      const bool solveDoubleSided, const json& config)
+                      const zombie::PDE<float, 2>& pde, bool solveDoubleSided,
+                      const json& config, std::string directoryPath)
 {
     // read settings from config
-    const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
+    const std::string solutionFile = directoryPath + getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const int gridRes = getRequired<int>(config, "gridRes");
     const float boundaryDistanceMask = getOptional<float>(config, "boundaryDistanceMask", 0.0f);
 
@@ -133,11 +133,11 @@ void createEvaluationGrid(std::vector<EvaluationPointType>& evalPts,
 
 void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>>& evalPts,
                         const zombie::GeometricQueries<2>& queries,
-                        const zombie::PDE<float, 2>& pde,
-                        const bool solveDoubleSided, const json& config)
+                        const zombie::PDE<float, 2>& pde, bool solveDoubleSided,
+                        const json& config, std::string directoryPath)
 {
     // read settings from config
-    const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
+    const std::string solutionFile = directoryPath + getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const int gridRes = getRequired<int>(config, "gridRes");
     const float boundaryDistanceMask = getOptional<float>(config, "boundaryDistanceMask", 0.0f);
 
@@ -184,11 +184,11 @@ void saveEvaluationGrid(const std::vector<zombie::bvc::EvaluationPoint<float, 2>
 void saveEvaluationGrid(const std::vector<zombie::rws::EvaluationPoint<float, 2>>& evalPts,
                         const std::vector<int>& sampleCounts,
                         const zombie::GeometricQueries<2>& queries,
-                        const zombie::PDE<float, 2>& pde,
-                        const bool solveDoubleSided, const json& config)
+                        const zombie::PDE<float, 2>& pde, bool solveDoubleSided,
+                        const json& config, std::string directoryPath)
 {
     // read settings from config
-    const std::string solutionFile = getOptional<std::string>(config, "solutionFile", "solution.pfm");
+    const std::string solutionFile = directoryPath + getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const int gridRes = getRequired<int>(config, "gridRes");
     const float boundaryDistanceMask = getOptional<float>(config, "boundaryDistanceMask", 0.0f);
 

@@ -18,7 +18,7 @@
 class ModelProblem {
 public:
     // constructor
-    ModelProblem(const json& config);
+    ModelProblem(const json& config, std::string directoryPath);
 
     // members
     std::vector<Vector2> vertices;
@@ -59,16 +59,16 @@ protected:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-ModelProblem::ModelProblem(const json& config)
+ModelProblem::ModelProblem(const json& config, std::string directoryPath)
 {
     // load config settings
-    std::string geometryFile = getRequired<std::string>(config, "geometry");
+    std::string geometryFile = directoryPath + getRequired<std::string>(config, "geometry");
     bool normalize = getOptional<bool>(config, "normalizeDomain", true);
     bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
-    isReflectingBoundary = Image<1>(getRequired<std::string>(config, "isReflectingBoundary"));
-    absorbingBoundaryValue = Image<1>(getRequired<std::string>(config, "absorbingBoundaryValue"));
-    reflectingBoundaryValue = Image<1>(getRequired<std::string>(config, "reflectingBoundaryValue"));
-    sourceValue = Image<1>(getRequired<std::string>(config, "sourceValue"));
+    isReflectingBoundary = Image<1>(directoryPath + getRequired<std::string>(config, "isReflectingBoundary"));
+    absorbingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryValue"));
+    reflectingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryValue"));
+    sourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
     robinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
     absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
     solveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);

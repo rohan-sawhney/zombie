@@ -272,20 +272,7 @@ enum class EstimationQuantity {
 
 template <typename T, size_t DIM>
 struct SamplePoint {
-    // constructors
-    SamplePoint() {
-        pt = Vector<DIM>::Zero();
-        normal = Vector<DIM>::Zero();
-        directionForDerivative = Vector<DIM>::Zero();
-        directionForDerivative(0) = 1.0f;
-        type = SampleType::InDomain;
-        estimationQuantity = EstimationQuantity::Solution;
-        pdf = 0.0f;
-        distToAbsorbingBoundary = 0.0f;
-        distToReflectingBoundary = 0.0f;
-        estimateBoundaryNormalAligned = false;
-        reset();
-    }
+    // constructor
     SamplePoint(const Vector<DIM>& pt_, const Vector<DIM>& normal_,
                 SampleType type_, EstimationQuantity estimationQuantity_,
                 float pdf_, float distToAbsorbingBoundary_, float distToReflectingBoundary_):
