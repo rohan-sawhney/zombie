@@ -1,6 +1,6 @@
 # Zombie 2D Demo
 
-To run the demo first build the Zombie library:
+To run the C++ demo, first build the Zombie library:
 
 ```bash
 mkdir build
@@ -8,7 +8,7 @@ cd build && cmake ..
 make -j4
 ```
 
-Next you can run either [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/index.html), [Boundary Value Caching](http://www.rohansawhney.io/BoundaryValueCaching.pdf) or [reverse WoSt](https://imaging.cs.cmu.edu/walk_on_stars_robin/) from the build directory
+Next you can run either [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/index.html), [Boundary Value Caching](http://www.rohansawhney.io/BoundaryValueCaching.pdf) or [reverse WoSt](https://imaging.cs.cmu.edu/walk_on_stars_robin/) from the build directory:
 
 ```
 ./demo/demo ../demo/model_problems/engine/wost.json
@@ -17,6 +17,14 @@ Next you can run either [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects
 ```
 
 The results will be saved to `demo/model_problems/engine/solutions`.
+
+To run the Python demo, use the following commands after building the Zombie bindings:
+
+```
+python demo/demo.py --config=demo/model_problems/engine/wost.json
+python demo/demo.py --config=demo/model_problems/engine/bvc.json
+python demo/demo.py --config=demo/model_problems/engine/rws.json
+```
 
 ## Custom Model Problem Creation
 

@@ -10,3 +10,6 @@
 [submodule "deps/tbb"]
 	path = deps/tbb
 	url = https://github.com/uxlfoundation/oneTBB.git
+[submodule "deps/nanobind"]
+	path = deps/nanobind
+	url = https://github.com/wjakob/nanobind.git

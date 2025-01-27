@@ -2,8 +2,20 @@ cmake_minimum_required(VERSION 3.15...3.27)
 project(zombie)
 
 option(ZOMBIE_BUILD_DEMO "Build zombie demo" ON)
+option(ZOMBIE_BUILD_BINDINGS "Build bindings" OFF)
 
 ################################################################################
+if(ZOMBIE_BUILD_BINDINGS)
+    if (CMAKE_VERSION VERSION_LESS 3.18)
+        set(DEV_MODULE Development)
+    else()
+        set(DEV_MODULE Development.Module)
+    endif()
+    find_package(Python 3.8
+        REQUIRED COMPONENTS Interpreter ${DEV_MODULE}
+        OPTIONAL_COMPONENTS Development.SABIModule)
+endif()
+
 # submodule check
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     message(STATUS "Setting build type to 'Release' as none was specified.")
@@ -51,4 +63,10 @@ target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
 # build demo
 if(ZOMBIE_BUILD_DEMO)
     add_subdirectory(demo)
+endif()
+
+# build Python bindings
+if(ZOMBIE_BUILD_BINDINGS)
+    add_subdirectory(deps/nanobind)
+    add_subdirectory(python)
 endif()

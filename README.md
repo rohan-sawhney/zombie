@@ -40,6 +40,21 @@ mkdir build && cd build && cmake ..
 make -j4
 ```
 
+# Python Installation
+
+After cloning Zombie and updating the submodules, build and install the Zombie bindings in the project root directory using:
+
+```
+mkdir build
+pip install . --force-reinstall
+```
+
+The full Zombie API can be viewed in the Python console using:
+```
+>>> import zombie
+>>> help(zombie)
+```
+
 ## Citation
 
 ```
