@@ -49,7 +49,7 @@ public:
     Vector<DIM> origin;
     Vector<DIM> extent;
 
-private:
+protected:
     // returns local coordinates
     Vector<DIM> getLocalCoordinates(const Vector<DIM>& x) const;
 
