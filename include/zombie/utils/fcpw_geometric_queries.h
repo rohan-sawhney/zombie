@@ -11,12 +11,13 @@
 #include <zombie/core/distributions.h>
 #include <cmath>
 #include <fcpw/utilities/scene_loader.h>
-#include <zombie/utils/robin_boundary_bvh/baseline.h>
+#include <zombie/utils/reflectance_boundary_bvh/baseline.h>
 #ifdef FCPW_USE_ENOKI
-    #include <zombie/utils/robin_boundary_bvh/mbvh.h>
+    #include <zombie/utils/reflectance_boundary_bvh/mbvh.h>
 #else
-    #include <zombie/utils/robin_boundary_bvh/bvh.h>
+    #include <zombie/utils/reflectance_boundary_bvh/bvh.h>
 #endif
+#include <zombie/utils/reflectance_boundary_bvh/robin_bounds.h>
 
 namespace zombie {
 
@@ -666,12 +667,12 @@ public:
 
             // update soup and line segment indices
             for (int i = 0; i < L; i++) {
-                RobinLineSegment<PrimitiveBound>& lineSegment = lineSegments[i];
+                ReflectanceLineSegment<PrimitiveBound>& lineSegment = lineSegments[i];
                 lineSegmentPtrs[i] = &lineSegment;
                 lineSegment.soup = &soup;
                 lineSegment.setIndex(i);
-                lineSegment.minRobinCoeff = minRobinCoeffValues[i];
-                lineSegment.maxRobinCoeff = maxRobinCoeffValues[i];
+                lineSegment.minReflectanceCoeff = minRobinCoeffValues[i];
+                lineSegment.maxReflectanceCoeff = maxRobinCoeffValues[i];
 
                 for (int j = 0; j < 2; j++) {
                     int vIndex = (int)indices[i][j];
@@ -685,7 +686,7 @@ public:
 
             // compute adjacent normals for line segment primitives
             for (int i = 0; i < L; i++) {
-                RobinLineSegment<PrimitiveBound>& lineSegment = lineSegments[i];
+                ReflectanceLineSegment<PrimitiveBound>& lineSegment = lineSegments[i];
                 Vector2 n0 = lineSegment.normal(true);
 
                 for (int j = 0; j < 2; j++) {
@@ -718,20 +719,20 @@ public:
             if (buildBvh) {
                 if (enableBvhVectorization) {
 #ifdef FCPW_USE_ENOKI
-                    bvh = createRobinBvh<2, RobinLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub,
-                                                                                         true, true, FCPW_SIMD_WIDTH);
-                    mbvh = createVectorizedRobinBvh<2, RobinLineSegment<PrimitiveBound>, WideNodeBound, NodeBound>(
-                                                                                         bvh.get(), lineSegmentPtrs,
-                                                                                         silhouettePtrsStub, true);
+                    bvh = createReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub,
+                                                                                                     true, true, FCPW_SIMD_WIDTH);
+                    mbvh = createVectorizedReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, WideNodeBound, NodeBound>(
+                                                                                                     bvh.get(), lineSegmentPtrs,
+                                                                                                     silhouettePtrsStub, true);
 #else
-                    bvh = createRobinBvh<2, RobinLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub);
+                    bvh = createReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub);
 #endif
                 } else {
-                    bvh = createRobinBvh<2, RobinLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub);
+                    bvh = createReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub);
                 }
 
             } else {
-                baseline = createRobinBaseline<2, RobinLineSegment<PrimitiveBound>>(lineSegmentPtrs, silhouettePtrsStub);
+                baseline = createReflectanceBaseline<2, ReflectanceLineSegment<PrimitiveBound>>(lineSegmentPtrs, silhouettePtrsStub);
             }
         }
     }
@@ -740,31 +741,31 @@ public:
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
         if (baseline) {
-            baseline->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            baseline->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
 
 #ifdef FCPW_USE_ENOKI
         } else if (mbvh) {
-            mbvh->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            mbvh->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
 #endif
         } else if (bvh) {
-            bvh->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            bvh->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
         }
     }
 
     // members
     typedef RobinLineSegmentBound PrimitiveBound;
     typedef RobinBvhNodeBound<2> NodeBound;
-    std::unique_ptr<RobinBaseline<2, RobinLineSegment<PrimitiveBound>>> baseline;
-    std::unique_ptr<RobinBvh<2, RobinBvhNode<2>, RobinLineSegment<PrimitiveBound>, NodeBound>> bvh;
+    std::unique_ptr<ReflectanceBaseline<2, ReflectanceLineSegment<PrimitiveBound>>> baseline;
+    std::unique_ptr<ReflectanceBvh<2, ReflectanceBvhNode<2>, ReflectanceLineSegment<PrimitiveBound>, NodeBound>> bvh;
 #ifdef FCPW_USE_ENOKI
     typedef RobinMbvhNodeBound<2> WideNodeBound;
-    std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, 2,
-                              RobinLineSegment<PrimitiveBound>,
-                              RobinMbvhNode<2>, WideNodeBound>> mbvh;
+    std::unique_ptr<ReflectanceMbvh<FCPW_SIMD_WIDTH, 2,
+                                    ReflectanceLineSegment<PrimitiveBound>,
+                                    ReflectanceMbvhNode<2>, WideNodeBound>> mbvh;
 #endif
     PolygonSoup<2> soup;
-    std::vector<RobinLineSegment<PrimitiveBound>> lineSegments;
-    std::vector<RobinLineSegment<PrimitiveBound> *> lineSegmentPtrs;
+    std::vector<ReflectanceLineSegment<PrimitiveBound>> lineSegments;
+    std::vector<ReflectanceLineSegment<PrimitiveBound> *> lineSegmentPtrs;
     std::vector<fcpw::SilhouettePrimitive<2> *> silhouettePtrsStub;
 };
 
@@ -811,12 +812,12 @@ public:
 
             // update soup and triangle indices
             for (int i = 0; i < T; i++) {
-                RobinTriangle<PrimitiveBound>& triangle = triangles[i];
+                ReflectanceTriangle<PrimitiveBound>& triangle = triangles[i];
                 trianglePtrs[i] = &triangle;
                 triangle.soup = &soup;
                 triangle.setIndex(i);
-                triangle.minRobinCoeff = minRobinCoeffValues[i];
-                triangle.maxRobinCoeff = maxRobinCoeffValues[i];
+                triangle.minReflectanceCoeff = minRobinCoeffValues[i];
+                triangle.maxReflectanceCoeff = maxRobinCoeffValues[i];
 
                 for (int j = 0; j < 3; j++) {
                     int k = (j + 1)%3;
@@ -846,7 +847,7 @@ public:
 
             // compute adjacent normals for triangle primitives
             for (int i = 0; i < T; i++) {
-                RobinTriangle<PrimitiveBound>& triangle = triangles[i];
+                ReflectanceTriangle<PrimitiveBound>& triangle = triangles[i];
                 Vector3 n0 = triangle.normal(true);
 
                 for (int j = 0; j < 3; j++) {
@@ -890,20 +891,20 @@ public:
             if (buildBvh) {
                 if (enableBvhVectorization) {
 #ifdef FCPW_USE_ENOKI
-                    bvh = createRobinBvh<3, RobinTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub,
-                                                                                      true, true, FCPW_SIMD_WIDTH);
-                    mbvh = createVectorizedRobinBvh<3, RobinTriangle<PrimitiveBound>, WideNodeBound, NodeBound>(
-                                                                                      bvh.get(), trianglePtrs,
-                                                                                      silhouettePtrsStub, true);
+                    bvh = createReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub,
+                                                                                                  true, true, FCPW_SIMD_WIDTH);
+                    mbvh = createVectorizedReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, WideNodeBound, NodeBound>(
+                                                                                                  bvh.get(), trianglePtrs,
+                                                                                                  silhouettePtrsStub, true);
 #else
-                    bvh = createRobinBvh<3, RobinTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub);
+                    bvh = createReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub);
 #endif
                 } else {
-                    bvh = createRobinBvh<3, RobinTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub);
+                    bvh = createReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub);
                 }
 
             } else {
-                baseline = createRobinBaseline<3, RobinTriangle<PrimitiveBound>>(trianglePtrs, silhouettePtrsStub);
+                baseline = createReflectanceBaseline<3, ReflectanceTriangle<PrimitiveBound>>(trianglePtrs, silhouettePtrsStub);
             }
         }
     }
@@ -912,31 +913,31 @@ public:
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
         if (baseline) {
-            baseline->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            baseline->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
 
 #ifdef FCPW_USE_ENOKI
         } else if (mbvh) {
-            mbvh->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            mbvh->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
 #endif
         } else if (bvh) {
-            bvh->updateRobinCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            bvh->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
         }
     }
 
     // members
     typedef RobinTriangleBound PrimitiveBound;
     typedef RobinBvhNodeBound<3> NodeBound;
-    std::unique_ptr<RobinBaseline<3, RobinTriangle<PrimitiveBound>>> baseline;
-    std::unique_ptr<RobinBvh<3, RobinBvhNode<3>, RobinTriangle<PrimitiveBound>, NodeBound>> bvh;
+    std::unique_ptr<ReflectanceBaseline<3, ReflectanceTriangle<PrimitiveBound>>> baseline;
+    std::unique_ptr<ReflectanceBvh<3, ReflectanceBvhNode<3>, ReflectanceTriangle<PrimitiveBound>, NodeBound>> bvh;
 #ifdef FCPW_USE_ENOKI
     typedef RobinMbvhNodeBound<3> WideNodeBound;
-    std::unique_ptr<RobinMbvh<FCPW_SIMD_WIDTH, 3,
-                              RobinTriangle<PrimitiveBound>,
-                              RobinMbvhNode<3>, WideNodeBound>> mbvh;
+    std::unique_ptr<ReflectanceMbvh<FCPW_SIMD_WIDTH, 3,
+                                    ReflectanceTriangle<PrimitiveBound>,
+                                    ReflectanceMbvhNode<3>, WideNodeBound>> mbvh;
 #endif
     PolygonSoup<3> soup;
-    std::vector<RobinTriangle<PrimitiveBound>> triangles;
-    std::vector<RobinTriangle<PrimitiveBound> *> trianglePtrs;
+    std::vector<ReflectanceTriangle<PrimitiveBound>> triangles;
+    std::vector<ReflectanceTriangle<PrimitiveBound> *> trianglePtrs;
     std::vector<fcpw::SilhouettePrimitive<3> *> silhouettePtrsStub;
 };
 
@@ -1201,7 +1202,7 @@ void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler<2>& ro
 {
     using PrimitiveBound = FcpwRobinBoundaryHandler<2>::PrimitiveBound;
     if (robinBoundaryHandler.baseline) {
-        using RobinAggregateType = RobinBaseline<2, RobinLineSegment<PrimitiveBound>>;
+        using RobinAggregateType = ReflectanceBaseline<2, ReflectanceLineSegment<PrimitiveBound>>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.baseline.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
@@ -1210,10 +1211,10 @@ void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler<2>& ro
 
 #ifdef FCPW_USE_ENOKI
     } else if (robinBoundaryHandler.mbvh) {
-        using WideNodeBound = FcpwRobinBoundaryHandler<2>::WideNodeBound;
-        using RobinAggregateType = RobinMbvh<FCPW_SIMD_WIDTH, 2,
-                                             RobinLineSegment<PrimitiveBound>,
-                                             RobinMbvhNode<2>, WideNodeBound>;
+        using RobinAggregateType = ReflectanceMbvh<FCPW_SIMD_WIDTH, 2,
+                                                   ReflectanceLineSegment<PrimitiveBound>,
+                                                   ReflectanceMbvhNode<2>,
+                                                   FcpwRobinBoundaryHandler<2>::WideNodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.mbvh.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
@@ -1221,8 +1222,9 @@ void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler<2>& ro
             reflectingBoundaryAggregate, geometricQueries);
 #endif
     } else if (robinBoundaryHandler.bvh) {
-        using NodeBound = FcpwRobinBoundaryHandler<2>::NodeBound;
-        using RobinAggregateType = RobinBvh<2, RobinBvhNode<2>, RobinLineSegment<PrimitiveBound>, NodeBound>;
+        using RobinAggregateType = ReflectanceBvh<2, ReflectanceBvhNode<2>,
+                                                  ReflectanceLineSegment<PrimitiveBound>,
+                                                  FcpwRobinBoundaryHandler<2>::NodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.bvh.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
@@ -1238,7 +1240,7 @@ void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler<3>& ro
 {
     using PrimitiveBound = FcpwRobinBoundaryHandler<3>::PrimitiveBound;
     if (robinBoundaryHandler.baseline) {
-        using RobinAggregateType = RobinBaseline<3, RobinTriangle<PrimitiveBound>>;
+        using RobinAggregateType = ReflectanceBaseline<3, ReflectanceTriangle<PrimitiveBound>>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.baseline.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
@@ -1247,10 +1249,10 @@ void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler<3>& ro
 
 #ifdef FCPW_USE_ENOKI
     } else if (robinBoundaryHandler.mbvh) {
-        using WideNodeBound = FcpwRobinBoundaryHandler<3>::WideNodeBound;
-        using RobinAggregateType = RobinMbvh<FCPW_SIMD_WIDTH, 3,
-                                             RobinTriangle<PrimitiveBound>,
-                                             RobinMbvhNode<3>, WideNodeBound>;
+        using RobinAggregateType = ReflectanceMbvh<FCPW_SIMD_WIDTH, 3,
+                                                   ReflectanceTriangle<PrimitiveBound>,
+                                                   ReflectanceMbvhNode<3>,
+                                                   FcpwRobinBoundaryHandler<3>::WideNodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.mbvh.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
@@ -1258,8 +1260,9 @@ void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler<3>& ro
             reflectingBoundaryAggregate, geometricQueries);
 #endif
     } else if (robinBoundaryHandler.bvh) {
-        using NodeBound = FcpwRobinBoundaryHandler<3>::NodeBound;
-        using RobinAggregateType = RobinBvh<3, RobinBvhNode<3>, RobinTriangle<PrimitiveBound>, NodeBound>;
+        using RobinAggregateType = ReflectanceBvh<3, ReflectanceBvhNode<3>,
+                                                  ReflectanceTriangle<PrimitiveBound>,
+                                                  FcpwRobinBoundaryHandler<3>::NodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.bvh.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
