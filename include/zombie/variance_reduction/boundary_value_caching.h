@@ -644,10 +644,8 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
         } else {
             if (useFiniteDifferences) {
                 // use biased gradient estimates
-                float signedDistance;
-                Vector<DIM> normal;
-                Vector<DIM> pt = samplePt.pt;
-                queries.projectToAbsorbingBoundary(pt, normal, signedDistance, walkSettings.solveDoubleSided);
+                float signedDistance = queries.computeDistToAbsorbingBoundary(samplePt.pt, true);
+                Vector<DIM> pt = samplePt.pt - signedDistance*samplePt.normal;
 
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         signedDistance > 0.0f;

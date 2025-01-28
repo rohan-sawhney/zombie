@@ -137,6 +137,10 @@ def populate_geometric_queries(model_problem_config, absorbing_boundary_position
         if "solveDoubleSided" in model_problem_config else False
     robin_coeff = model_problem_config["robinCoeff"]\
         if "robinCoeff" in model_problem_config else 0.0
+    use_sdf_for_absorbing_boundary = model_problem_config["useSdfForAbsorbingBoundary"]\
+        if "useSdfForAbsorbingBoundary" in model_problem_config else False
+    sdf_grid_resolution = model_problem_config["sdfGridResolution"]\
+        if "sdfGridResolution" in model_problem_config else 128
 
     # create the geometric queries object
     domain_min = bounding_box[0]
@@ -149,6 +153,18 @@ def populate_geometric_queries(model_problem_config, absorbing_boundary_position
                                                             absorbing_boundary_indices)
     zombie.utils.populate_geometric_queries_for_dirichlet_boundary_2d(dirichlet_boundary_handler,
                                                                       geometric_queries)
+
+    sdf_grid_for_dirichlet_boundary = None
+    if not solve_double_sided and use_sdf_for_absorbing_boundary:
+        # override distance queries to use an SDF grid. The user can also use Zombie to build
+        # an SDF hierarchy for double-sided problems (ommited here for simplicity)
+        sdf_grid_for_dirichlet_boundary = zombie.utils.sdf_grid_2d(domain_min, domain_max)
+        sdf_grid_shape = np.array([sdf_grid_resolution, sdf_grid_resolution], dtype=np.int32)
+        zombie.utils.populate_sdf_grid_2d(dirichlet_boundary_handler,
+                                          sdf_grid_for_dirichlet_boundary,
+                                          sdf_grid_shape)
+        zombie.utils.populate_geometric_queries_for_dirichlet_boundary_2d(sdf_grid_for_dirichlet_boundary,
+                                                                          geometric_queries)
 
     # use a reflecting boundary handler to populate geometric queries for the reflecting boundary
     ignore_candidate_silhouette = zombie.utils.get_ignore_candidate_silhouette_callback(solve_double_sided)
@@ -169,7 +185,8 @@ def populate_geometric_queries(model_problem_config, absorbing_boundary_position
                                                                       branch_traversal_weight,
                                                                       geometric_queries)
 
-        return geometric_queries, dirichlet_boundary_handler, robin_boundary_handler
+        return geometric_queries, sdf_grid_for_dirichlet_boundary,\
+                dirichlet_boundary_handler, robin_boundary_handler
 
     else:
         neumann_boundary_handler = zombie.utils.fcpw_neumann_boundary_handler_2d()
@@ -180,7 +197,8 @@ def populate_geometric_queries(model_problem_config, absorbing_boundary_position
                                                                         branch_traversal_weight,
                                                                         geometric_queries)
 
-        return geometric_queries, dirichlet_boundary_handler, neumann_boundary_handler
+        return geometric_queries, sdf_grid_for_dirichlet_boundary,\
+                dirichlet_boundary_handler, neumann_boundary_handler
 
 ##############################################################################################
 # Walk on Stars solver - note that this solver is a strict generalization of Walk on Spheres,
@@ -720,10 +738,11 @@ if __name__ == "__main__":
                 partition_boundary_mesh(positions, indices, pde.has_reflecting_boundary_conditions)
 
         # populate geometric queries
-        geometric_queries, absorbing_boundary_handler, reflecting_boundary_handler =\
-            populate_geometric_queries(model_problem_config, absorbing_boundary_positions,
-                                       absorbing_boundary_indices, reflecting_boundary_positions,
-                                       reflecting_boundary_indices, bounding_box)
+        geometric_queries, sdf_grid_for_absorbing_boundary,\
+            absorbing_boundary_handler, reflecting_boundary_handler =\
+                populate_geometric_queries(model_problem_config, absorbing_boundary_positions,
+                                           absorbing_boundary_indices, reflecting_boundary_positions,
+                                           reflecting_boundary_indices, bounding_box)
 
         # run the solver
         solver_type = config["solverType"]

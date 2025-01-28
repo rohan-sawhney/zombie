@@ -88,10 +88,8 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                !walkSettings.ignoreAbsorbingBoundaryContribution) {
         // project the walk position to the absorbing boundary and grab the known boundary value
         // NOTE: boundary value should ideally be grabbed before offsetting sample along normal
-        float signedDistance;
-        Vector<DIM> pt = samplePt.pt;
-        Vector<DIM> normal = Vector<DIM>::Zero(); // stub
-        queries.projectToAbsorbingBoundary(pt, normal, signedDistance, walkSettings.solveDoubleSided);
+        float signedDistance = queries.computeDistToAbsorbingBoundary(samplePt.pt, true);
+        Vector<DIM> pt = samplePt.pt - signedDistance*samplePt.normal;
 
         bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                 signedDistance > 0.0f;

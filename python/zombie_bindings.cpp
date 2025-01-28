@@ -31,13 +31,6 @@ NB_MODULE(py, m) {
     bindFloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>(m, "float3");
     bindWalkStateFuncs<zombie::Array<float, 3>, 3>(m, "float3");
 
-    // bind geometry resources
-    bindCoreGeometryStructures<2>(m, "_2d");
-    bindGeometryUtilityFunctions<2>(m, "_2d");
-
-    bindCoreGeometryStructures<3>(m, "_3d");
-    bindGeometryUtilityFunctions<3>(m, "_3d");
-
     // bind dense grid
     bindDenseGrid<bool, 2>(m, "_bool_2d");
     bindDenseGrid<float, 2>(m, "_float_2d");
@@ -46,6 +39,13 @@ NB_MODULE(py, m) {
     bindDenseGrid<bool, 3>(m, "_bool_3d");
     bindDenseGrid<float, 3>(m, "_float_3d");
     bindDenseGrid<zombie::Array<float, 3>, 3>(m, "_float3_3d");
+
+    // bind geometry resources
+    bindCoreGeometryStructures<2>(m, "_2d");
+    bindGeometryUtilityFunctions<2>(m, "_2d");
+
+    bindCoreGeometryStructures<3>(m, "_3d");
+    bindGeometryUtilityFunctions<3>(m, "_3d");
 
     // bind PDE resources
     bindPDEIndicatorCallbacks<2>(m, "_2d");

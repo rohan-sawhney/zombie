@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include <zombie/core/geometric_queries.h>
 #include <zombie/core/distributions.h>
 #include <cmath>
 #include <fcpw/utilities/scene_loader.h>
+#include <zombie/utils/sdf_grid_geometric_queries.h>
 #include <zombie/utils/reflectance_boundary_bvh/baseline.h>
 #ifdef FCPW_USE_ENOKI
     #include <zombie/utils/reflectance_boundary_bvh/mbvh.h>
@@ -117,6 +117,11 @@ public:
 
 std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided = false,
                                                                      float silhouettePrecision = 1e-3f);
+
+template <size_t DIM>
+void populateSdfGrid(FcpwDirichletBoundaryHandler<DIM>& dirichletBoundaryHandler,
+                     SdfGrid<DIM>& sdfGrid, const Vectori<DIM>& gridShape,
+                     bool computeUnsignedDistance=false);
 
 // populates the GeometricQueries structure
 template <size_t DIM>
@@ -950,6 +955,28 @@ std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveD
         // vertex/edge should be ignored as a candidate for silhouette tests.
         return solveDoubleSided ? false : dihedralAngle < silhouettePrecision;
     };
+}
+
+template <size_t DIM>
+void populateSdfGrid(FcpwDirichletBoundaryHandler<DIM>& dirichletBoundaryHandler,
+                     SdfGrid<DIM>& sdfGrid, const Vectori<DIM>& gridShape,
+                     bool computeUnsignedDistance)
+{
+    fcpw::Aggregate<DIM> *absorbingBoundaryAggregate = dirichletBoundaryHandler.scene.getSceneData()->aggregate.get();
+    if (absorbingBoundaryAggregate) {
+        std::function<Array<float, 1>(const Vector<DIM>&)> sdfDataCallback = [absorbingBoundaryAggregate, computeUnsignedDistance](
+                                                                             const Vector<DIM>& x) -> Array<float, 1> {
+            Vector<DIM> queryPt = x;
+            fcpw::Interaction<DIM> interaction;
+            fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
+            absorbingBoundaryAggregate->findClosestPoint(sphere, interaction, !computeUnsignedDistance);
+
+            float distance = computeUnsignedDistance ? interaction.d : interaction.signedDistance(queryPt);
+            return Array<float, 1>(distance);
+        };
+
+        sdfGrid.set(sdfDataCallback, gridShape);
+    }
 }
 
 template <size_t DIM>

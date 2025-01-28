@@ -98,13 +98,13 @@ void bindFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr="");
 template <typename T, size_t DIM>
 void bindWalkStateFuncs(nb::module_ m, std::string typeStr="");
 
+template <typename T, size_t DIM>
+void bindDenseGrid(nb::module_ m, std::string typeStr="");
+
 template <size_t DIM>
 void bindCoreGeometryStructures(nb::module_ m, std::string typeStr="");
 template <size_t DIM>
 void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr=""); // currently valid only for 2D or 3D
-
-template <typename T, size_t DIM>
-void bindDenseGrid(nb::module_ m, std::string typeStr="");
 
 template <size_t DIM>
 void bindPDEIndicatorCallbacks(nb::module_ m, std::string typeStr="");
@@ -490,90 +490,6 @@ void bindCoreGeometryStructures(nb::module_ m, std::string typeStr)
         .def_ro("compute_domain_signed_volume", &zombie::GeometricQueries<DIM>::computeDomainSignedVolume);
 }
 
-template <size_t DIM>
-void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
-{
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
-
-    utils_m.def(("load_boundary_mesh" + typeStr).c_str(),
-               &zombie::loadBoundaryMesh<DIM>,
-               "obj_file"_a, "positions"_a, "indices"_a,
-               "Loads boundary mesh from OBJ file.");
-
-    if (DIM == 3) {
-        utils_m.def(("load_textured_boundary_mesh" + typeStr).c_str(),
-                    &zombie::loadTexturedBoundaryMesh<DIM>,
-                    "obj_file"_a, "positions"_a, "texture_coordinates"_a,
-                    "indices"_a, "texture_indices"_a,
-                    "Loads textured boundary mesh from OBJ file.");
-    }
-
-    utils_m.def(("normalize" + typeStr).c_str(),
-               &zombie::normalize<DIM>,
-               "positions"_a,
-               "Normalizes positions to the unit sphere.");
-
-    utils_m.def(("flip_orientation" + typeStr).c_str(),
-               &zombie::flipOrientation<DIM>,
-               "indices"_a,
-               "Flips the orientation of a boundary mesh.");
-
-    utils_m.def(("compute_bounding_box" + typeStr).c_str(),
-               &zombie::computeBoundingBox<DIM>,
-               "positions"_a, "make_square"_a, "scale"_a,
-               "Computes the bounding box of a boundary mesh.");
-
-    utils_m.def(("add_bounding_box_to_boundary_mesh" + typeStr).c_str(),
-               &zombie::addBoundingBoxToBoundaryMesh<DIM>,
-               "bounding_box_min"_a, "bounding_box_max"_a, "positions"_a, "indices"_a,
-               "Adds a bounding box to a boundary mesh.");
-
-    utils_m.def(("partition_boundary_mesh" + typeStr).c_str(),
-               &zombie::partitionBoundaryMesh<DIM>,
-               "on_reflecting_boundary"_a, "positions"_a, "indices"_a,
-               "absorbing_positions"_a, "absorbing_indices"_a,
-               "reflecting_positions"_a, "reflecting_indices"_a,
-               "Partitions a boundary mesh into absorbing and reflecting parts using primitive centroids---\nthis assumes the boundary discretization is perfectly adapted to the boundary conditions,\nwhich isn't always a correct assumption.");
-
-    nb::class_<zombie::FcpwDirichletBoundaryHandler<DIM>>(utils_m, ("fcpw_dirichlet_boundary_handler" + typeStr).c_str())
-        .def(nb::init<>())
-        .def("build_acceleration_structure", &zombie::FcpwDirichletBoundaryHandler<DIM>::buildAccelerationStructure,
-            "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions and indices.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
-            "positions"_a, "indices"_a, "build_bvh"_a=true, "enable_bvh_vectorization"_a=false);
-
-    nb::class_<zombie::FcpwNeumannBoundaryHandler<DIM>>(utils_m, ("fcpw_neumann_boundary_handler" + typeStr).c_str())
-        .def(nb::init<>())
-        .def("build_acceleration_structure", &zombie::FcpwNeumannBoundaryHandler<DIM>::buildAccelerationStructure,
-            "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions and indices.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
-            "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a, "build_bvh"_a=true, "enable_bvh_vectorization"_a=false);
-
-    nb::class_<zombie::FcpwRobinBoundaryHandler<DIM>>(utils_m, ("fcpw_robin_boundary_handler" + typeStr).c_str())
-        .def(nb::init<>())
-        .def("build_acceleration_structure", &zombie::FcpwRobinBoundaryHandler<DIM>::buildAccelerationStructure,
-            "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions, indices, and min and max coefficients per mesh face.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
-            "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a,
-            "min_robin_coeff_values"_a, "max_robin_coeff_values"_a,
-            "build_bvh"_a=true, "enable_bvh_vectorization"_a=false)
-        .def("update_robin_coefficients", &zombie::FcpwRobinBoundaryHandler<DIM>::updateRobinCoefficients,
-            "updates the Robin coefficients on the boundary mesh.",
-            "min_robin_coeff_values"_a, "max_robin_coeff_values"_a);
-
-    utils_m.def(("populate_geometric_queries_for_dirichlet_boundary" + typeStr).c_str(),
-               &zombie::populateGeometricQueriesForDirichletBoundary<DIM>,
-               "fcpw_dirichlet_boundary_handler"_a, "geometric_queries"_a,
-               "Populates geometric queries for an absorbing Dirichlet boundary.");
-
-    utils_m.def(("populate_geometric_queries_for_neumann_boundary" + typeStr).c_str(),
-               &zombie::populateGeometricQueriesForNeumannBoundary<DIM>,
-               "fcpw_neumann_boundary_handler"_a, "branch_traversal_weight"_a, "geometric_queries"_a,
-               "Populates geometric queries for a reflecting Neumann boundary.");
-
-    utils_m.def(("populate_geometric_queries_for_robin_boundary" + typeStr).c_str(),
-               &zombie::populateGeometricQueriesForRobinBoundary<DIM>,
-               "fcpw_robin_boundary_handler"_a, "branch_traversal_weight"_a, "geometric_queries"_a,
-               "Populates geometric queries for a reflecting Robin boundary.");
-}
-
 template <typename T, size_t DIM>
 void bindDenseGrid(nb::module_ m, std::string typeStr)
 {
@@ -667,6 +583,111 @@ void bindDenseGrid(nb::module_ m, std::string typeStr)
             .def_ro("origin", &zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>::origin)
             .def_ro("extent", &zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>::extent);
     }
+}
+
+template <size_t DIM>
+void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
+{
+    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+
+    utils_m.def(("load_boundary_mesh" + typeStr).c_str(),
+               &zombie::loadBoundaryMesh<DIM>,
+               "obj_file"_a, "positions"_a, "indices"_a,
+               "Loads boundary mesh from OBJ file.");
+
+    if (DIM == 3) {
+        utils_m.def(("load_textured_boundary_mesh" + typeStr).c_str(),
+                    &zombie::loadTexturedBoundaryMesh<DIM>,
+                    "obj_file"_a, "positions"_a, "texture_coordinates"_a,
+                    "indices"_a, "texture_indices"_a,
+                    "Loads textured boundary mesh from OBJ file.");
+    }
+
+    utils_m.def(("normalize" + typeStr).c_str(),
+               &zombie::normalize<DIM>,
+               "positions"_a,
+               "Normalizes positions to the unit sphere.");
+
+    utils_m.def(("flip_orientation" + typeStr).c_str(),
+               &zombie::flipOrientation<DIM>,
+               "indices"_a,
+               "Flips the orientation of a boundary mesh.");
+
+    utils_m.def(("compute_bounding_box" + typeStr).c_str(),
+               &zombie::computeBoundingBox<DIM>,
+               "positions"_a, "make_square"_a, "scale"_a,
+               "Computes the bounding box of a boundary mesh.");
+
+    utils_m.def(("add_bounding_box_to_boundary_mesh" + typeStr).c_str(),
+               &zombie::addBoundingBoxToBoundaryMesh<DIM>,
+               "bounding_box_min"_a, "bounding_box_max"_a, "positions"_a, "indices"_a,
+               "Adds a bounding box to a boundary mesh.");
+
+    utils_m.def(("partition_boundary_mesh" + typeStr).c_str(),
+               &zombie::partitionBoundaryMesh<DIM>,
+               "on_reflecting_boundary"_a, "positions"_a, "indices"_a,
+               "absorbing_positions"_a, "absorbing_indices"_a,
+               "reflecting_positions"_a, "reflecting_indices"_a,
+               "Partitions a boundary mesh into absorbing and reflecting parts using primitive centroids---\nthis assumes the boundary discretization is perfectly adapted to the boundary conditions,\nwhich isn't always a correct assumption.");
+
+    nb::class_<zombie::FcpwDirichletBoundaryHandler<DIM>>(utils_m, ("fcpw_dirichlet_boundary_handler" + typeStr).c_str())
+        .def(nb::init<>())
+        .def("build_acceleration_structure", &zombie::FcpwDirichletBoundaryHandler<DIM>::buildAccelerationStructure,
+            "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions and indices.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
+            "positions"_a, "indices"_a, "build_bvh"_a=true, "enable_bvh_vectorization"_a=false);
+
+    nb::class_<zombie::FcpwNeumannBoundaryHandler<DIM>>(utils_m, ("fcpw_neumann_boundary_handler" + typeStr).c_str())
+        .def(nb::init<>())
+        .def("build_acceleration_structure", &zombie::FcpwNeumannBoundaryHandler<DIM>::buildAccelerationStructure,
+            "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions and indices.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
+            "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a, "build_bvh"_a=true, "enable_bvh_vectorization"_a=false);
+
+    nb::class_<zombie::FcpwRobinBoundaryHandler<DIM>>(utils_m, ("fcpw_robin_boundary_handler" + typeStr).c_str())
+        .def(nb::init<>())
+        .def("build_acceleration_structure", &zombie::FcpwRobinBoundaryHandler<DIM>::buildAccelerationStructure,
+            "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions, indices, and min and max coefficients per mesh face.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
+            "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a,
+            "min_robin_coeff_values"_a, "max_robin_coeff_values"_a,
+            "build_bvh"_a=true, "enable_bvh_vectorization"_a=false)
+        .def("update_robin_coefficients", &zombie::FcpwRobinBoundaryHandler<DIM>::updateRobinCoefficients,
+            "updates the Robin coefficients on the boundary mesh.",
+            "min_robin_coeff_values"_a, "max_robin_coeff_values"_a);
+
+    nb::class_<zombie::SdfGrid<DIM>, zombie::DenseGrid<float, 1, DIM>>(utils_m, ("sdf_grid" + typeStr).c_str())
+        .def(nb::init<const zombie::Vector<DIM>&, const zombie::Vector<DIM>&>(),
+            "grid_min"_a, "grid_max"_a)
+        .def(nb::init<const Eigen::VectorXf&, const zombie::Vectori<DIM>&,
+                      const zombie::Vector<DIM>&, const zombie::Vector<DIM>&>(),
+            "sdf_data"_a, "grid_shape"_a, "grid_min"_a, "grid_max"_a);
+
+    utils_m.def(("populate_sdf_grid" + typeStr).c_str(),
+               &zombie::populateSdfGrid<DIM>,
+               "dirichlet_boundary_handler"_a, "sdf_grid"_a, "grid_shape"_a,
+               "compute_unsigned_distance"_a=false,
+               "Populates an SDF grid from a Dirichlet boundary handler.");
+
+    utils_m.def(("populate_geometric_queries_for_dirichlet_boundary" + typeStr).c_str(),
+               nb::overload_cast<zombie::FcpwDirichletBoundaryHandler<DIM>&,
+                                 zombie::GeometricQueries<DIM>&>(
+               &zombie::populateGeometricQueriesForDirichletBoundary<DIM>),
+               "fcpw_dirichlet_boundary_handler"_a, "geometric_queries"_a,
+               "Populates geometric queries for an absorbing Dirichlet boundary.");
+
+    utils_m.def(("populate_geometric_queries_for_dirichlet_boundary" + typeStr).c_str(),
+               nb::overload_cast<const zombie::SdfGrid<DIM>&, zombie::GeometricQueries<DIM>&>(
+               &zombie::populateGeometricQueriesForDirichletBoundary<zombie::SdfGrid<DIM>, DIM>),
+               "sdf_grid"_a, "geometric_queries"_a,
+               "Populates geometric queries for an absorbing Dirichlet boundary.");
+
+    utils_m.def(("populate_geometric_queries_for_neumann_boundary" + typeStr).c_str(),
+               &zombie::populateGeometricQueriesForNeumannBoundary<DIM>,
+               "fcpw_neumann_boundary_handler"_a, "branch_traversal_weight"_a, "geometric_queries"_a,
+               "Populates geometric queries for a reflecting Neumann boundary.");
+
+    utils_m.def(("populate_geometric_queries_for_robin_boundary" + typeStr).c_str(),
+               &zombie::populateGeometricQueriesForRobinBoundary<DIM>,
+               "fcpw_robin_boundary_handler"_a, "branch_traversal_weight"_a, "geometric_queries"_a,
+               "Populates geometric queries for a reflecting Robin boundary.");
 }
 
 template <size_t DIM>

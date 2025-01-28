@@ -45,6 +45,7 @@ protected:
     void populateGeometricQueries();
 
     // members
+    std::unique_ptr<zombie::SdfGrid<2>> sdfGridForAbsorbingBoundary;
     zombie::FcpwDirichletBoundaryHandler<2> absorbingBoundaryHandler;
     zombie::FcpwNeumannBoundaryHandler<2> reflectingNeumannBoundaryHandler;
     zombie::FcpwRobinBoundaryHandler<2> reflectingRobinBoundaryHandler;
@@ -54,12 +55,15 @@ protected:
     Image<1> reflectingBoundaryValue;
     Image<1> sourceValue;
     float robinCoeff, absorptionCoeff;
+    bool useSdfForAbsorbingBoundary;
+    int sdfGridResolution;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-ModelProblem::ModelProblem(const json& config, std::string directoryPath)
+ModelProblem::ModelProblem(const json& config, std::string directoryPath):
+sdfGridForAbsorbingBoundary(nullptr)
 {
     // load config settings
     std::string geometryFile = directoryPath + getRequired<std::string>(config, "geometry");
@@ -73,6 +77,8 @@ ModelProblem::ModelProblem(const json& config, std::string directoryPath)
     absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
     solveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
     queries.domainIsWatertight = getOptional<bool>(config, "IsWatertightDomain", true);
+    useSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);
+    sdfGridResolution = getOptional<int>(config, "sdfGridResolution", 128);
 
     // load boundary mesh, build acceleration structures and set geometric queries and PDE inputs
     loadOBJ(geometryFile, normalize, flipOrientation);
@@ -135,6 +141,15 @@ void ModelProblem::populateGeometricQueries()
     // build acceleration structure and populate geometric queries for absorbing boundary
     absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryVertices, absorbingBoundarySegments);
     zombie::populateGeometricQueriesForDirichletBoundary<2>(absorbingBoundaryHandler, queries);
+
+    if (!solveDoubleSided && useSdfForAbsorbingBoundary) {
+        // override distance queries to use an SDF grid. The user can also use Zombie to build
+        // an SDF hierarchy for double-sided problems (ommited here for simplicity)
+        sdfGridForAbsorbingBoundary = std::make_unique<zombie::SdfGrid<2>>(queries.domainMin, queries.domainMax);
+        zombie::Vector2i sdfGridShape = zombie::Vector2i::Constant(sdfGridResolution);
+        zombie::populateSdfGrid<2>(absorbingBoundaryHandler, *sdfGridForAbsorbingBoundary, sdfGridShape);
+        zombie::populateGeometricQueriesForDirichletBoundary<zombie::SdfGrid<2>, 2>(*sdfGridForAbsorbingBoundary, queries);
+    }
 
     // build acceleration structure and populate geometric queries for reflecting boundary
     std::function<bool(float, int)> ignoreCandidateSilhouette = zombie::getIgnoreCandidateSilhouetteCallback(solveDoubleSided);

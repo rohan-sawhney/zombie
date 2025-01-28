@@ -22,7 +22,8 @@
         "reflectingBoundaryValue": "demo/model_problems/engine/data/reflecting_boundary_value.pfm",
         "sourceValue": "demo/model_problems/engine/data/source_value.pfm",
         "robinCoeff": 0.0,
-        "absorptionCoeff": 0.0
+        "absorptionCoeff": 0.0,
+        "useSdfForAbsorbingBoundary": false
     },
     "output": {
         "solutionFile": "demo/model_problems/engine/solutions/bvc.pfm",
