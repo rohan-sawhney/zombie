@@ -42,7 +42,7 @@ make -j4
 
 # Python Installation
 
-After cloning Zombie and updating the submodules, build and install the Zombie bindings in the project root directory using:
+After cloning Zombie and updating the submodules, build and install the Python bindings in the project root directory using:
 
 ```
 mkdir build
