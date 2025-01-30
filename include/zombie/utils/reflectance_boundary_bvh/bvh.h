@@ -22,8 +22,8 @@ struct ReflectanceBvhNode {
         int secondChildOffset;
     };
     int nReferences;
-    float minReflectanceCoeff;
-    float maxReflectanceCoeff;
+    float minReflectanceBound;
+    float maxReflectanceBound;
 };
 
 template<typename PrimitiveBound,
@@ -44,9 +44,9 @@ public:
     // refits the bvh
     void refit();
 
-    // updates reflectance coefficient for each primitive and node
-    void updateReflectanceCoefficients(const std::vector<float>& minCoeffValues,
-                                       const std::vector<float>& maxCoeffValues);
+    // updates reflectance bounds for each primitive and node
+    void updateReflectanceBounds(const std::vector<float>& minBoundValues,
+                                 const std::vector<float>& maxBoundValues);
 
     // computes the squared reflectance star radius
     int computeSquaredStarRadius(BoundingSphere<DIM>& s,
@@ -54,7 +54,7 @@ public:
                                  float silhouettePrecision) const;
 
 protected:
-    // assigns geometric data (e.g. cones and reflectance coeffs) to nodes
+    // assigns geometric data (e.g. cones and reflectance bounds) to nodes
     void assignGeometricDataToNodes(const std::function<bool(float, int)>& ignoreSilhouette);
 
     // checks whether the node should be visited during traversal
@@ -78,12 +78,12 @@ inline void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType 
                                                 const std::vector<Vector<DIM>>& primitiveNormals,
                                                 std::vector<NodeType>& flatTree, int start, int end)
 {
-    // compute bounding cone axis and min and max reflectance coefficients for node
+    // compute bounding cone axis and min and max reflectance bounds for node
     BoundingCone<DIM> cone;
     NodeType& node(flatTree[start]);
     Vector<DIM> centroid = node.box.centroid();
-    float minReflectanceCoeff = maxFloat;
-    float maxReflectanceCoeff = minFloat;
+    float minReflectanceBound = maxFloat;
+    float maxReflectanceBound = minFloat;
     bool allPrimitivesHaveAdjacentFaces = true;
 
     for (int i = start; i < end; i++) {
@@ -94,8 +94,8 @@ inline void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType 
             const PrimitiveType *prim = primitives[referenceIndex];
 
             cone.axis += primitiveNormals[referenceIndex];
-            minReflectanceCoeff = std::min(minReflectanceCoeff, prim->minReflectanceCoeff);
-            maxReflectanceCoeff = std::max(maxReflectanceCoeff, prim->maxReflectanceCoeff);
+            minReflectanceBound = std::min(minReflectanceBound, prim->minReflectanceBound);
+            maxReflectanceBound = std::max(maxReflectanceBound, prim->maxReflectanceBound);
             for (int k = 0; k < DIM; k++) {
                 Vector<DIM> p = Vector<DIM>::Zero();
                 if (DIM == 2) {
@@ -114,8 +114,8 @@ inline void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType 
     }
 
     // compute bounding cone angle
-    node.minReflectanceCoeff = minReflectanceCoeff;
-    node.maxReflectanceCoeff = maxReflectanceCoeff;
+    node.minReflectanceBound = minReflectanceBound;
+    node.maxReflectanceBound = maxReflectanceBound;
 
     if (!allPrimitivesHaveAdjacentFaces) {
         node.cone.halfAngle = M_PI;
@@ -198,7 +198,7 @@ Bvh<DIM, NodeType, PrimitiveType, SilhouettePrimitive<DIM>>(costHeuristic_, prim
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
     sortPositions_(BvhBase::flatTree, BvhBase::primitives);
 
-    // assigns geometric data (i.e., cones and reflectance coefficients) to nodes
+    // assigns geometric data (i.e., cones and reflectance bounds) to nodes
     assignGeometricDataToNodes({});
 }
 
@@ -313,55 +313,55 @@ inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::refit()
 }
 
 template<size_t DIM, typename NodeType, typename PrimitiveType>
-inline std::pair<float, float> updateReflectanceCoefficientsRecursive(const std::vector<PrimitiveType *>& primitives,
-                                                                      std::vector<NodeType>& flatTree, int nodeIndex)
+inline std::pair<float, float> updateReflectanceBoundsRecursive(const std::vector<PrimitiveType *>& primitives,
+                                                                std::vector<NodeType>& flatTree, int nodeIndex)
 {
     NodeType& node(flatTree[nodeIndex]);
-    node.minReflectanceCoeff = maxFloat;
-    node.maxReflectanceCoeff = minFloat;
+    node.minReflectanceBound = maxFloat;
+    node.maxReflectanceBound = minFloat;
 
     if (node.nReferences == 0) { // not a leaf
-        std::pair<float, float> minMaxReflectanceCoeffsLeft =
-            updateReflectanceCoefficientsRecursive<DIM, NodeType, PrimitiveType>(
+        std::pair<float, float> minMaxReflectanceBoundsLeft =
+            updateReflectanceBoundsRecursive<DIM, NodeType, PrimitiveType>(
                 primitives, flatTree, nodeIndex + 1);
-        std::pair<float, float> minMaxReflectanceCoeffsRight =
-            updateReflectanceCoefficientsRecursive<DIM, NodeType, PrimitiveType>(
+        std::pair<float, float> minMaxReflectanceBoundssRight =
+            updateReflectanceBoundsRecursive<DIM, NodeType, PrimitiveType>(
                 primitives, flatTree, nodeIndex + node.secondChildOffset);
 
-        node.minReflectanceCoeff = std::min(minMaxReflectanceCoeffsLeft.first, minMaxReflectanceCoeffsRight.first);
-        node.maxReflectanceCoeff = std::max(minMaxReflectanceCoeffsLeft.second, minMaxReflectanceCoeffsRight.second);
+        node.minReflectanceBound = std::min(minMaxReflectanceBoundsLeft.first, minMaxReflectanceBoundssRight.first);
+        node.maxReflectanceBound = std::max(minMaxReflectanceBoundsLeft.second, minMaxReflectanceBoundssRight.second);
 
     } else { // leaf
         for (int i = 0; i < node.nReferences; i++) {
             int referenceIndex = node.referenceOffset + i;
             const PrimitiveType *prim = primitives[referenceIndex];
 
-            node.minReflectanceCoeff = std::min(node.minReflectanceCoeff, prim->minReflectanceCoeff);
-            node.maxReflectanceCoeff = std::max(node.maxReflectanceCoeff, prim->maxReflectanceCoeff);
+            node.minReflectanceBound = std::min(node.minReflectanceBound, prim->minReflectanceBound);
+            node.maxReflectanceBound = std::max(node.maxReflectanceBound, prim->maxReflectanceBound);
         }
     }
 
-    return std::make_pair(node.minReflectanceCoeff, node.maxReflectanceCoeff);
+    return std::make_pair(node.minReflectanceBound, node.maxReflectanceBound);
 }
 
 template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
-inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::updateReflectanceCoefficients(const std::vector<float>& minCoeffValues,
-                                                                                                   const std::vector<float>& maxCoeffValues)
+inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::updateReflectanceBounds(const std::vector<float>& minBoundValues,
+                                                                                             const std::vector<float>& maxBoundValues)
 {
-    // update reflectance coefficients for primitives
+    // update reflectance bounds for primitives
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
     int nNodes = (int)BvhBase::flatTree.size();
     int nPrimitives = (int)BvhBase::primitives.size();
     for (int p = 0; p < nPrimitives; p++) {
         PrimitiveType *prim = BvhBase::primitives[p];
 
-        prim->minReflectanceCoeff = minCoeffValues[prim->getIndex()];
-        prim->maxReflectanceCoeff = maxCoeffValues[prim->getIndex()];
+        prim->minReflectanceBound = minBoundValues[prim->getIndex()];
+        prim->maxReflectanceBound = maxBoundValues[prim->getIndex()];
     }
 
-    // update reflectance coefficients for nodes
+    // update reflectance bounds for nodes
     if (nNodes > 0) {
-        updateReflectanceCoefficientsRecursive<DIM, NodeType, PrimitiveType>(
+        updateReflectanceBoundsRecursive<DIM, NodeType, PrimitiveType>(
             BvhBase::primitives, BvhBase::flatTree, 0);
     }
 }
@@ -376,7 +376,7 @@ inline bool ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(c
     hasSilhouette = true;
 
     if (node.box.overlap(s, r2MinBound, r2MaxBound)) {
-        if (node.minReflectanceCoeff < maxFloat - epsilon) { // early out for perfectly absorbing case
+        if (node.minReflectanceBound < maxFloat - epsilon) { // early out for perfectly absorbing case
             // perform silhouette test for reflecting boundaries
             float maximalAngles[2];
             if (node.cone.overlap(s.c, node.box, r2MinBound, maximalAngles[0], maximalAngles[1])) {
@@ -384,7 +384,7 @@ inline bool ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(c
 
             } else {
                 hasSilhouette = false;
-                if (node.maxReflectanceCoeff > epsilon) {
+                if (node.maxReflectanceBound > epsilon) {
                     // Reflectance case: compute radius bounds
                     float rMin = std::sqrt(r2MinBound);
                     float rMax = std::sqrt(r2MaxBound);
@@ -392,10 +392,10 @@ inline bool ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(c
                                                     std::fabs(std::cos(maximalAngles[1])));
                     float maxAbsCosTheta = 1.0f; // assume maxCosTheta = 1.0f for simplicity
                     r2MinBound = NodeBound::computeMinSquaredStarRadiusBound(
-                        rMin, rMax, node.minReflectanceCoeff, node.maxReflectanceCoeff,
+                        rMin, rMax, node.minReflectanceBound, node.maxReflectanceBound,
                         minAbsCosTheta, maxAbsCosTheta);
                     r2MaxBound = NodeBound::computeMaxSquaredStarRadiusBound(
-                        rMin, rMax, node.minReflectanceCoeff, node.maxReflectanceCoeff,
+                        rMin, rMax, node.minReflectanceBound, node.maxReflectanceBound,
                         minAbsCosTheta, maxAbsCosTheta);
 
                 } else {

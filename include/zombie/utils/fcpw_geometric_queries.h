@@ -676,8 +676,8 @@ public:
                 lineSegmentPtrs[i] = &lineSegment;
                 lineSegment.soup = &soup;
                 lineSegment.setIndex(i);
-                lineSegment.minReflectanceCoeff = minRobinCoeffValues[i];
-                lineSegment.maxReflectanceCoeff = maxRobinCoeffValues[i];
+                lineSegment.minReflectanceBound = minRobinCoeffValues[i];
+                lineSegment.maxReflectanceBound = maxRobinCoeffValues[i];
 
                 for (int j = 0; j < 2; j++) {
                     int vIndex = (int)indices[i][j];
@@ -746,14 +746,14 @@ public:
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
         if (baseline) {
-            baseline->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            baseline->updateReflectanceBounds(minRobinCoeffValues, maxRobinCoeffValues);
 
 #ifdef FCPW_USE_ENOKI
         } else if (mbvh) {
-            mbvh->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            mbvh->updateReflectanceBounds(minRobinCoeffValues, maxRobinCoeffValues);
 #endif
         } else if (bvh) {
-            bvh->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            bvh->updateReflectanceBounds(minRobinCoeffValues, maxRobinCoeffValues);
         }
     }
 
@@ -821,8 +821,8 @@ public:
                 trianglePtrs[i] = &triangle;
                 triangle.soup = &soup;
                 triangle.setIndex(i);
-                triangle.minReflectanceCoeff = minRobinCoeffValues[i];
-                triangle.maxReflectanceCoeff = maxRobinCoeffValues[i];
+                triangle.minReflectanceBound = minRobinCoeffValues[i];
+                triangle.maxReflectanceBound = maxRobinCoeffValues[i];
 
                 for (int j = 0; j < 3; j++) {
                     int k = (j + 1)%3;
@@ -918,14 +918,14 @@ public:
     void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
         if (baseline) {
-            baseline->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            baseline->updateReflectanceBounds(minRobinCoeffValues, maxRobinCoeffValues);
 
 #ifdef FCPW_USE_ENOKI
         } else if (mbvh) {
-            mbvh->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            mbvh->updateReflectanceBounds(minRobinCoeffValues, maxRobinCoeffValues);
 #endif
         } else if (bvh) {
-            bvh->updateReflectanceCoefficients(minRobinCoeffValues, maxRobinCoeffValues);
+            bvh->updateReflectanceBounds(minRobinCoeffValues, maxRobinCoeffValues);
         }
     }
 

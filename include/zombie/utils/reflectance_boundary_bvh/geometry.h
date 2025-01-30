@@ -27,8 +27,8 @@ public:
 
     // members
     Vector2 n[2];
-    float minReflectanceCoeff;
-    float maxReflectanceCoeff;
+    float minReflectanceBound;
+    float maxReflectanceBound;
     bool hasAdjacentFace[2];
     bool ignoreAdjacentFace[2];
     typedef PrimitiveBound Bound;
@@ -48,8 +48,8 @@ public:
 
     // members
     Vector3 n[3];
-    float minReflectanceCoeff;
-    float maxReflectanceCoeff;
+    float minReflectanceBound;
+    float maxReflectanceBound;
     bool hasAdjacentFace[3];
     bool ignoreAdjacentFace[3];
     typedef PrimitiveBound Bound;
@@ -87,8 +87,8 @@ template<typename PrimitiveBound>
 inline ReflectanceLineSegment<PrimitiveBound>::ReflectanceLineSegment():
 LineSegment(),
 n{Vector2::Zero(), Vector2::Zero()},
-minReflectanceCoeff(minFloat),
-maxReflectanceCoeff(maxFloat)
+minReflectanceBound(minFloat),
+maxReflectanceBound(maxFloat)
 {
     for (size_t i = 0; i < 2; ++i) {
         hasAdjacentFace[i] = false;
@@ -112,7 +112,7 @@ inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(Bou
     float closestPtDist2 = closestPtDist*closestPtDist;
     if (closestPtDist2 > s.r2) return;
 
-    if (maxReflectanceCoeff < maxFloat - epsilon) {
+    if (maxReflectanceBound < maxFloat - epsilon) {
         // perform silhouette tests for reflecting boundaries
         Vector2 n0 = normal(true);
         Vector2 viewDirClosest = s.c - closestPt;
@@ -143,7 +143,7 @@ inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(Bou
             }
         }
 
-        if (maxReflectanceCoeff > epsilon) {
+        if (maxReflectanceBound > epsilon) {
             // [Reflectance Case]: shrink radius to ensure bounded reflectance
             if (closestPtDist < epsilon) {
                 s.r2 = closestPtDist;
@@ -152,7 +152,7 @@ inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(Bou
                 Vector2 farthestPt;
                 float farthestPtDist = findFarthestPointLineSegment(pa, pb, s.c, farthestPt);
                 Vector2 viewDirFarthest = s.c - farthestPt;
-                PrimitiveBound::computeSquaredStarRadiusBound(s, maxReflectanceCoeff, viewDirClosest, closestPtDist,
+                PrimitiveBound::computeSquaredStarRadiusBound(s, maxReflectanceBound, viewDirClosest, closestPtDist,
                                                               viewDirFarthest, farthestPtDist, pa, n0);
             }
 
@@ -190,8 +190,8 @@ template<typename PrimitiveBound>
 inline ReflectanceTriangle<PrimitiveBound>::ReflectanceTriangle():
 Triangle(),
 n{Vector3::Zero(), Vector3::Zero(), Vector3::Zero()},
-minReflectanceCoeff(minFloat),
-maxReflectanceCoeff(maxFloat)
+minReflectanceBound(minFloat),
+maxReflectanceBound(maxFloat)
 {
     for (size_t i = 0; i < 3; ++i) {
         hasAdjacentFace[i] = false;
@@ -216,7 +216,7 @@ inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(Boundi
     float closestPtDist2 = closestPtDist*closestPtDist;
     if (closestPtDist2 > s.r2) return;
 
-    if (maxReflectanceCoeff < maxFloat - epsilon) {
+    if (maxReflectanceBound < maxFloat - epsilon) {
         // perform silhouette tests for reflecting boundaries
         Vector3 n0 = normal(true);
         Vector3 viewDirClosest = s.c - closestPt;
@@ -244,7 +244,7 @@ inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(Boundi
             }
         }
 
-        if (maxReflectanceCoeff > epsilon) {
+        if (maxReflectanceBound > epsilon) {
             // [Reflectance Case]: shrink radius to ensure bounded reflectance
             if (closestPtDist < epsilon) {
                 s.r2 = closestPtDist;
@@ -253,7 +253,7 @@ inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(Boundi
                 Vector3 farthestPt;
                 float farthestPtDist = findFarthestPointTriangle(pa, pb, pc, s.c, farthestPt);
                 Vector3 viewDirFarthest = s.c - farthestPt;
-                PrimitiveBound::computeSquaredStarRadiusBound(s, maxReflectanceCoeff, viewDirClosest, closestPtDist,
+                PrimitiveBound::computeSquaredStarRadiusBound(s, maxReflectanceBound, viewDirClosest, closestPtDist,
                                                               viewDirFarthest, farthestPtDist, pa, n0);
             }
 
@@ -349,7 +349,7 @@ struct ReflectanceWidePrimitive {
     // computes the squared reflectance sphere radius
     static FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
         const VectorP<WIDTH, DIM> *p, const VectorP<WIDTH, DIM> *n,
-        const FloatP<WIDTH>& maxReflectanceCoeff, const MaskP<WIDTH> *hasAdjacentFace,
+        const FloatP<WIDTH>& maxReflectanceBound, const MaskP<WIDTH> *hasAdjacentFace,
         const MaskP<WIDTH> *ignoreAdjacentFace, const enokiVector<DIM>& sc, float sr2,
         bool flipNormalOrientation, float silhouettePrecision, bool performSilhouetteTests=true) {
         std::cerr << "computeSquaredStarRadiusWidePrimitive(): WIDTH: " << WIDTH << " DIM: " << DIM << " not supported" << std::endl;
@@ -364,7 +364,7 @@ struct ReflectanceWidePrimitive<WIDTH, 2, PrimitiveBound> {
     // computes the squared reflectance sphere radius
     static FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
         const Vector2P<WIDTH> *p, const Vector2P<WIDTH> *n,
-        const FloatP<WIDTH>& maxReflectanceCoeff, const MaskP<WIDTH> *hasAdjacentFace,
+        const FloatP<WIDTH>& maxReflectanceBound, const MaskP<WIDTH> *hasAdjacentFace,
         const MaskP<WIDTH> *ignoreAdjacentFace, const enokiVector2& sc, float sr2,
         bool flipNormalOrientation, float silhouettePrecision, bool performSilhouetteTests=true) {
         const Vector2P<WIDTH>& pa = p[0];
@@ -380,7 +380,7 @@ struct ReflectanceWidePrimitive<WIDTH, 2, PrimitiveBound> {
 
         if (enoki::any(active)) {
             // [Perfectly absorbing case]: dist to closest point on line segment
-            MaskP<WIDTH> isNotPerfectlyAbsorbing = maxReflectanceCoeff < maxFloat - epsilon;
+            MaskP<WIDTH> isNotPerfectlyAbsorbing = maxReflectanceBound < maxFloat - epsilon;
             enoki::masked(r2, active && ~isNotPerfectlyAbsorbing) = enoki::min(r2, closestPtDist2);
 
             MaskP<WIDTH> activeNotPerfectlyAbsorbing = active && isNotPerfectlyAbsorbing;
@@ -416,7 +416,7 @@ struct ReflectanceWidePrimitive<WIDTH, 2, PrimitiveBound> {
                 }
 
                 // [Reflectance Case]: shrink radius to ensure bounded reflectance
-                MaskP<WIDTH> isNotPerfectlyReflecting = maxReflectanceCoeff > epsilon;
+                MaskP<WIDTH> isNotPerfectlyReflecting = maxReflectanceBound > epsilon;
                 MaskP<WIDTH> activeReflectance = activeNotPerfectlyAbsorbing && isNotPerfectlyReflecting;
                 MaskP<WIDTH> activeOnReflectanceBoundary = activeReflectance && closestPtDist < epsilon;
                 if (enoki::any(activeOnReflectanceBoundary)) {
@@ -427,7 +427,7 @@ struct ReflectanceWidePrimitive<WIDTH, 2, PrimitiveBound> {
                     Vector2P<WIDTH> farthestPt;
                     FloatP<WIDTH> farthestPtDist = findFarthestPointWideLineSegment<WIDTH>(pa, pb, sc, farthestPt);
                     Vector2P<WIDTH> viewDirFarthest = sc - farthestPt;
-                    PrimitiveBound::computeSquaredStarRadiusBound(sc, r2, maxReflectanceCoeff, activeReflectance,
+                    PrimitiveBound::computeSquaredStarRadiusBound(sc, r2, maxReflectanceBound, activeReflectance,
                                                                   viewDirClosest, closestPtDist, closestPtDist2,
                                                                   viewDirFarthest, farthestPtDist, pa, n0);
                 }
@@ -443,7 +443,7 @@ struct ReflectanceWidePrimitive<WIDTH, 3, PrimitiveBound> {
     // computes the squared reflectance sphere radius
     static FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
         const Vector3P<WIDTH> *p, const Vector3P<WIDTH> *n,
-        const FloatP<WIDTH>& maxReflectanceCoeff, const MaskP<WIDTH> *hasAdjacentFace,
+        const FloatP<WIDTH>& maxReflectanceBound, const MaskP<WIDTH> *hasAdjacentFace,
         const MaskP<WIDTH> *ignoreAdjacentFace, const enokiVector3& sc, float sr2,
         bool flipNormalOrientation, float silhouettePrecision, bool performSilhouetteTests=true) {
         const Vector3P<WIDTH>& pa = p[0];
@@ -460,7 +460,7 @@ struct ReflectanceWidePrimitive<WIDTH, 3, PrimitiveBound> {
 
         if (enoki::any(active)) {
             // [Perfectly absorbing case]: dist to closest point on triangle
-            MaskP<WIDTH> isNotPerfectlyAbsorbing = maxReflectanceCoeff < maxFloat - epsilon;
+            MaskP<WIDTH> isNotPerfectlyAbsorbing = maxReflectanceBound < maxFloat - epsilon;
             enoki::masked(r2, active && ~isNotPerfectlyAbsorbing) = enoki::min(r2, closestPtDist2);
 
             MaskP<WIDTH> activeNotPerfectlyAbsorbing = active && isNotPerfectlyAbsorbing;
@@ -494,7 +494,7 @@ struct ReflectanceWidePrimitive<WIDTH, 3, PrimitiveBound> {
                 }
 
                 // [Reflectance Case]: shrink radius to ensure bounded reflectance
-                MaskP<WIDTH> isNotPerfectlyReflecting = maxReflectanceCoeff > epsilon;
+                MaskP<WIDTH> isNotPerfectlyReflecting = maxReflectanceBound > epsilon;
                 MaskP<WIDTH> activeReflectance = activeNotPerfectlyAbsorbing && isNotPerfectlyReflecting;
                 MaskP<WIDTH> activeOnReflectanceBoundary = activeReflectance && closestPtDist < epsilon;
                 if (enoki::any(activeOnReflectanceBoundary)) {
@@ -505,7 +505,7 @@ struct ReflectanceWidePrimitive<WIDTH, 3, PrimitiveBound> {
                     Vector3P<WIDTH> farthestPt;
                     FloatP<WIDTH> farthestPtDist = findFarthestPointWideTriangle<WIDTH>(pa, pb, pc, sc, farthestPt);
                     Vector3P<WIDTH> viewDirFarthest = sc - farthestPt;
-                    PrimitiveBound::computeSquaredStarRadiusBound(sc, r2, maxReflectanceCoeff, activeReflectance,
+                    PrimitiveBound::computeSquaredStarRadiusBound(sc, r2, maxReflectanceBound, activeReflectance,
                                                                   viewDirClosest, closestPtDist, closestPtDist2,
                                                                   viewDirFarthest, farthestPtDist, pa, n0);
                 }
