@@ -348,7 +348,7 @@ public:
         return 0.0f;
     }
 
-    // computes the reflactance function for a Robin boundary condition
+    // computes the reflactance function for Robin boundary conditions
     virtual float reflectance(float r, const Vector<DIM>& dir, const Vector<DIM>& n, float robinCoeff) const {
         return 0.0f;
     }
@@ -480,7 +480,7 @@ public:
         return 1.0f;
     }
 
-    // computes the reflactance function for a Robin boundary condition
+    // computes the reflactance function for Robin boundary conditions
     float reflectance(float r, const Vector2& dir, const Vector2& n, float robinCoeff) const {
         if (robinCoeff > 0.0f) {
             float P = n.dot(dir)/r;
@@ -588,7 +588,7 @@ public:
         return 1.0f;
     }
 
-    // computes the reflactance function for a Robin boundary condition
+    // computes the reflactance function for Robin boundary conditions
     float reflectance(float r, const Vector3& dir, const Vector3& n, float robinCoeff) const {
         if (robinCoeff > 0.0f) {
             float r2 = r*r;
@@ -744,7 +744,7 @@ public:
         return poissonKernelDampeningFactor(r);
     }
 
-    // computes the reflactance function for a Robin boundary condition
+    // computes the reflactance function for Robin boundary conditions
     float reflectance(float r, const Vector2& dir, const Vector2& n, float robinCoeff) const {
         float Q = poissonKernelDampeningFactor(r);
         if (robinCoeff > 0.0f) {
@@ -912,7 +912,7 @@ public:
         return poissonKernelDampeningFactor(r);
     }
 
-    // computes the reflactance function for a Robin boundary condition
+    // computes the reflactance function for Robin boundary conditions
     float reflectance(float r, const Vector3& dir, const Vector3& n, float robinCoeff) const {
         float Q = poissonKernelDampeningFactor(r);
         if (robinCoeff > 0.0f) {
