@@ -16,7 +16,7 @@ struct ReflectanceMbvhNode {
                            boxMax(FloatP<FCPW_MBVH_BRANCHING_FACTOR>(minFloat)),
                            coneAxis(FloatP<FCPW_MBVH_BRANCHING_FACTOR>(0.0f)),
                            coneHalfAngle(M_PI), coneRadius(0.0f),
-                           minReflectanceBound(maxFloat), maxReflectanceBound(minFloat),
+                           minCoefficientValue(maxFloat), maxCoefficientValue(minFloat),
                            child(maxInt) {}
 
     // members
@@ -24,15 +24,15 @@ struct ReflectanceMbvhNode {
     VectorP<FCPW_MBVH_BRANCHING_FACTOR, DIM> coneAxis;
     FloatP<FCPW_MBVH_BRANCHING_FACTOR> coneHalfAngle;
     FloatP<FCPW_MBVH_BRANCHING_FACTOR> coneRadius;
-    FloatP<FCPW_MBVH_BRANCHING_FACTOR> minReflectanceBound;
-    FloatP<FCPW_MBVH_BRANCHING_FACTOR> maxReflectanceBound;
+    FloatP<FCPW_MBVH_BRANCHING_FACTOR> minCoefficientValue;
+    FloatP<FCPW_MBVH_BRANCHING_FACTOR> maxCoefficientValue;
     IntP<FCPW_MBVH_BRANCHING_FACTOR> child; // use sign to differentiate between inner and leaf nodes
 };
 
 template<size_t WIDTH, size_t DIM>
 struct MbvhLeafNode {
     // constructor
-    MbvhLeafNode(): maxReflectanceBound(minFloat), primitiveIndex(-1) {
+    MbvhLeafNode(): maxCoefficientValue(minFloat), primitiveIndex(-1) {
         for (size_t i = 0; i < DIM; ++i) {
             positions[i] = VectorP<WIDTH, DIM>(maxFloat);
             normals[i] = VectorP<WIDTH, DIM>(0.0f);
@@ -44,7 +44,7 @@ struct MbvhLeafNode {
     // members
     VectorP<WIDTH, DIM> positions[DIM];
     VectorP<WIDTH, DIM> normals[DIM];
-    FloatP<WIDTH> maxReflectanceBound;
+    FloatP<WIDTH> maxCoefficientValue;
     IntP<WIDTH> primitiveIndex;
     MaskP<WIDTH> hasAdjacentFace[DIM];
     MaskP<WIDTH> ignoreAdjacentFace[DIM];
@@ -68,9 +68,9 @@ public:
     // refits the mbvh
     void refit();
 
-    // updates reflectance bounds for each triangle
-    void updateReflectanceBounds(const std::vector<float>& minBoundValues,
-                                 const std::vector<float>& maxBoundValues);
+    // updates coefficient values for each triangle
+    void updateCoefficientValues(const std::vector<float>& minCoefficientValues,
+                                 const std::vector<float>& maxCoefficientValues);
 
     // computes the squared reflectance star radius
     int computeSquaredStarRadius(BoundingSphere<DIM>& s,
@@ -122,15 +122,15 @@ Mbvh<WIDTH, DIM,
 template<size_t DIM>
 inline void assignGeometricDataToNode(const ReflectanceBvhNode<DIM>& bvhNode, ReflectanceMbvhNode<DIM>& mbvhNode, int index)
 {
-    // assign bvh node's bounding cone and reflectance bounds to mbvh node
+    // assign bvh node's bounding cone and coefficient values to mbvh node
     for (size_t j = 0; j < DIM; j++) {
         mbvhNode.coneAxis[j][index] = bvhNode.cone.axis[j];
     }
 
     mbvhNode.coneHalfAngle[index] = bvhNode.cone.halfAngle;
     mbvhNode.coneRadius[index] = bvhNode.cone.radius;
-    mbvhNode.minReflectanceBound[index] = bvhNode.minReflectanceBound;
-    mbvhNode.maxReflectanceBound[index] = bvhNode.maxReflectanceBound;
+    mbvhNode.minCoefficientValue[index] = bvhNode.minCoefficientValue;
+    mbvhNode.maxCoefficientValue[index] = bvhNode.maxCoefficientValue;
 }
 
 template<typename NodeType, typename LeafNodeType, typename PrimitiveBound>
@@ -150,7 +150,7 @@ inline void populateLeafNode(const NodeType& node,
         const ReflectanceLineSegment<PrimitiveBound> *lineSegment = primitives[referenceIndex];
         LeafNodeType& leafNode = leafNodes[leafIndex];
 
-        leafNode.maxReflectanceBound[w] = lineSegment->maxReflectanceBound;
+        leafNode.maxCoefficientValue[w] = lineSegment->maxCoefficientValue;
         leafNode.primitiveIndex[w] = lineSegment->getIndex();
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 2; j++) {
@@ -181,7 +181,7 @@ inline void populateLeafNode(const NodeType& node,
         const ReflectanceTriangle<PrimitiveBound> *triangle = primitives[referenceIndex];
         LeafNodeType& leafNode = leafNodes[leafIndex];
 
-        leafNode.maxReflectanceBound[w] = triangle->maxReflectanceBound;
+        leafNode.maxCoefficientValue[w] = triangle->maxCoefficientValue;
         leafNode.primitiveIndex[w] = triangle->getIndex();
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -296,11 +296,11 @@ inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::ref
 }
 
 template<size_t WIDTH, size_t DIM, typename NodeType, typename PrimitiveType>
-inline std::pair<float, float> updateReflectanceBoundsRecursive(const std::vector<PrimitiveType *>& primitives,
+inline std::pair<float, float> updateCoefficientValuesRecursive(const std::vector<PrimitiveType *>& primitives,
                                                                 std::vector<NodeType>& flatTree, int nodeIndex)
 {
     NodeType& node(flatTree[nodeIndex]);
-    std::pair<float, float> minMaxReflectanceBounds = std::make_pair(maxFloat, minFloat);
+    std::pair<float, float> minMaxCoefficientValues = std::make_pair(maxFloat, minFloat);
 
     if (node.child[0] < 0) {
         int referenceOffset = node.child[2];
@@ -310,36 +310,36 @@ inline std::pair<float, float> updateReflectanceBoundsRecursive(const std::vecto
             int referenceIndex = referenceOffset + p;
             const PrimitiveType *prim = primitives[referenceIndex];
 
-            minMaxReflectanceBounds.first = std::min(minMaxReflectanceBounds.first, prim->minReflectanceBound);
-            minMaxReflectanceBounds.second = std::max(minMaxReflectanceBounds.second, prim->maxReflectanceBound);
+            minMaxCoefficientValues.first = std::min(minMaxCoefficientValues.first, prim->minCoefficientValue);
+            minMaxCoefficientValues.second = std::max(minMaxCoefficientValues.second, prim->maxCoefficientValue);
         }
 
     } else {
         for (int w = 0; w < FCPW_MBVH_BRANCHING_FACTOR; w++) {
             if (node.child[w] != maxInt) {
-                // compute min and max reflectance bounds for child node
-                std::pair<float, float> childMinMaxReflectanceBounds =
-                    updateReflectanceBoundsRecursive<WIDTH, DIM, NodeType, PrimitiveType>(
+                // compute min and max coefficient values for child node
+                std::pair<float, float> childMinMaxCoefficientValues =
+                    updateCoefficientValuesRecursive<WIDTH, DIM, NodeType, PrimitiveType>(
                         primitives, flatTree, node.child[w]);
 
-                // set reflectance bounds for this node
-                node.minReflectanceBound[w] = childMinMaxReflectanceBounds.first;
-                node.maxReflectanceBound[w] = childMinMaxReflectanceBounds.second;
-                minMaxReflectanceBounds.first = std::min(minMaxReflectanceBounds.first, node.minReflectanceBound[w]);
-                minMaxReflectanceBounds.second = std::max(minMaxReflectanceBounds.second, node.maxReflectanceBound[w]);
+                // set coefficient values for this node
+                node.minCoefficientValue[w] = childMinMaxCoefficientValues.first;
+                node.maxCoefficientValue[w] = childMinMaxCoefficientValues.second;
+                minMaxCoefficientValues.first = std::min(minMaxCoefficientValues.first, node.minCoefficientValue[w]);
+                minMaxCoefficientValues.second = std::max(minMaxCoefficientValues.second, node.maxCoefficientValue[w]);
             }
         }
     }
 
-    return minMaxReflectanceBounds;
+    return minMaxCoefficientValues;
 }
 
 template<size_t WIDTH, size_t DIM,
          typename PrimitiveType,
          typename NodeType,
          typename NodeBound>
-inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::updateReflectanceBounds(const std::vector<float>& minBoundValues,
-                                                                                                     const std::vector<float>& maxBoundValues)
+inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
+                                                                                                     const std::vector<float>& maxCoefficientValues)
 {
     using MbvhBase = Mbvh<WIDTH, DIM,
                           PrimitiveType,
@@ -348,7 +348,7 @@ inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::upd
                           MbvhLeafNode<WIDTH, DIM>,
                           MbvhSilhouetteLeafNode<WIDTH, DIM>>;
 
-    // update reflectance bounds for primitives
+    // update coefficient values for primitives
     for (int i = 0; i < MbvhBase::nNodes; i++) {
         NodeType& node = MbvhBase::flatTree[i];
 
@@ -364,16 +364,16 @@ inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::upd
                 PrimitiveType *prim = MbvhBase::primitives[referenceIndex];
                 MbvhLeafNode<WIDTH, DIM>& leafNode = MbvhBase::leafNodes[leafIndex];
 
-                prim->minReflectanceBound = minBoundValues[prim->getIndex()];
-                prim->maxReflectanceBound = maxBoundValues[prim->getIndex()];
-                leafNode.maxReflectanceBound[w] = prim->maxReflectanceBound;
+                prim->minCoefficientValue = minCoefficientValues[prim->getIndex()];
+                prim->maxCoefficientValue = maxCoefficientValues[prim->getIndex()];
+                leafNode.maxCoefficientValue[w] = prim->maxCoefficientValue;
             }
         }
     }
 
-    // update reflectance bounds for vectorized nodes
+    // update coefficient values for vectorized nodes
     if (MbvhBase::nNodes > 0) {
-        updateReflectanceBoundsRecursive<WIDTH, DIM, NodeType, PrimitiveType>(
+        updateCoefficientValuesRecursive<WIDTH, DIM, NodeType, PrimitiveType>(
             MbvhBase::primitives, MbvhBase::flatTree, 0);
     }
 }
@@ -403,7 +403,7 @@ inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> ReflectanceMbvh<WIDTH, DIM, PrimitiveTy
                                                         r2MinBound, r2MaxBound);
 
     // early out for perfectly absorbing case
-    MaskP<FCPW_MBVH_BRANCHING_FACTOR> isNotPerfectlyAbsorbing = node.minReflectanceBound < maxFloat - epsilon;
+    MaskP<FCPW_MBVH_BRANCHING_FACTOR> isNotPerfectlyAbsorbing = node.minCoefficientValue < maxFloat - epsilon;
     MaskP<FCPW_MBVH_BRANCHING_FACTOR> overlapNotPerfectlyAbsorbingBox = overlapBox && isNotPerfectlyAbsorbing;
     if (enoki::any(overlapNotPerfectlyAbsorbingBox)) {
         // perform cone overlap test
@@ -415,7 +415,7 @@ inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> ReflectanceMbvh<WIDTH, DIM, PrimitiveTy
         enoki::masked(r2MaxBound, hasSilhouettes) = maxFloat;
 
         // update mask for perfectly reflecting case
-        MaskP<FCPW_MBVH_BRANCHING_FACTOR> isNotPerfectlyReflecting = node.maxReflectanceBound > epsilon;
+        MaskP<FCPW_MBVH_BRANCHING_FACTOR> isNotPerfectlyReflecting = node.maxCoefficientValue > epsilon;
         MaskP<FCPW_MBVH_BRANCHING_FACTOR> overlapsPerfectlyReflectingBox = overlapBox && ~isNotPerfectlyReflecting;
         if (enoki::any(overlapsPerfectlyReflectingBox)) {
             enoki::masked(overlapBox, overlapsPerfectlyReflectingBox) = hasSilhouettes;
@@ -431,9 +431,9 @@ inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> ReflectanceMbvh<WIDTH, DIM, PrimitiveTy
                                                                            enoki::abs(enoki::cos(maximalAngles[1])));
             FloatP<FCPW_MBVH_BRANCHING_FACTOR> maxAbsCosTheta = 1.0f; // assume maxCosTheta = 1.0f for simplicity
             enoki::masked(r2MinBound, overlapReflectanceBoxNotCone) = NodeBound::computeMinSquaredStarRadiusBound(
-                rMin, rMax, node.minReflectanceBound, node.maxReflectanceBound, minAbsCosTheta, maxAbsCosTheta);
+                rMin, rMax, node.minCoefficientValue, node.maxCoefficientValue, minAbsCosTheta, maxAbsCosTheta);
             enoki::masked(r2MaxBound, overlapReflectanceBoxNotCone) = NodeBound::computeMaxSquaredStarRadiusBound(
-                rMin, rMax, node.minReflectanceBound, node.maxReflectanceBound, minAbsCosTheta, maxAbsCosTheta);
+                rMin, rMax, node.minCoefficientValue, node.maxCoefficientValue, minAbsCosTheta, maxAbsCosTheta);
         }
     }
 
@@ -538,7 +538,7 @@ inline int ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::comp
                     int leafIndex = leafOffset + l;
                     const MbvhLeafNode<WIDTH, DIM>& leafNode = MbvhBase::leafNodes[leafIndex];
                     FloatP<WIDTH> d2 = ReflectanceWidePrimitive<WIDTH, DIM, typename PrimitiveType::Bound>::computeSquaredStarRadiusWidePrimitive(
-                                                                                        leafNode.positions, leafNode.normals, leafNode.maxReflectanceBound,
+                                                                                        leafNode.positions, leafNode.normals, leafNode.maxCoefficientValue,
                                                                                         leafNode.hasAdjacentFace, leafNode.ignoreAdjacentFace, sc, s.r2,
                                                                                         flipNormalOrientation, silhouettePrecision, currentDist >= 0.0f);
 

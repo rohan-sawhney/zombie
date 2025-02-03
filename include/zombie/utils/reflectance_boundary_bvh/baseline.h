@@ -16,9 +16,9 @@ public:
     ReflectanceBaseline(std::vector<PrimitiveType *>& primitives_,
                         std::vector<SilhouettePrimitive<DIM> *>& silhouettes_);
 
-    // updates reflectance bounds for each triangle
-    void updateReflectanceBounds(const std::vector<float>& minBoundValues,
-                                 const std::vector<float>& maxBoundValues);
+    // updates coefficient values for each triangle
+    void updateCoefficientValues(const std::vector<float>& minCoefficientValues,
+                                 const std::vector<float>& maxCoefficientValues);
 
     // computes the squared reflectance star radius
     int computeSquaredStarRadius(BoundingSphere<DIM>& s,
@@ -43,14 +43,14 @@ Baseline<DIM, PrimitiveType>(primitives_, silhouettes_)
 }
 
 template<size_t DIM, typename PrimitiveType>
-inline void ReflectanceBaseline<DIM, PrimitiveType>::updateReflectanceBounds(const std::vector<float>& minBoundValues,
-                                                                             const std::vector<float>& maxBoundValues)
+inline void ReflectanceBaseline<DIM, PrimitiveType>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
+                                                                             const std::vector<float>& maxCoefficientValues)
 {
     for (int p = 0; p < (int)Baseline<DIM, PrimitiveType>::primitives.size(); p++) {
         PrimitiveType *prim = Baseline<DIM, PrimitiveType>::primitives[p];
 
-        prim->minReflectanceBound = minBoundValues[prim->getIndex()];
-        prim->maxReflectanceBound = maxBoundValues[prim->getIndex()];
+        prim->minCoefficientValue = minCoefficientValues[prim->getIndex()];
+        prim->maxCoefficientValue = maxCoefficientValues[prim->getIndex()];
     }
 }
 
