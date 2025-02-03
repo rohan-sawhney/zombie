@@ -18,7 +18,7 @@ Next you can run either [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects
 
 The results will be saved to `demo/model_problems/engine/solutions`.
 
-To run the Python demo, use the following commands after building the Zombie bindings:
+To run the Python demo, use the following commands from the project root directory after building the Zombie bindings:
 
 ```
 python demo/demo.py --config=demo/model_problems/engine/wost.json
