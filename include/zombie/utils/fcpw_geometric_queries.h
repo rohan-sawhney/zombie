@@ -38,6 +38,9 @@ template <size_t DIM>
 void normalize(std::vector<Vector<DIM>>& positions);
 
 template <size_t DIM>
+void applyShift(const Vector<DIM>& shift, std::vector<Vector<DIM>>& positions);
+
+template <size_t DIM>
 void flipOrientation(std::vector<Vectori<DIM>>& indices);
 
 template <size_t DIM>
@@ -101,8 +104,8 @@ public:
     FcpwRobinBoundaryHandler();
 
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
-    // a set of positions, indices, and min and max coefficients per mesh face. Uses a simple
-    // list of mesh faces for brute-force geometric queries when buildBvh is false.
+    // a set of positions, indices, and min and max absolute coefficient values per mesh face.
+    // Uses a simple list of mesh faces for brute-force geometric queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
                                     const std::vector<Vectori<DIM>>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,
@@ -115,8 +118,8 @@ public:
                                  const std::vector<float>& maxRobinCoeffValues);
 };
 
-std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided = false,
-                                                                     float silhouettePrecision = 1e-3f);
+std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided=false,
+                                                                     float silhouettePrecision=1e-3f);
 
 template <size_t DIM>
 void populateSdfGrid(FcpwDirichletBoundaryHandler<DIM>& dirichletBoundaryHandler,
@@ -136,7 +139,7 @@ void populateGeometricQueriesForRobinBoundary(FcpwRobinBoundaryHandler<DIM>& rob
                                               std::function<float(float)> branchTraversalWeight,
                                               GeometricQueries<DIM>& geometricQueries);
 
-std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist = 1e-2f);
+std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist=1e-2f);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -260,6 +263,14 @@ void normalize(std::vector<Vector<DIM>>& positions)
 }
 
 template <size_t DIM>
+void applyShift(const Vector<DIM>& shift, std::vector<Vector<DIM>>& positions)
+{
+    for (int i = 0; i < (int)positions.size(); i++) {
+        positions[i] += shift;
+    }
+}
+
+template <size_t DIM>
 void flipOrientation(std::vector<Vectori<DIM>>& indices)
 {
     for (int i = 0; i < (int)indices.size(); i++) {
@@ -271,9 +282,17 @@ template <size_t DIM>
 std::pair<Vector<DIM>, Vector<DIM>> computeBoundingBox(const std::vector<Vector<DIM>>& positions,
                                                        bool makeSquare, float scale)
 {
+    int nPositions = (int)positions.size();
+    Vector<DIM> cm = Vector<DIM>::Zero();
+    for (int i = 0; i < nPositions; i++) {
+        cm += positions[i];
+    }
+
+    cm /= nPositions;
     fcpw::BoundingBox<DIM> bbox;
-    for (size_t i = 0; i < positions.size(); i++) {
-        bbox.expandToInclude(positions[i]*scale);
+    for (int i = 0; i < nPositions; i++) {
+        Vector<DIM> p = (positions[i] - cm)*scale + cm;
+        bbox.expandToInclude(p);
     }
 
     if (makeSquare) {
@@ -642,8 +661,8 @@ public:
     }
 
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
-    // a set of positions, indices, and min and max coefficients per mesh face. Uses a simple
-    // list of mesh faces for brute-force geometric queries when buildBvh is false.
+    // a set of positions, indices, and min and max absolute coefficient values per mesh face.
+    // Uses a simple list of mesh faces for brute-force geometric queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
                                     const std::vector<Vector2i>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,
@@ -787,8 +806,8 @@ public:
     }
 
     // builds an FCPW acceleration structure (specifically a bounding volume hierarchy) from
-    // a set of positions, indices, and min and max coefficients per mesh face. Uses a simple
-    // list of mesh faces for brute-force geometric queries when buildBvh is false.
+    // a set of positions, indices, and min and max absolute coefficient values per mesh face.
+    // Uses a simple list of mesh faces for brute-force geometric queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
                                     const std::vector<Vector3i>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,

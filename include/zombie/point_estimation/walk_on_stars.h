@@ -14,6 +14,7 @@
 #pragma once
 
 #include <zombie/point_estimation/common.h>
+#include <queue>
 #include "oneapi/tbb/parallel_for.h"
 
 namespace zombie {
@@ -62,12 +63,19 @@ protected:
                                     const WalkSettings& walkSettings,
                                     const WalkState<T, DIM>& state) const;
 
+    // applies a weight window to a walk based on the current state
+    bool applyWeightWindow(const WalkSettings& walkSettings,
+                           pcg32& sampler, WalkState<T, DIM>& state,
+                           std::queue<WalkState<T, DIM>>& stateQueue) const;
+
     // performs a single reflecting random walk starting at the input point
     WalkCompletionCode walk(const PDE<T, DIM>& pde,
                             const WalkSettings& walkSettings,
-                            float distToAbsorbingBoundary, float firstSphereRadius,
-                            bool flipNormalOrientation, pcg32& sampler,
-                            WalkState<T, DIM>& state) const;
+                            float distToAbsorbingBoundary,
+                            float firstSphereRadius,
+                            bool flipNormalOrientation,
+                            pcg32& sampler, WalkState<T, DIM>& state,
+                            std::queue<WalkState<T, DIM>>& stateQueue) const;
 
     // returns the terminal contribution from the end of the walk
     T getTerminalContribution(WalkCompletionCode code,
@@ -263,23 +271,63 @@ inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& p
             }
 
             bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided && flipNormalOrientation;
-            robinCoeff = pde.robinCoeff(state.currentPt, returnBoundaryNormalAlignedValue);
+            robinCoeff = pde.robinCoeff(state.currentPt, state.currentNormal,
+                                        returnBoundaryNormalAlignedValue);
         }
 
         float reflectance = state.greensFn->reflectance(state.prevDistance, state.prevDirection,
                                                         normal, robinCoeff);
-        return std::clamp(reflectance, 0.0f, 1.0f);
+        float maxReflectance = pde.areRobinCoeffsNonnegative ? 1.0f : 2.0f;
+        return std::clamp(reflectance, 0.0f, maxReflectance);
     }
 
     return state.greensFn->directionSampledPoissonKernel(state.currentPt);
 }
 
 template <typename T, size_t DIM>
+inline bool WalkOnStars<T, DIM>::applyWeightWindow(const WalkSettings& walkSettings,
+                                                   pcg32& sampler, WalkState<T, DIM>& state,
+                                                   std::queue<WalkState<T, DIM>>& stateQueue) const
+{
+    if (state.throughput > walkSettings.splittingThreshold) {
+        // split the walk
+        float throughputLeft = state.throughput - walkSettings.splittingThreshold;
+        state.throughput = walkSettings.splittingThreshold;
+        WalkState<T, DIM> splitState(state.currentPt, state.currentNormal,
+                                     state.prevDirection, state.prevDistance,
+                                     state.throughput, 0, state.onReflectingBoundary);
+
+        while (throughputLeft > walkSettings.splittingThreshold) {
+            throughputLeft -= walkSettings.splittingThreshold;
+            stateQueue.emplace(splitState);
+        }
+
+        if (sampler.nextFloat() < throughputLeft/walkSettings.splittingThreshold) {
+            stateQueue.emplace(splitState);
+        }
+
+    } else if (state.throughput < walkSettings.russianRouletteThreshold) {
+        // terminate the walk using russian roulette
+        float survivalProb = state.throughput/walkSettings.russianRouletteThreshold;
+        if (survivalProb < sampler.nextFloat()) {
+            state.throughput = 0.0f;
+            return true;
+        }
+
+        state.throughput = walkSettings.russianRouletteThreshold;
+    }
+
+    return false;
+}
+
+template <typename T, size_t DIM>
 inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
                                                     const WalkSettings& walkSettings,
-                                                    float distToAbsorbingBoundary, float firstSphereRadius,
-                                                    bool flipNormalOrientation, pcg32& sampler,
-                                                    WalkState<T, DIM>& state) const
+                                                    float distToAbsorbingBoundary,
+                                                    float firstSphereRadius,
+                                                    bool flipNormalOrientation,
+                                                    pcg32& sampler, WalkState<T, DIM>& state,
+                                                    std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     // recursively perform a random walk till it reaches the absorbing boundary
     bool firstStep = true;
@@ -386,17 +434,10 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
             return WalkCompletionCode::EscapedDomain;
         }
 
-        // update the walk throughput and use russian roulette to decide whether to terminate the walk
+        // update the walk throughput and apply a weight window to decide whether to split or terminate the walk
         state.throughput *= computeWalkStepThroughput(pde, walkSettings, state);
-        if (state.throughput < walkSettings.russianRouletteThreshold) {
-            float survivalProb = state.throughput/walkSettings.russianRouletteThreshold;
-            if (survivalProb < sampler.nextFloat()) {
-                state.throughput = 0.0f;
-                return WalkCompletionCode::TerminatedWithRussianRoulette;
-            }
-
-            state.throughput = walkSettings.russianRouletteThreshold;
-        }
+        bool terminateWalk = applyWeightWindow(walkSettings, sampler, state, stateQueue);
+        if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
 
         // update the walk length and break if the max walk length is exceeded
         state.walkLength++;
@@ -410,7 +451,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
 
         // check whether to start applying Tikhonov regularization
         if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
-            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+            state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
         }
 
         // compute the distance to the absorbing boundary
@@ -526,36 +567,64 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
     }
 
     // perform random walks
+    std::queue<WalkState<T, DIM>> stateQueue;
     for (int w = 0; w < nWalks; w++) {
         // initialize the walk state
         WalkState<T, DIM> state(samplePt.pt, currentNormal, prevDirection, prevDistance, 1.0f,
                                 0, samplePt.type == SampleType::OnReflectingBoundary);
 
-        // initialize the greens function
-        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-            state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+        // add the state to the queue
+        stateQueue.emplace(state);
+        int splitsPerformed = -1;
+        T totalContribution = T(0.0f);
+        bool success = false;
 
-        } else {
-            state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
+        while (!stateQueue.empty()) {
+            state = stateQueue.front();
+            stateQueue.pop();
+            splitsPerformed++;
+
+            // initialize the greens function
+            if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+
+            } else {
+                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+            }
+
+            // recompute the distance to the absorbing boundary and the first sphere radius
+            // if splits have been performed
+            float distToAbsorbingBoundary = samplePt.distToAbsorbingBoundary;
+            float firstSphereRadius = samplePt.firstSphereRadius;
+            if (splitsPerformed > 0) {
+                distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(state.currentPt, false);
+                firstSphereRadius = 0.0f;
+            }
+
+            // perform the walk with the dequeued state
+            WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary,
+                                           firstSphereRadius, flipNormalOrientation,
+                                           samplePt.sampler, state, stateQueue);
+
+            if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
+                code == WalkCompletionCode::TerminatedWithRussianRoulette ||
+                code == WalkCompletionCode::ExceededMaxWalkLength) {
+                // compute the walk contribution
+                T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
+                totalContribution += state.throughput*terminalContribution +
+                                     state.totalReflectingBoundaryContribution +
+                                     state.totalSourceContribution;
+
+                // record the walk length
+                samplePt.statistics.addWalkLength(state.walkLength);
+                success = true;
+            }
         }
 
-        // perform walk
-        WalkCompletionCode code = walk(pde, walkSettings, samplePt.distToAbsorbingBoundary,
-                                       samplePt.firstSphereRadius, flipNormalOrientation,
-                                       samplePt.sampler, state);
-
-        if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
-            code == WalkCompletionCode::TerminatedWithRussianRoulette ||
-            code == WalkCompletionCode::ExceededMaxWalkLength) {
-            // compute the walk contribution
-            T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
-            T totalContribution = state.throughput*terminalContribution +
-                                  state.totalReflectingBoundaryContribution +
-                                  state.totalSourceContribution;
-
+        if (success) {
             // update statistics
             samplePt.statistics.addSolutionEstimate(totalContribution);
-            samplePt.statistics.addWalkLength(state.walkLength);
+            samplePt.statistics.addSplits(splitsPerformed);
         }
     }
 }
@@ -584,6 +653,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
     generateStratifiedSamples<DIM - 1>(stratifiedSamples, 2*nWalks, samplePt.sampler);
 
     // perform random walks
+    std::queue<WalkState<T, DIM>> stateQueue;
     for (int w = 0; w < nWalks; w++) {
         // initialize temporary variables for antithetic sampling
         float sourceRadius, sourcePdf, boundaryPdf;
@@ -606,10 +676,10 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
 
             // initialize the greens function
             if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                state.greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
 
             } else {
-                state.greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
+                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
             }
 
             // update the ball center and radius
@@ -666,23 +736,53 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
             state.throughput *= greensFn->poissonKernel()/boundaryPdf;
             Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient(boundaryPt)/(boundaryPdf*state.throughput);
 
-            // compute the distance to the absorbing boundary
-            float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(state.currentPt, false);
-
-            // perform walk
+            // reseed the sampler for antithetic sampling
             samplePt.sampler.seed(seed);
-            WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary, 0.0f,
-                                           false, samplePt.sampler, state);
 
-            if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
-                code == WalkCompletionCode::TerminatedWithRussianRoulette ||
-                code == WalkCompletionCode::ExceededMaxWalkLength) {
-                // compute the walk contribution
-                T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
-                T totalContribution = state.throughput*terminalContribution +
-                                      state.totalReflectingBoundaryContribution +
-                                      state.totalSourceContribution;
+            // add the state to the queue
+            stateQueue.emplace(state);
+            int splitsPerformed = -1;
+            T totalContribution = T(0.0f);
+            bool success = false;
 
+            while (!stateQueue.empty()) {
+                state = stateQueue.front();
+                stateQueue.pop();
+                splitsPerformed++;
+
+                // initialize the greens function
+                if (splitsPerformed > 0) {
+                    if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
+                        state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+
+                    } else {
+                        state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+                    }
+                }
+
+                // compute the distance to the absorbing boundary
+                float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(state.currentPt, false);
+
+                // perform the walk with the dequeued state
+                WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary, 0.0f,
+                                               false, samplePt.sampler, state, stateQueue);
+
+                if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
+                    code == WalkCompletionCode::TerminatedWithRussianRoulette ||
+                    code == WalkCompletionCode::ExceededMaxWalkLength) {
+                    // compute the walk contribution
+                    T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
+                    totalContribution += state.throughput*terminalContribution +
+                                         state.totalReflectingBoundaryContribution +
+                                         state.totalSourceContribution;
+
+                    // record the walk length
+                    samplePt.statistics.addWalkLength(state.walkLength);
+                    success = true;
+                }
+            }
+
+            if (success) {
                 // compute the gradient contribution
                 T boundaryGradientEstimate[DIM];
                 T sourceGradientEstimate[DIM];
@@ -701,7 +801,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                 samplePt.statistics.addFirstSourceContribution(firstSourceContribution);
                 samplePt.statistics.addGradientEstimate(boundaryGradientEstimate, sourceGradientEstimate);
                 samplePt.statistics.addDerivativeContribution(directionalDerivative);
-                samplePt.statistics.addWalkLength(state.walkLength);
+                samplePt.statistics.addSplits(splitsPerformed);
             }
         }
     }

@@ -55,6 +55,8 @@ using FloatNToTypeFunc = std::function<T(const zombie::Vector<DIM>&)>;
 template <typename T, size_t DIM>
 using FloatNBoolToTypeFunc = std::function<T(const zombie::Vector<DIM>&, bool)>;
 template <typename T, size_t DIM>
+using FloatNFloatNBoolToTypeFunc = std::function<T(const zombie::Vector<DIM>&, const zombie::Vector<DIM>&, bool)>;
+template <typename T, size_t DIM>
 using WalkStateToVoidFunc = std::function<void(const zombie::WalkState<T, DIM>&)>;
 template <typename T, size_t DIM>
 using WalkCodeStateToTypeFunc = std::function<T(zombie::WalkCompletionCode, const zombie::WalkState<T, DIM>&)>;
@@ -73,10 +75,12 @@ NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 2>)                           // source
 NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 3>)                           // source
 NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 3>, 2>)         // source
 NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 3>, 3>)         // source
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 2>)                       // computeDistToBoundary, robinCoeff, dirichlet, robin
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 3>)                       // computeDistToBoundary, robinCoeff, dirichlet, robin
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 2>)                       // computeDistToBoundary, dirichlet, robin
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 3>)                       // computeDistToBoundary, dirichlet, robin
 NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>)     // dirichlet, robin
 NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>)     // dirichlet, robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 2>)                 // robinCoeff
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 3>)                 // robinCoeff
 NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 2>)                        // walkStateCallback
 NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 3>)                        // walkStateCallback
 NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 3>, 2>)      // walkStateCallback
@@ -95,6 +99,8 @@ template <typename T, size_t DIM>
 void bindFloatNToTypeFunc(nb::module_ m, std::string typeStr="");
 template <typename T, size_t DIM>
 void bindFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr="");
+template <typename T, size_t DIM>
+void bindFloatNFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr="");
 template <typename T, size_t DIM>
 void bindWalkStateFuncs(nb::module_ m, std::string typeStr="");
 
@@ -323,19 +329,20 @@ void bindNonTemplatedLibraryResources(nb::module_ m)
         .def(nb::init<float, float, int, bool>(),
             "epsilon_shell_for_absorbing_boundary"_a, "epsilon_shell_for_reflecting_boundary"_a,
             "max_walk_length"_a, "solve_double_sided"_a)
-        .def(nb::init<float, float, float, float, int, int, int,
+        .def(nb::init<float, float, float, float, float, int, int, int,
                       bool, bool, bool, bool, bool, bool, bool, bool>(),
             "epsilon_shell_for_absorbing_boundary"_a, "epsilon_shell_for_reflecting_boundary"_a,
-            "silhouette_precision"_a, "russian_roulette_threshold"_a, "max_walk_length"_a,
-            "steps_before_applying_tikhonov"_a, "steps_before_using_maximal_spheres"_a,
-            "solve_double_sided"_a, "use_gradient_control_variates"_a,
-            "use_gradient_antithetic_variates"_a, "use_cosine_sampling_for_derivatives"_a,
-            "ignore_absorbing_boundary_contribution"_a, "ignore_reflecting_boundary_contribution"_a,
-            "ignore_source_contribution"_a, "print_logs"_a)
+            "silhouette_precision"_a, "russian_roulette_threshold"_a, "splitting_threshold"_a,
+            "max_walk_length"_a, "steps_before_applying_tikhonov"_a,
+            "steps_before_using_maximal_spheres"_a, "solve_double_sided"_a,
+            "use_gradient_control_variates"_a, "use_gradient_antithetic_variates"_a,
+            "use_cosine_sampling_for_derivatives"_a, "ignore_absorbing_boundary_contribution"_a,
+            "ignore_reflecting_boundary_contribution"_a, "ignore_source_contribution"_a, "print_logs"_a)
         .def_rw("epsilon_shell_for_absorbing_boundary", &zombie::WalkSettings::epsilonShellForAbsorbingBoundary)
         .def_rw("epsilon_shell_for_reflecting_boundary", &zombie::WalkSettings::epsilonShellForReflectingBoundary)
         .def_rw("silhouette_precision", &zombie::WalkSettings::silhouettePrecision)
         .def_rw("russian_roulette_threshold", &zombie::WalkSettings::russianRouletteThreshold)
+        .def_rw("splitting_threshold", &zombie::WalkSettings::splittingThreshold)
         .def_rw("max_walk_length", &zombie::WalkSettings::maxWalkLength)
         .def_rw("steps_before_applying_tikhonov", &zombie::WalkSettings::stepsBeforeApplyingTikhonov)
         .def_rw("steps_before_using_maximal_spheres", &zombie::WalkSettings::stepsBeforeUsingMaximalSpheres)
@@ -426,6 +433,21 @@ void bindFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr)
         .def("__call__", [](const FloatNBoolToTypeFunc<T, DIM>& callback,
                             const zombie::Vector<DIM>& a, bool b) -> T {
             return callback(a, b);
+        });
+}
+
+template <typename T, size_t DIM>
+void bindFloatNFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr)
+{
+    nb::module_ opaque_types_m = m.def_submodule("opaque_types", "Opaque types module");
+
+    std::string vectorStr = "float" + std::to_string(DIM);
+    std::string funcStr = "func<" + typeStr + "(" + vectorStr + ", " + vectorStr + ", bool)>";
+    nb::class_<FloatNFloatNBoolToTypeFunc<T, DIM>>(opaque_types_m, funcStr.c_str())
+        .def("__call__", [](const FloatNFloatNBoolToTypeFunc<T, DIM>& callback,
+                            const zombie::Vector<DIM>& a,
+                            const zombie::Vector<DIM>& b, bool c) -> T {
+            return callback(a, b, c);
         });
 }
 
@@ -608,6 +630,11 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
                "positions"_a,
                "Normalizes positions to the unit sphere.");
 
+    utils_m.def(("apply_shift" + typeStr).c_str(),
+               &zombie::applyShift<DIM>,
+               "shift"_a, "positions"_a,
+               "Applies a shift to a set of positions.");
+
     utils_m.def(("flip_orientation" + typeStr).c_str(),
                &zombie::flipOrientation<DIM>,
                "indices"_a,
@@ -645,7 +672,7 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
     nb::class_<zombie::FcpwRobinBoundaryHandler<DIM>>(utils_m, ("fcpw_robin_boundary_handler" + typeStr).c_str())
         .def(nb::init<>())
         .def("build_acceleration_structure", &zombie::FcpwRobinBoundaryHandler<DIM>::buildAccelerationStructure,
-            "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions, indices, and min and max coefficients per mesh face.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
+            "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions, indices, and min and max absolute coefficient values per mesh face.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
             "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a,
             "min_robin_coeff_values"_a, "max_robin_coeff_values"_a,
             "build_bvh"_a=true, "enable_bvh_vectorization"_a=false)
@@ -725,15 +752,19 @@ void bindPDECoefficientCallbacks(nb::module_ m, std::string typeStr)
     nb::module_ core_m = m.def_submodule("core", "Core module");
 
     core_m.def(("get_constant_robin_coefficient_callback" + typeStr).c_str(),
-              [](float value) -> FloatNBoolToTypeFunc<float, DIM> {
-                return [value](const zombie::Vector<DIM>& a, bool b) -> float { return value; };
+              [](float value) -> FloatNFloatNBoolToTypeFunc<float, DIM> {
+                return [value](const zombie::Vector<DIM>& a,
+                               const zombie::Vector<DIM>& b, bool c) -> float {
+                    return value;
+                };
               },
               "value"_a,
               "Returns a constant coefficient callback.");
     core_m.def(("get_constant_robin_coefficient_callback" + typeStr).c_str(),
-              [](float value, float valueBoundaryNormalAligned) -> FloatNBoolToTypeFunc<float, DIM> {
-                return [value, valueBoundaryNormalAligned](const zombie::Vector<DIM>& a, bool b) -> float {
-                    return b ? valueBoundaryNormalAligned : value;
+              [](float value, float valueBoundaryNormalAligned) -> FloatNFloatNBoolToTypeFunc<float, DIM> {
+                return [value, valueBoundaryNormalAligned](const zombie::Vector<DIM>& a,
+                                                           const zombie::Vector<DIM>& b, bool c) -> float {
+                    return c ? valueBoundaryNormalAligned : value;
                 };
               },
               "value"_a, "value_boundary_normal_aligned"_a,
@@ -743,14 +774,14 @@ void bindPDECoefficientCallbacks(nb::module_ m, std::string typeStr)
 
     utils_m.def(("get_dense_grid_robin_coefficient_callback" + typeStr).c_str(),
                nb::overload_cast<const zombie::DenseGrid<float, 1, DIM>&>(
-               &zombie::getDenseGridCallback1<float, float, 1, DIM>),
+               &zombie::getDenseGridCallback3<float, float, 1, DIM>),
                "grid"_a,
                "Returns a dense grid coefficient callback.");
     utils_m.def(("get_dense_grid_robin_coefficient_callback" + typeStr).c_str(),
                nb::overload_cast<const Eigen::Matrix<float, Eigen::Dynamic, 1>&,
                                  const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
                                  const zombie::Vector<DIM>&, bool>(
-               &zombie::getDenseGridCallback1<float, float, 1, DIM>),
+               &zombie::getDenseGridCallback3<float, float, 1, DIM>),
                "grid_data"_a, "grid_shape"_a, "grid_min"_a, "grid_max"_a,
                "enable_interpolation"_a=false,
                "Returns a dense grid coefficient callback.");
@@ -758,7 +789,7 @@ void bindPDECoefficientCallbacks(nb::module_ m, std::string typeStr)
     utils_m.def(("get_dense_grid_robin_coefficient_callback" + typeStr).c_str(),
                nb::overload_cast<const zombie::DenseGrid<float, 1, DIM>&,
                                  const zombie::DenseGrid<float, 1, DIM>&>(
-               &zombie::getDenseGridCallback2<float, float, 1, DIM>),
+               &zombie::getDenseGridCallback4<float, float, 1, DIM>),
                "grid"_a, "grid_boundary_normal_aligned"_a,
                "Returns a dense grid coefficient callback.");
     utils_m.def(("get_dense_grid_robin_coefficient_callback" + typeStr).c_str(),
@@ -766,7 +797,7 @@ void bindPDECoefficientCallbacks(nb::module_ m, std::string typeStr)
                                  const Eigen::Matrix<float, Eigen::Dynamic, 1>&,
                                  const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
                                  const zombie::Vector<DIM>&, bool>(
-               &zombie::getDenseGridCallback2<float, float, 1, DIM>),
+               &zombie::getDenseGridCallback4<float, float, 1, DIM>),
                "grid_data"_a, "grid_data_boundary_normal_aligned"_a, "grid_shape"_a,
                "grid_min"_a, "grid_max"_a, "enable_interpolation"_a=false,
                "Returns a dense grid coefficient callback.");
@@ -913,6 +944,7 @@ void bindPDEStructure(nb::module_ m, std::string typeStr)
         .def(nb::init<>())
         .def_rw("absorption_coeff", &zombie::PDE<T, DIM>::absorptionCoeff)
         .def_rw("are_robin_conditions_pure_neumann", &zombie::PDE<T, DIM>::areRobinConditionsPureNeumann)
+        .def_rw("are_robin_coeffs_nonnegative", &zombie::PDE<T, DIM>::areRobinCoeffsNonnegative)
         .def_rw("source", &zombie::PDE<T, DIM>::source)
         .def_rw("dirichlet", &zombie::PDE<T, DIM>::dirichlet)
         .def_rw("robin", &zombie::PDE<T, DIM>::robin)

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <zombie/core/geometry_helpers.h>
 #include <fcpw/fcpw.h>
 
 #define SQRT_2 1.4142135623730950488016887242097f
@@ -66,21 +67,6 @@ inline float findClosestPointPlane(const Vector<DIM>& p, const Vector<DIM>& n,
     pt = x - t*n;
 
     return std::fabs(t);
-}
-
-inline float findFarthestPointLineSegment(const Vector2& pa, const Vector2& pb,
-                                          const Vector2& x, Vector2& pt)
-{
-    float da = (x - pa).squaredNorm();
-    float db = (x - pb).squaredNorm();
-
-    if (da > db) {
-        pt = pa;
-        return std::sqrt(da);
-    }
-
-    pt = pb;
-    return std::sqrt(db);
 }
 
 template<typename PrimitiveBound>
@@ -150,7 +136,7 @@ inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(Bou
 
             } else if (s.r2 > closestPtDist2) {
                 Vector2 farthestPt;
-                float farthestPtDist = findFarthestPointLineSegment(pa, pb, s.c, farthestPt);
+                float farthestPtDist = computeFarthestPointOnLineSegment(pa, pb, s.c, farthestPt);
                 Vector2 viewDirFarthest = s.c - farthestPt;
                 PrimitiveBound::computeSquaredStarRadiusBound(s, maxCoefficientValue, viewDirClosest, closestPtDist,
                                                               viewDirFarthest, farthestPtDist, pa, n0);
@@ -164,26 +150,6 @@ inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(Bou
         // [Perfectly absorbing case]: dist to closest point on line segment
         s.r2 = std::min(s.r2, closestPtDist2);
     }
-}
-
-inline float findFarthestPointTriangle(const Vector3& pa, const Vector3& pb, const Vector3& pc,
-                                       const Vector3& x, Vector3& pt)
-{
-    float da = (x - pa).squaredNorm();
-    float db = (x - pb).squaredNorm();
-    float dc = (x - pc).squaredNorm();
-
-    if (da >= db && da >= dc) {
-        pt = pa;
-        return std::sqrt(da);
-
-    } else if (db >= da && db >= dc) {
-        pt = pb;
-        return std::sqrt(db);
-    }
-
-    pt = pc;
-    return std::sqrt(dc);
 }
 
 template<typename PrimitiveBound>
@@ -251,7 +217,7 @@ inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(Boundi
 
             } else if (s.r2 > closestPtDist2) {
                 Vector3 farthestPt;
-                float farthestPtDist = findFarthestPointTriangle(pa, pb, pc, s.c, farthestPt);
+                float farthestPtDist = computeFarthestPointOnTriangle(pa, pb, pc, s.c, farthestPt);
                 Vector3 viewDirFarthest = s.c - farthestPt;
                 PrimitiveBound::computeSquaredStarRadiusBound(s, maxCoefficientValue, viewDirClosest, closestPtDist,
                                                               viewDirFarthest, farthestPtDist, pa, n0);

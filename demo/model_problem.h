@@ -21,42 +21,45 @@ public:
     ModelProblem(const json& config, std::string directoryPath);
 
     // members
-    std::vector<Vector2> vertices;
-    std::vector<Vector2> absorbingBoundaryVertices;
-    std::vector<Vector2> reflectingBoundaryVertices;
+    bool solveDoubleSided;
     std::vector<Vector2i> segments;
     std::vector<Vector2i> absorbingBoundarySegments;
     std::vector<Vector2i> reflectingBoundarySegments;
-    bool solveDoubleSided;
+    std::vector<Vector2> vertices;
+    std::vector<Vector2> absorbingBoundaryVertices;
+    std::vector<Vector2> reflectingBoundaryVertices;
+    std::pair<Vector2, Vector2> boundingBox;
     zombie::PDE<float, 2> pde;
     zombie::GeometricQueries<2> queries;
 
 protected:
-    // loads boundary mesh from OBJ file
+    // loads a boundary mesh from an OBJ file
     void loadOBJ(const std::string& filename, bool normalize, bool flipOrientation);
 
-    // partitions boundary mesh into absorbing and reflecting parts
-    void partitionBoundaryMesh();
-
-    // setup PDE
+    // sets up the PDE
     void setupPDE();
 
-    // populates geometric queries for boundary mesh
+    // partitions the boundary mesh into absorbing and reflecting parts
+    void partitionBoundaryMesh();
+
+    // populates geometric queries for the absorbing and reflecting boundary
     void populateGeometricQueries();
 
     // members
-    std::unique_ptr<zombie::SdfGrid<2>> sdfGridForAbsorbingBoundary;
-    zombie::FcpwDirichletBoundaryHandler<2> absorbingBoundaryHandler;
-    zombie::FcpwNeumannBoundaryHandler<2> reflectingNeumannBoundaryHandler;
-    zombie::FcpwRobinBoundaryHandler<2> reflectingRobinBoundaryHandler;
-
     Image<1> isReflectingBoundary;
     Image<1> absorbingBoundaryValue;
     Image<1> reflectingBoundaryValue;
     Image<1> sourceValue;
-    float robinCoeff, absorptionCoeff;
+    bool domainIsWatertight;
     bool useSdfForAbsorbingBoundary;
     int sdfGridResolution;
+    float robinCoeff, absorptionCoeff;
+    std::vector<float> minRobinCoeffValues;
+    std::vector<float> maxRobinCoeffValues;
+    std::unique_ptr<zombie::SdfGrid<2>> sdfGridForAbsorbingBoundary;
+    zombie::FcpwDirichletBoundaryHandler<2> absorbingBoundaryHandler;
+    zombie::FcpwNeumannBoundaryHandler<2> reflectingNeumannBoundaryHandler;
+    zombie::FcpwRobinBoundaryHandler<2> reflectingRobinBoundaryHandler;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,17 +76,28 @@ sdfGridForAbsorbingBoundary(nullptr)
     absorbingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryValue"));
     reflectingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryValue"));
     sourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
-    robinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
-    absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
     solveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
-    queries.domainIsWatertight = getOptional<bool>(config, "IsWatertightDomain", true);
+    domainIsWatertight = getOptional<bool>(config, "domainIsWatertight", true);
     useSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);
     sdfGridResolution = getOptional<int>(config, "sdfGridResolution", 128);
+    robinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
+    absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
 
-    // load boundary mesh, build acceleration structures and set geometric queries and PDE inputs
+    // load a boundary mesh from an OBJ file
     loadOBJ(geometryFile, normalize, flipOrientation);
+
+    // setup the PDE
     setupPDE();
+
+    // partition the boundary mesh into absorbing and reflecting boundary elements
     partitionBoundaryMesh();
+
+    // specify the minimum and maximum Robin coefficient values for each reflecting boundary element:
+    // we use a constant value for all elements in this demo, but Zombie supports variable coefficients
+    minRobinCoeffValues.resize(reflectingBoundarySegments.size(), std::fabs(robinCoeff));
+    maxRobinCoeffValues.resize(reflectingBoundarySegments.size(), std::fabs(robinCoeff));
+
+    // populate the geometric queries for the absorbing and reflecting boundary
     populateGeometricQueries();
 }
 
@@ -92,43 +106,42 @@ void ModelProblem::loadOBJ(const std::string& filename, bool normalize, bool fli
     zombie::loadBoundaryMesh<2>(filename, vertices, segments);
     if (normalize) zombie::normalize<2>(vertices);
     if (flipOrientation) zombie::flipOrientation<2>(segments);
-    std::pair<Vector2, Vector2> bbox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
-    queries.domainMin = bbox.first;
-    queries.domainMax = bbox.second;
+    boundingBox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
 }
 
 void ModelProblem::setupPDE()
 {
-    const Vector2& bMin = queries.domainMin;
-    const Vector2& bMax = queries.domainMax;
+    Vector2 bMin = boundingBox.first;
+    Vector2 bMax = boundingBox.second;
     float maxLength = (bMax - bMin).maxCoeff();
 
-    pde.source = [this, &bMin, maxLength](const Vector2& x) -> float {
+    pde.source = [this, bMin, maxLength](const Vector2& x) -> float {
         Vector2 uv = (x - bMin)/maxLength;
         return this->sourceValue.get(uv)[0];
     };
-    pde.dirichlet = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
+    pde.dirichlet = [this, bMin, maxLength](const Vector2& x, bool _) -> float {
         Vector2 uv = (x - bMin)/maxLength;
         return this->absorbingBoundaryValue.get(uv)[0];
     };
-    pde.robin = [this, &bMin, maxLength](const Vector2& x, bool _) -> float {
+    pde.robin = [this, bMin, maxLength](const Vector2& x, bool _) -> float {
         Vector2 uv = (x - bMin)/maxLength;
         return this->reflectingBoundaryValue.get(uv)[0];
     };
-    pde.robinCoeff = [this](const Vector2& x, bool _) -> float {
+    pde.robinCoeff = [this](const Vector2& x, const Vector2& n, bool _) -> float {
         return this->robinCoeff;
     };
-    pde.hasReflectingBoundaryConditions = [this, &bMin, maxLength](const Vector2& x) -> bool {
+    pde.hasReflectingBoundaryConditions = [this, bMin, maxLength](const Vector2& x) -> bool {
         Vector2 uv = (x - bMin)/maxLength;
         return this->isReflectingBoundary.get(uv)[0] > 0;
     };
     pde.areRobinConditionsPureNeumann = robinCoeff == 0.0f;
+    pde.areRobinCoeffsNonnegative = robinCoeff >= 0.0f;
     pde.absorptionCoeff = absorptionCoeff;
 }
 
 void ModelProblem::partitionBoundaryMesh()
 {
-    // use zombie's default partitioning function, which assumes the boundary discretization
+    // use Zombie's default partitioning function, which assumes the boundary discretization
     // is perfectly adapted to the boundary conditions; this isn't always a correct assumption
     // and the user might want to override this function for their specific problem
     zombie::partitionBoundaryMesh<2>(pde.hasReflectingBoundaryConditions, vertices, segments,
@@ -138,7 +151,12 @@ void ModelProblem::partitionBoundaryMesh()
 
 void ModelProblem::populateGeometricQueries()
 {
-    // build acceleration structure and populate geometric queries for absorbing boundary
+    // set the domain extent for geometric queries
+    queries.domainIsWatertight = domainIsWatertight;
+    queries.domainMin = boundingBox.first;
+    queries.domainMax = boundingBox.second;
+
+    // use an absorbing boundary handler to populate geometric queries for the absorbing boundary
     absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryVertices, absorbingBoundarySegments);
     zombie::populateGeometricQueriesForDirichletBoundary<2>(absorbingBoundaryHandler, queries);
 
@@ -151,25 +169,21 @@ void ModelProblem::populateGeometricQueries()
         zombie::populateGeometricQueriesForDirichletBoundary<zombie::SdfGrid<2>, 2>(*sdfGridForAbsorbingBoundary, queries);
     }
 
-    // build acceleration structure and populate geometric queries for reflecting boundary
+    // use a reflecting boundary handler to populate geometric queries for the reflecting boundary
     std::function<bool(float, int)> ignoreCandidateSilhouette = zombie::getIgnoreCandidateSilhouetteCallback(solveDoubleSided);
     std::function<float(float)> branchTraversalWeight = zombie::getBranchTraversalWeightCallback();
 
-    if (robinCoeff > 0.0f) {
-        // despite using a constant Robin coefficient here, the implementation supports
-        // varying coefficients over the boundary
-        std::vector<float> minRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
-        std::vector<float> maxRobinCoeffValues(reflectingBoundarySegments.size(), robinCoeff);
+    if (pde.areRobinConditionsPureNeumann) {
+        reflectingNeumannBoundaryHandler.buildAccelerationStructure(
+            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette);
+        zombie::populateGeometricQueriesForNeumannBoundary<2>(
+            reflectingNeumannBoundaryHandler, branchTraversalWeight, queries);
+
+    } else {
         reflectingRobinBoundaryHandler.buildAccelerationStructure(
             reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette,
             minRobinCoeffValues, maxRobinCoeffValues);
         zombie::populateGeometricQueriesForRobinBoundary<2>(
             reflectingRobinBoundaryHandler, branchTraversalWeight, queries);
-
-    } else {
-        reflectingNeumannBoundaryHandler.buildAccelerationStructure(
-            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette);
-        zombie::populateGeometricQueriesForNeumannBoundary<2>(
-            reflectingNeumannBoundaryHandler, branchTraversalWeight, queries);
     }
 }

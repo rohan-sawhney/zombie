@@ -25,6 +25,7 @@ struct WalkSettings {
                  epsilonShellForReflectingBoundary(epsilonShellForReflectingBoundary_),
                  silhouettePrecision(1e-3f),
                  russianRouletteThreshold(0.0f),
+                 splittingThreshold(std::numeric_limits<float>::max()),
                  maxWalkLength(maxWalkLength_),
                  stepsBeforeApplyingTikhonov(maxWalkLength_),
                  stepsBeforeUsingMaximalSpheres(maxWalkLength_),
@@ -39,16 +40,17 @@ struct WalkSettings {
     WalkSettings(float epsilonShellForAbsorbingBoundary_,
                  float epsilonShellForReflectingBoundary_,
                  float silhouettePrecision_, float russianRouletteThreshold_,
-                 int maxWalkLength_, int stepsBeforeApplyingTikhonov_,
-                 int stepsBeforeUsingMaximalSpheres_, bool solveDoubleSided_,
-                 bool useGradientControlVariates_, bool useGradientAntitheticVariates_,
-                 bool useCosineSamplingForDerivatives_, bool ignoreAbsorbingBoundaryContribution_,
-                 bool ignoreReflectingBoundaryContribution_, bool ignoreSourceContribution_,
-                 bool printLogs_):
+                 float splittingThreshold_, int maxWalkLength_,
+                 int stepsBeforeApplyingTikhonov_, int stepsBeforeUsingMaximalSpheres_,
+                 bool solveDoubleSided_, bool useGradientControlVariates_,
+                 bool useGradientAntitheticVariates_, bool useCosineSamplingForDerivatives_,
+                 bool ignoreAbsorbingBoundaryContribution_, bool ignoreReflectingBoundaryContribution_,
+                 bool ignoreSourceContribution_, bool printLogs_):
                  epsilonShellForAbsorbingBoundary(epsilonShellForAbsorbingBoundary_),
                  epsilonShellForReflectingBoundary(epsilonShellForReflectingBoundary_),
                  silhouettePrecision(silhouettePrecision_),
                  russianRouletteThreshold(russianRouletteThreshold_),
+                 splittingThreshold(splittingThreshold_),
                  maxWalkLength(maxWalkLength_),
                  stepsBeforeApplyingTikhonov(stepsBeforeApplyingTikhonov_),
                  stepsBeforeUsingMaximalSpheres(stepsBeforeUsingMaximalSpheres_),
@@ -66,6 +68,7 @@ struct WalkSettings {
     float epsilonShellForReflectingBoundary;
     float silhouettePrecision;
     float russianRouletteThreshold;
+    float splittingThreshold;
     int maxWalkLength;
     int stepsBeforeApplyingTikhonov;
     int stepsBeforeUsingMaximalSpheres;
@@ -81,7 +84,15 @@ struct WalkSettings {
 
 template <typename T, size_t DIM>
 struct WalkState {
-    // constructor
+    // constructors
+    WalkState(): greensFn(nullptr),
+                 totalReflectingBoundaryContribution(0.0f),
+                 totalSourceContribution(0.0f),
+                 currentPt(Vector<DIM>::Zero()),
+                 currentNormal(Vector<DIM>::Zero()),
+                 prevDirection(Vector<DIM>::Zero()),
+                 prevDistance(0.0f), throughput(1.0f),
+                 walkLength(0), onReflectingBoundary(false) {}
     WalkState(const Vector<DIM>& currentPt_, const Vector<DIM>& currentNormal_,
               const Vector<DIM>& prevDirection_, float prevDistance_, float throughput_,
               int walkLength_, bool onReflectingBoundary_):
@@ -97,7 +108,7 @@ struct WalkState {
               onReflectingBoundary(onReflectingBoundary_) {}
 
     // members
-    std::unique_ptr<GreensFnBall<DIM>> greensFn;
+    std::shared_ptr<GreensFnBall<DIM>> greensFn;
     T totalReflectingBoundaryContribution;
     T totalSourceContribution;
     Vector<DIM> currentPt;
@@ -139,6 +150,7 @@ public:
         nSolutionEstimates = 0;
         nGradientEstimates = 0;
         totalWalkLength = 0;
+        totalSplits = 0;
     }
 
     // adds solution estimate to running sum
@@ -178,6 +190,11 @@ public:
     void addWalkLength(int length) {
         totalWalkLength += length;
     }
+
+    // adds walk length to running sum
+	void addSplits(int nSplits) {
+		totalSplits += nSplits;
+	}
 
     // returns estimated solution
     T getEstimatedSolution() const {
@@ -240,6 +257,12 @@ public:
         return (float)totalWalkLength/N;
     }
 
+    // returns mean splits performed per walk
+	float getMeanSplits() const {
+        int N = std::max(1, nSolutionEstimates);
+		return (float)totalSplits/N;
+	}
+
 protected:
     // updates statistics
     void update(const T& estimate, T& mean, T& M2, int N) {
@@ -255,7 +278,7 @@ protected:
     T totalFirstSourceContribution;
     T totalDerivativeContribution;
     int nSolutionEstimates, nGradientEstimates;
-    int totalWalkLength;
+    int totalWalkLength, totalSplits;
 };
 
 enum class SampleType {

@@ -6,6 +6,7 @@
         "epsilonShellForAbsorbingBoundary": 1e-3,
         "epsilonShellForReflectingBoundary": 1e-3,
         "russianRouletteThreshold": 0.99,
+        "splittingThreshold": 1.5,
         "ignoreAbsorbingBoundaryContribution": false,
         "ignoreReflectingBoundaryContribution": true,
         "ignoreSourceContribution": true

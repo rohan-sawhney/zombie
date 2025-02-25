@@ -590,10 +590,11 @@ inline void BoundaryValueCaching<T, DIM>::setEstimationData(const PDE<T, DIM>& p
             if (!pde.areRobinConditionsPureNeumann) {
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         samplePt.estimateBoundaryNormalAligned;
-                samplePt.robinCoeff = pde.robinCoeff(samplePt.pt, returnBoundaryNormalAlignedValue);
+                samplePt.robinCoeff = pde.robinCoeff(samplePt.pt, samplePt.normal,
+                                                     returnBoundaryNormalAlignedValue);
             }
 
-            if (samplePt.robinCoeff > robinCoeffCutoffForNormalDerivative) {
+            if (std::fabs(samplePt.robinCoeff) > robinCoeffCutoffForNormalDerivative) {
                 Vector<DIM> normal = samplePt.normal;
                 if (walkSettings.solveDoubleSided && samplePt.estimateBoundaryNormalAligned) {
                     normal *= -1.0f;
@@ -635,7 +636,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
 
                 } else {
                     samplePt.contribution = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
-                    if (samplePt.robinCoeff > robinCoeffCutoffForNormalDerivative) {
+                    if (std::fabs(samplePt.robinCoeff) > robinCoeffCutoffForNormalDerivative) {
                         samplePt.normalDerivative = samplePt.statistics.getEstimatedDerivative();
                     }
                 }
@@ -706,7 +707,7 @@ inline void BoundaryValueCaching<T, DIM>::splatBoundaryData(const SamplePoint<T,
                   evalPt.type == SampleType::OnReflectingBoundary ?
                   2.0f : 1.0f;
 
-    if (robinCoeff > robinCoeffCutoffForNormalDerivative) {
+    if (std::fabs(robinCoeff) > robinCoeffCutoffForNormalDerivative) {
         solutionEstimate = alpha*((G + P/robinCoeff)*normalDerivative - P*robin/robinCoeff)/pdf;
 
         if (alpha > 1.0f) alpha = 0.0f; // FUTURE: estimate gradient on the boundary
@@ -714,7 +715,7 @@ inline void BoundaryValueCaching<T, DIM>::splatBoundaryData(const SamplePoint<T,
             gradientEstimate[i] = alpha*((dG[i] + dP[i]/robinCoeff)*normalDerivative - dP[i]*robin/robinCoeff)/pdf;
         }
 
-    } else if (robinCoeff > 0.0f) {
+    } else if (std::fabs(robinCoeff) > 0.0f) {
         solutionEstimate = alpha*(G*robin - (P + robinCoeff*G)*solution)/pdf;
 
         if (alpha > 1.0f) alpha = 0.0f; // FUTURE: estimate gradient on the boundary

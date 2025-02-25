@@ -482,7 +482,7 @@ public:
 
     // computes the reflactance function for Robin boundary conditions
     float reflectance(float r, const Vector2& dir, const Vector2& n, float robinCoeff) const {
-        if (robinCoeff > 0.0f) {
+        if (std::fabs(robinCoeff) > 0.0f) {
             float P = n.dot(dir)/r;
             float G = std::log(R/r);
             return 1.0f - robinCoeff*G/P;
@@ -590,7 +590,7 @@ public:
 
     // computes the reflactance function for Robin boundary conditions
     float reflectance(float r, const Vector3& dir, const Vector3& n, float robinCoeff) const {
-        if (robinCoeff > 0.0f) {
+        if (std::fabs(robinCoeff) > 0.0f) {
             float r2 = r*r;
             float P = n.dot(dir)/r2;
             float G = 1.0f/r - 1.0f/R;
@@ -747,7 +747,7 @@ public:
     // computes the reflactance function for Robin boundary conditions
     float reflectance(float r, const Vector2& dir, const Vector2& n, float robinCoeff) const {
         float Q = poissonKernelDampeningFactor(r);
-        if (robinCoeff > 0.0f) {
+        if (std::fabs(robinCoeff) > 0.0f) {
             float P = n.dot(dir)/r;
             float mur = r*sqrtLambda;
             float K0mur = bessel::bessk0(mur);
@@ -915,7 +915,7 @@ public:
     // computes the reflactance function for Robin boundary conditions
     float reflectance(float r, const Vector3& dir, const Vector3& n, float robinCoeff) const {
         float Q = poissonKernelDampeningFactor(r);
-        if (robinCoeff > 0.0f) {
+        if (std::fabs(robinCoeff) > 0.0f) {
             float r2 = r*r;
             float P = n.dot(dir)/r2;
             float mur = r*sqrtLambda;

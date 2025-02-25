@@ -7,6 +7,43 @@
 
 using json = nlohmann::json;
 
+void computeDistanceInfo(const std::vector<Vector2>& solveLocations,
+                         const zombie::GeometricQueries<2>& queries,
+                         bool solveDoubleSided,
+                         std::vector<DistanceInfo>& distanceInfo)
+{
+    distanceInfo.resize(solveLocations.size());
+    for (int i = 0; i < (int)solveLocations.size(); i++) {
+        Vector2 pt = solveLocations[i];
+        bool insideDomain = queries.insideDomain(pt);
+        distanceInfo[i].inValidSolveRegion = insideDomain || solveDoubleSided;
+        distanceInfo[i].distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
+        distanceInfo[i].distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
+    }
+}
+
+void createSamplePoints(const std::vector<Vector2>& solveLocations,
+                        const std::vector<DistanceInfo>& distanceInfo,
+                        std::vector<zombie::SamplePoint<float, 2>>& samplePts)
+{
+    for (int i = 0; i < (int)solveLocations.size(); i++) {
+        Vector2 pt = solveLocations[i];
+        Vector2 normal = Vector2::Zero();
+        zombie::SampleType sampleType = zombie::SampleType::InDomain;
+        zombie::EstimationQuantity estimationQuantity = distanceInfo[i].inValidSolveRegion ?
+                                                        zombie::EstimationQuantity::Solution:
+                                                        zombie::EstimationQuantity::None;
+        float pdf = 1.0f;
+        float distToAbsorbingBoundary = distanceInfo[i].distToAbsorbingBoundary;
+        float distToReflectingBoundary = distanceInfo[i].distToReflectingBoundary;
+
+        samplePts.emplace_back(zombie::SamplePoint<float, 2>(pt, normal, sampleType,
+                                                             estimationQuantity, pdf,
+                                                             distToAbsorbingBoundary,
+                                                             distToReflectingBoundary));
+    }
+}
+
 void runWalkOnStars(const json& solverConfig,
                     const zombie::GeometricQueries<2>& queries,
                     const zombie::PDE<float, 2>& pde,
@@ -18,6 +55,7 @@ void runWalkOnStars(const json& solverConfig,
     const float epsilonShellForReflectingBoundary = getOptional<float>(solverConfig, "epsilonShellForReflectingBoundary", 1e-3f);
     const float silhouettePrecision = getOptional<float>(solverConfig, "silhouettePrecision", 1e-3f);
     const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
+    const float splittingThreshold = getOptional<float>(solverConfig, "splittingThreshold", std::numeric_limits<float>::max());
 
     const int nWalks = getOptional<int>(solverConfig, "nWalks", 128);
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
@@ -40,8 +78,10 @@ void runWalkOnStars(const json& solverConfig,
     zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
                                       epsilonShellForReflectingBoundary,
                                       silhouettePrecision, russianRouletteThreshold,
-                                      maxWalkLength, stepsBeforeApplyingTikhonov,
-                                      stepsBeforeUsingMaximalSpheres, solveDoubleSided,
+                                      splittingThreshold, maxWalkLength,
+                                      stepsBeforeApplyingTikhonov,
+                                      stepsBeforeUsingMaximalSpheres,
+                                      solveDoubleSided,
                                       !disableGradientControlVariates,
                                       !disableGradientAntitheticVariates,
                                       useCosineSamplingForDirectionalDerivatives,
@@ -52,6 +92,32 @@ void runWalkOnStars(const json& solverConfig,
     zombie::WalkOnStars<float, 2> walkOnStars(queries);
     walkOnStars.solve(pde, walkSettings, nWalksVector, samplePts, runSingleThreaded, reportProgress);
     pb.finish();
+}
+
+void getSolution(const std::vector<zombie::SamplePoint<float, 2>>& samplePts,
+                 std::vector<float>& solution)
+{
+    solution.resize(samplePts.size(), 0.0f);
+    for (int i = 0; i < (int)samplePts.size(); i++) {
+        solution[i] = samplePts[i].statistics.getEstimatedSolution();
+    }
+}
+
+void createBvcEvaluationPoints(const std::vector<Vector2>& solveLocations,
+                               const std::vector<DistanceInfo>& distanceInfo,
+                               std::vector<zombie::bvc::EvaluationPoint<float, 2>>& evalPts)
+{
+    for (int i = 0; i < (int)solveLocations.size(); i++) {
+        Vector2 pt = solveLocations[i];
+        Vector2 normal = Vector2::Zero();
+        zombie::SampleType sampleType = zombie::SampleType::InDomain;
+        float distToAbsorbingBoundary = distanceInfo[i].distToAbsorbingBoundary;
+        float distToReflectingBoundary = distanceInfo[i].distToReflectingBoundary;
+
+        evalPts.emplace_back(zombie::bvc::EvaluationPoint<float, 2>(pt, normal, sampleType,
+                                                                    distToAbsorbingBoundary,
+                                                                    distToReflectingBoundary));
+    }
 }
 
 void runBoundaryValueCaching(const json& solverConfig,
@@ -69,6 +135,7 @@ void runBoundaryValueCaching(const json& solverConfig,
     const float epsilonShellForReflectingBoundary = getOptional<float>(solverConfig, "epsilonShellForReflectingBoundary", 1e-3f);
     const float silhouettePrecision = getOptional<float>(solverConfig, "silhouettePrecision", 1e-3f);
     const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
+    const float splittingThreshold = getOptional<float>(solverConfig, "splittingThreshold", std::numeric_limits<float>::max());
 
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
     const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "stepsBeforeApplyingTikhonov", 0);
@@ -92,8 +159,10 @@ void runBoundaryValueCaching(const json& solverConfig,
 
     const bool useFiniteDifferencesForBoundaryDerivatives = getOptional<bool>(solverConfig, "useFiniteDifferencesForBoundaryDerivatives", false);
 
-    const float robinCoeffCutoffForNormalDerivative = getOptional<float>(solverConfig, "robinCoeffCutoffForNormalDerivative", std::numeric_limits<float>::max());
-    const float normalOffsetForAbsorbingBoundary = getOptional<float>(solverConfig, "normalOffsetForAbsorbingBoundary", 5.0f*epsilonShellForAbsorbingBoundary);
+    const float robinCoeffCutoffForNormalDerivative = getOptional<float>(solverConfig, "robinCoeffCutoffForNormalDerivative",
+                                                                         std::numeric_limits<float>::max());
+    const float normalOffsetForAbsorbingBoundary = getOptional<float>(solverConfig, "normalOffsetForAbsorbingBoundary",
+                                                                      5.0f*epsilonShellForAbsorbingBoundary);
     const float normalOffsetForReflectingBoundary = getOptional<float>(solverConfig, "normalOffsetForReflectingBoundary", 0.0f);
     const float radiusClampForKernels = getOptional<float>(solverConfig, "radiusClampForKernels", 0.0f);
     const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
@@ -146,8 +215,10 @@ void runBoundaryValueCaching(const json& solverConfig,
     zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
                                       epsilonShellForReflectingBoundary,
                                       silhouettePrecision, russianRouletteThreshold,
-                                      maxWalkLength, stepsBeforeApplyingTikhonov,
-                                      stepsBeforeUsingMaximalSpheres, solveDoubleSided,
+                                      splittingThreshold, maxWalkLength,
+                                      stepsBeforeApplyingTikhonov,
+                                      stepsBeforeUsingMaximalSpheres,
+                                      solveDoubleSided,
                                       !disableGradientControlVariates,
                                       !disableGradientAntitheticVariates,
                                       useCosineSamplingForDirectionalDerivatives,
@@ -170,6 +241,32 @@ void runBoundaryValueCaching(const json& solverConfig,
     pb.finish();
 }
 
+void getSolution(const std::vector<zombie::bvc::EvaluationPoint<float, 2>>& evalPts,
+                 std::vector<float>& solution)
+{
+    solution.resize(evalPts.size(), 0.0f);
+    for (int i = 0; i < (int)evalPts.size(); i++) {
+        solution[i] = evalPts[i].getEstimatedSolution();
+    }
+}
+
+void createRwsEvaluationPoints(const std::vector<Vector2>& solveLocations,
+                               const std::vector<DistanceInfo>& distanceInfo,
+                               std::vector<zombie::rws::EvaluationPoint<float, 2>>& evalPts)
+{
+    for (int i = 0; i < (int)solveLocations.size(); i++) {
+        Vector2 pt = solveLocations[i];
+        Vector2 normal = Vector2::Zero();
+        zombie::SampleType sampleType = zombie::SampleType::InDomain;
+        float distToAbsorbingBoundary = distanceInfo[i].distToAbsorbingBoundary;
+        float distToReflectingBoundary = distanceInfo[i].distToReflectingBoundary;
+
+        evalPts.emplace_back(zombie::rws::EvaluationPoint<float, 2>(pt, normal, sampleType,
+                                                                    distToAbsorbingBoundary,
+                                                                    distToReflectingBoundary));
+    }
+}
+
 void runReverseWalkOnStars(const json& solverConfig,
                            const std::vector<Vector2>& absorbingBoundaryVertices,
                            const std::vector<Vector2i>& absorbingBoundarySegments,
@@ -186,6 +283,7 @@ void runReverseWalkOnStars(const json& solverConfig,
     const float epsilonShellForReflectingBoundary = getOptional<float>(solverConfig, "epsilonShellForReflectingBoundary", 1e-3f);
     const float silhouettePrecision = getOptional<float>(solverConfig, "silhouettePrecision", 1e-3f);
     const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
+    const float splittingThreshold = getOptional<float>(solverConfig, "splittingThreshold", std::numeric_limits<float>::max());
 
     const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
     const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "stepsBeforeApplyingTikhonov", 0);
@@ -202,7 +300,8 @@ void runReverseWalkOnStars(const json& solverConfig,
     int reflectingBoundarySampleCount = getOptional<int>(solverConfig, "reflectingBoundarySampleCount", 1024);
     int domainSampleCount = getOptional<int>(solverConfig, "domainSampleCount", 1024);
 
-    const float normalOffsetForAbsorbingBoundary = getOptional<float>(solverConfig, "normalOffsetForAbsorbingBoundary", 5.0f*epsilonShellForAbsorbingBoundary);
+    const float normalOffsetForAbsorbingBoundary = getOptional<float>(solverConfig, "normalOffsetForAbsorbingBoundary",
+                                                                      5.0f*epsilonShellForAbsorbingBoundary);
     const float radiusClampForKernels = getOptional<float>(solverConfig, "radiusClampForKernels", 0.0f);
     const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
 
@@ -255,7 +354,8 @@ void runReverseWalkOnStars(const json& solverConfig,
     zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
                                       epsilonShellForReflectingBoundary,
                                       silhouettePrecision, russianRouletteThreshold,
-                                      maxWalkLength, stepsBeforeApplyingTikhonov,
+                                      splittingThreshold, maxWalkLength,
+                                      stepsBeforeApplyingTikhonov,
                                       stepsBeforeUsingMaximalSpheres,
                                       solveDoubleSided, false, false, false,
                                       ignoreAbsorbingBoundaryContribution,
@@ -273,7 +373,82 @@ void runReverseWalkOnStars(const json& solverConfig,
     sampleCounts[2] = reverseWalkOnStars.getReflectingBoundarySampleCount(false);
     sampleCounts[3] = reverseWalkOnStars.getReflectingBoundarySampleCount(true);
     sampleCounts[4] = reverseWalkOnStars.getDomainSampleCount();
-};
+}
+
+void getSolution(const std::vector<zombie::rws::EvaluationPoint<float, 2>>& evalPts,
+                 const std::vector<int>& sampleCounts,
+                 std::vector<float>& solution)
+{
+    solution.resize(evalPts.size(), 0.0f);
+    int absorbingBoundarySampleCount = sampleCounts[0];
+    int absorbingBoundaryNormalAlignedSampleCount = sampleCounts[1];
+    int reflectingBoundarySampleCount = sampleCounts[2];
+    int reflectingBoundaryNormalAlignedSampleCount = sampleCounts[3];
+    int domainSampleCount = sampleCounts[4];
+
+    for (int i = 0; i < (int)evalPts.size(); i++) {
+        solution[i] = evalPts[i].getEstimatedSolution(absorbingBoundarySampleCount,
+                                                      absorbingBoundaryNormalAlignedSampleCount,
+                                                      reflectingBoundarySampleCount,
+                                                      reflectingBoundaryNormalAlignedSampleCount,
+                                                      domainSampleCount);
+    }
+}
+
+void runSolver(const std::string& solverType, const json& config,
+               const std::vector<Vector2>& absorbingBoundaryVertices,
+               const std::vector<Vector2i>& absorbingBoundarySegments,
+               const std::vector<Vector2>& reflectingBoundaryVertices,
+               const std::vector<Vector2i>& reflectingBoundarySegments,
+               const zombie::GeometricQueries<2>& queries,
+               const zombie::PDE<float, 2>& pde, bool solveDoubleSided,
+               const std::vector<Vector2>& solveLocations,
+               const std::vector<DistanceInfo>& distanceInfo,
+               std::vector<float>& solution)
+{
+    if (solverType == "wost") {
+        // create sample points to estimate solution at
+        std::vector<zombie::SamplePoint<float, 2>> samplePts;
+        createSamplePoints(solveLocations, distanceInfo, samplePts);
+
+        // run walk on stars
+        runWalkOnStars(config, queries, pde, solveDoubleSided, samplePts);
+
+        // extract solution from sample points
+        getSolution(samplePts, solution);
+
+    } else if (solverType == "bvc") {
+        // create evaluation points to estimate solution at
+        std::vector<zombie::bvc::EvaluationPoint<float, 2>> evalPts;
+        createBvcEvaluationPoints(solveLocations, distanceInfo, evalPts);
+
+        // run boundary value caching
+        runBoundaryValueCaching(config, absorbingBoundaryVertices, absorbingBoundarySegments,
+                                reflectingBoundaryVertices, reflectingBoundarySegments,
+                                queries, pde, solveDoubleSided, evalPts);
+
+        // extract solution from evaluation points
+        getSolution(evalPts, solution);
+
+    } else if (solverType == "rws") {
+        // ccreate evaluation points to estimate solution at
+        std::vector<zombie::rws::EvaluationPoint<float, 2>> evalPts;
+        createRwsEvaluationPoints(solveLocations, distanceInfo, evalPts);
+
+        // run reverse walk on stars
+        std::vector<int> sampleCounts;
+        runReverseWalkOnStars(config, absorbingBoundaryVertices, absorbingBoundarySegments,
+                              reflectingBoundaryVertices, reflectingBoundarySegments,
+                              queries, pde, solveDoubleSided, evalPts, sampleCounts);
+
+        // extract solution from evaluation points
+        getSolution(evalPts, sampleCounts, solution);
+
+    } else {
+        std::cerr << "Unknown solver type: " << solverType << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
 
 int main(int argc, const char *argv[])
 {
@@ -294,62 +469,31 @@ int main(int argc, const char *argv[])
     const json modelProblemConfig = getRequired<json>(config, "modelProblem");
     const json solverConfig = getRequired<json>(config, "solver");
     const json outputConfig = getRequired<json>(config, "output");
-    const int gridRes = getRequired<int>(outputConfig, "gridRes");
     const std::string zombieDirectoryPath = "../"; // local path to zombie directory
 
-    // initialize model problem
+    // initialize the model problem
     ModelProblem modelProblem(modelProblemConfig, zombieDirectoryPath);
-    const std::vector<Vector2>& absorbingBoundaryVertices = modelProblem.absorbingBoundaryVertices;
     const std::vector<Vector2i>& absorbingBoundarySegments = modelProblem.absorbingBoundarySegments;
-    const std::vector<Vector2>& reflectingBoundaryVertices = modelProblem.reflectingBoundaryVertices;
     const std::vector<Vector2i>& reflectingBoundarySegments = modelProblem.reflectingBoundarySegments;
+    const std::vector<Vector2>& absorbingBoundaryVertices = modelProblem.absorbingBoundaryVertices;
+    const std::vector<Vector2>& reflectingBoundaryVertices = modelProblem.reflectingBoundaryVertices;
+    const std::pair<Vector2, Vector2>& boundingBox = modelProblem.boundingBox;
     const zombie::GeometricQueries<2>& queries = modelProblem.queries;
     const zombie::PDE<float, 2>& pde = modelProblem.pde;
     bool solveDoubleSided = modelProblem.solveDoubleSided;
 
-    if (solverType == "wost") {
-        // create sample points on grid to compute solution on
-        std::vector<zombie::SamplePoint<float, 2>> samplePts;
-        createSolutionGrid(samplePts, queries, solveDoubleSided, gridRes);
+    // create solve locations on a grid for this demo
+    std::vector<Vector2> solveLocations;
+    std::vector<DistanceInfo> distanceInfo;
+    createGridPoints(outputConfig, boundingBox, solveLocations);
+    computeDistanceInfo(solveLocations, queries, solveDoubleSided, distanceInfo);
 
-        // run walk on stars
-        runWalkOnStars(solverConfig, queries, pde, solveDoubleSided, samplePts);
+    // solve the model problem
+    std::vector<float> solution;
+    runSolver(solverType, solverConfig, absorbingBoundaryVertices, absorbingBoundarySegments,
+              reflectingBoundaryVertices, reflectingBoundarySegments, queries, pde,
+              solveDoubleSided, solveLocations, distanceInfo, solution);
 
-        // save solution to disk
-        saveSolutionGrid(samplePts, queries, pde, solveDoubleSided,
-                         outputConfig, zombieDirectoryPath);
-
-    } else if (solverType == "bvc") {
-        // create evaluation points on grid to compute solution on
-        std::vector<zombie::bvc::EvaluationPoint<float, 2>> evalPts;
-        createEvaluationGrid<zombie::bvc::EvaluationPoint<float, 2>>(evalPts, queries, gridRes);
-
-        // run boundary value caching
-        runBoundaryValueCaching(solverConfig, absorbingBoundaryVertices, absorbingBoundarySegments,
-                                reflectingBoundaryVertices, reflectingBoundarySegments,
-                                queries, pde, solveDoubleSided, evalPts);
-
-        // save solution to disk
-        saveEvaluationGrid(evalPts, queries, pde, solveDoubleSided,
-                           outputConfig, zombieDirectoryPath);
-
-    } else if (solverType == "rws") {
-        // create evaluation points on grid to compute solution on
-        std::vector<zombie::rws::EvaluationPoint<float, 2>> evalPts;
-        createEvaluationGrid<zombie::rws::EvaluationPoint<float, 2>>(evalPts, queries, gridRes);
-
-        // run reverse walk on stars
-        std::vector<int> sampleCounts;
-        runReverseWalkOnStars(solverConfig, absorbingBoundaryVertices, absorbingBoundarySegments,
-                              reflectingBoundaryVertices, reflectingBoundarySegments,
-                              queries, pde, solveDoubleSided, evalPts, sampleCounts);
-
-        // save solution to disk
-        saveEvaluationGrid(evalPts, sampleCounts, queries, pde, solveDoubleSided,
-                           outputConfig, zombieDirectoryPath);
-
-    } else {
-        std::cerr << "Unknown solver type: " << solverType << std::endl;
-        return EXIT_FAILURE;
-    }
+    // save the solution to disk
+    saveGridValues(outputConfig, zombieDirectoryPath, distanceInfo, solution);
 }

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <zombie/core/geometry_helpers.h>
 #include <zombie/point_estimation/common.h>
 #include <unordered_map>
 
@@ -144,39 +145,6 @@ std::shared_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
 // - improve stratification, since it helps reduce clumping/singular artifacts
 // - sample points on the boundary in proportion to dirichlet/neumann/robin boundary values
 
-class UniformLineSegmentSampler {
-public:
-    // returns normal
-    static Vector2 normal(const Vector2& pa, const Vector2& pb, bool normalize) {
-        Vector2 s = pb - pa;
-        Vector2 n(s[1], -s[0]);
-
-        return normalize ? n.normalized() : n;
-    }
-
-    // returns surface area
-    static float surfaceArea(const Vector2& pa, const Vector2& pb) {
-        return normal(pa, pb, false).norm();
-    }
-
-    // samples point uniformly
-    static float samplePoint(const Vector2& pa, const Vector2& pb, float *u,
-                             Vector2& pt, Vector2& n) {
-        Vector2 s = pb - pa;
-        pt = pa + u[0]*s;
-        n = Vector2(s[1], -s[0]);
-        float norm = n.norm();
-        n /= norm;
-
-        return 1.0f/norm;
-    }
-    static float samplePoint(const Vector2& pa, const Vector2& pb, pcg32& sampler,
-                             Vector2& pt, Vector2& n) {
-        float u[1] = { sampler.nextFloat() };
-        return samplePoint(pa, pb, u, pt, n);
-    }
-};
-
 template <typename T>
 inline UniformLineSegmentBoundarySampler<T>::UniformLineSegmentBoundarySampler(const std::vector<Vector2>& positions_,
                                                                                const std::vector<Vector2i>& indices_,
@@ -204,7 +172,7 @@ inline void UniformLineSegmentBoundarySampler<T>::computeNormals(bool computeWei
         const Vector2i& index = indices[i];
         const Vector2& p0 = positions[index[0]];
         const Vector2& p1 = positions[index[1]];
-        Vector2 n = UniformLineSegmentSampler::normal(p0, p1, !computeWeighted);
+        Vector2 n = computeLineSegmentNormal(p0, p1, !computeWeighted);
 
         normals[index[0]] += n;
         normals[index[1]] += n;
@@ -227,13 +195,13 @@ inline void UniformLineSegmentBoundarySampler<T>::buildCDFTable(CDFTable& table,
         Vector2 p0 = positions[index[0]];
         Vector2 p1 = positions[index[1]];
         Vector2 pMid = (p0 + p1)/2.0f;
-        Vector2 n = UniformLineSegmentSampler::normal(p0, p1, true);
+        Vector2 n = computeLineSegmentNormal(p0, p1, true);
 
         // don't generate any samples on the boundary outside the solve region
         if (insideSolveRegion(pMid + normalOffsetForBoundary*n)) {
             p0 += normalOffsetForBoundary*normals[index[0]];
             p1 += normalOffsetForBoundary*normals[index[1]];
-            weights[i] = UniformLineSegmentSampler::surfaceArea(p0, p1);
+            weights[i] = computeLineSegmentSurfaceArea(p0, p1);
         }
     }
 
@@ -300,11 +268,11 @@ inline void UniformLineSegmentBoundarySampler<T>::generateSamples(const CDFTable
 
             for (int i = 0; i < kv.second; i++) {
                 // generate sample point
-                Vector2 pt = Vector2::Zero();
-                Vector2 normal = Vector2::Zero();
                 Vector2 p0 = positions[index[0]] + normalOffsetForBoundary*normals[index[0]];
                 Vector2 p1 = positions[index[1]] + normalOffsetForBoundary*normals[index[1]];
-                UniformLineSegmentSampler::samplePoint(p0, p1, &indexSamples[i], pt, normal);
+                Vector2 normal = Vector2::Zero();
+                float lineSegmentPdf = 0.0f;
+                Vector2 pt = samplePointOnLineSegment(p0, p1, &indexSamples[i], normal, lineSegmentPdf);
                 float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
                 float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
 
@@ -352,49 +320,6 @@ std::shared_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
             positions, indices, queries, insideSolveRegion, computeWeightedNormals);
 }
 
-class UniformTriangleSampler {
-public:
-    // returns normal
-    static Vector3 normal(const Vector3& pa, const Vector3& pb, const Vector3& pc, bool normalize) {
-        Vector3 n = (pb - pa).cross(pc - pa);
-        return normalize ? n.normalized() : n;
-    }
-
-    // returns surface area
-    static float surfaceArea(const Vector3& pa, const Vector3& pb, const Vector3& pc) {
-        return 0.5f*normal(pa, pb, pc, false).norm();
-    }
-
-    // returns angle
-    static float angle(const Vector3& pa, const Vector3& pb, const Vector3& pc) {
-        Vector3 u = (pb - pa).normalized();
-        Vector3 v = (pc - pa).normalized();
-
-        return std::acos(std::max(-1.0f, std::min(1.0f, u.dot(v))));
-    }
-
-    // samples point uniformly
-    static float samplePoint(const Vector3& pa, const Vector3& pb, const Vector3& pc,
-                             float *u, Vector3& pt, Vector3& n) {
-        float u1 = std::sqrt(u[0]);
-        float u2 = u[1];
-        float a = 1.0f - u1;
-        float b = u2*u1;
-        float c = 1.0f - a - b;
-        pt = pa*a + pb*b + pc*c;
-        n = (pb - pa).cross(pc - pa);
-        float norm = n.norm();
-        n /= norm;
-
-        return 2.0f/norm;
-    }
-    static float samplePoint(const Vector3& pa, const Vector3& pb, const Vector3& pc,
-                             pcg32& sampler, Vector3& pt, Vector3& n) {
-        float u[2] = { sampler.nextFloat(), sampler.nextFloat() };
-        return samplePoint(pa, pb, pc, u, pt, n);
-    }
-};
-
 template <typename T>
 inline UniformTriangleBoundarySampler<T>::UniformTriangleBoundarySampler(const std::vector<Vector3>& positions_,
                                                                          const std::vector<Vector3i>& indices_,
@@ -423,13 +348,13 @@ inline void UniformTriangleBoundarySampler<T>::computeNormals(bool computeWeight
         const Vector3& p0 = positions[index[0]];
         const Vector3& p1 = positions[index[1]];
         const Vector3& p2 = positions[index[2]];
-        Vector3 n = UniformTriangleSampler::normal(p0, p1, p2, true);
+        Vector3 n = computeTriangleNormal(p0, p1, p2, true);
 
         for (int j = 0; j < 3; j++) {
             const Vector3& p0 = positions[index[(j + 0)%3]];
             const Vector3& p1 = positions[index[(j + 1)%3]];
             const Vector3& p2 = positions[index[(j + 2)%3]];
-            float angle = computeWeighted ? UniformTriangleSampler::angle(p0, p1, p2) : 1.0f;
+            float angle = computeWeighted ? computeTriangleAngle(p0, p1, p2) : 1.0f;
 
             normals[index[j]] += angle*n;
         }
@@ -453,14 +378,14 @@ inline void UniformTriangleBoundarySampler<T>::buildCDFTable(CDFTable& table, fl
         Vector3 p1 = positions[index[1]];
         Vector3 p2 = positions[index[2]];
         Vector3 pMid = (p0 + p1 + p2)/3.0f;
-        Vector3 n = UniformTriangleSampler::normal(p0, p1, p2, true);
+        Vector3 n = computeTriangleNormal(p0, p1, p2, true);
 
         // don't generate any samples on the boundary outside the solve region
         if (insideSolveRegion(pMid + normalOffsetForBoundary*n)) {
             p0 += normalOffsetForBoundary*normals[index[0]];
             p1 += normalOffsetForBoundary*normals[index[1]];
             p2 += normalOffsetForBoundary*normals[index[2]];
-            weights[i] = UniformTriangleSampler::surfaceArea(p0, p1, p2);
+            weights[i] = computeTriangleSurfaceArea(p0, p1, p2);
         }
     }
 
@@ -528,12 +453,12 @@ inline void UniformTriangleBoundarySampler<T>::generateSamples(const CDFTable& t
 
             for (int i = 0; i < kv.second; i++) {
                 // generate sample point
-                Vector3 pt = Vector3::Zero();
-                Vector3 normal = Vector3::Zero();
                 Vector3 p0 = positions[index[0]] + normalOffsetForBoundary*normals[index[0]];
                 Vector3 p1 = positions[index[1]] + normalOffsetForBoundary*normals[index[1]];
                 Vector3 p2 = positions[index[2]] + normalOffsetForBoundary*normals[index[2]];
-                UniformTriangleSampler::samplePoint(p0, p1, p2, &indexSamples[2*i], pt, normal);
+                Vector3 normal = Vector3::Zero();
+                float trianglePdf = 0.0f;
+                Vector3 pt = samplePointOnTriangle(p0, p1, p2, &indexSamples[2*i], normal, trianglePdf);
                 float distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
                 float distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
 

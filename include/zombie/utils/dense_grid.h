@@ -58,27 +58,53 @@ protected:
 };
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&)> getDenseGridCallback0(const DenseGrid<S, CHANNELS, DIM>& grid);
+std::function<T(const Vector<DIM>&)> getDenseGridCallback0(
+    const DenseGrid<S, CHANNELS, DIM>& grid);
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&)> getDenseGridCallback0(const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
-                                                           const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
-                                                           const Vector<DIM>& gridMax, bool enableInterpolation=false);
+std::function<T(const Vector<DIM>&)> getDenseGridCallback0(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation=false);
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(const DenseGrid<S, CHANNELS, DIM>& grid);
+std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(
+    const DenseGrid<S, CHANNELS, DIM>& grid);
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
-                                                                 const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
-                                                                 const Vector<DIM>& gridMax, bool enableInterpolation=false);
+std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation=false);
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(const DenseGrid<S, CHANNELS, DIM>& grid,
-                                                                 const DenseGrid<S, CHANNELS, DIM>& gridBoundaryNormalAligned);
+std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(
+    const DenseGrid<S, CHANNELS, DIM>& grid,
+    const DenseGrid<S, CHANNELS, DIM>& gridBoundaryNormalAligned);
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
-                                                                 const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridDataBoundaryNormalAligned,
-                                                                 const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
-                                                                 const Vector<DIM>& gridMax, bool enableInterpolation=false);
+std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridDataBoundaryNormalAligned,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation=false);
+
+template <typename T, typename S, size_t CHANNELS, size_t DIM>
+std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallback3(
+    const DenseGrid<S, CHANNELS, DIM>& grid);
+template <typename T, typename S, size_t CHANNELS, size_t DIM>
+std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallback3(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation=false);
+
+template <typename T, typename S, size_t CHANNELS, size_t DIM>
+std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallback4(
+    const DenseGrid<S, CHANNELS, DIM>& grid,
+    const DenseGrid<S, CHANNELS, DIM>& gridBoundaryNormalAligned);
+template <typename T, typename S, size_t CHANNELS, size_t DIM>
+std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallback4(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridDataBoundaryNormalAligned,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation=false);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -325,7 +351,8 @@ inline Vector<DIM> DenseGrid<T, CHANNELS, DIM>::getLocalCoordinates(const Vector
 }
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&)> getDenseGridCallback0(const DenseGrid<S, CHANNELS, DIM>& grid)
+std::function<T(const Vector<DIM>&)> getDenseGridCallback0(
+    const DenseGrid<S, CHANNELS, DIM>& grid)
 {
     if constexpr (std::is_floating_point<T>::value ||
                   std::is_integral<T>::value ||
@@ -338,9 +365,10 @@ std::function<T(const Vector<DIM>&)> getDenseGridCallback0(const DenseGrid<S, CH
 }
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&)> getDenseGridCallback0(const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
-                                                           const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
-                                                           const Vector<DIM>& gridMax, bool enableInterpolation)
+std::function<T(const Vector<DIM>&)> getDenseGridCallback0(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation)
 {
     std::shared_ptr<DenseGrid<S, CHANNELS, DIM>> grid =
         std::make_shared<DenseGrid<S, CHANNELS, DIM>>(
@@ -357,7 +385,8 @@ std::function<T(const Vector<DIM>&)> getDenseGridCallback0(const Eigen::Matrix<S
 }
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(const DenseGrid<S, CHANNELS, DIM>& grid)
+std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(
+    const DenseGrid<S, CHANNELS, DIM>& grid)
 {
     if constexpr (std::is_floating_point<T>::value ||
                   std::is_integral<T>::value ||
@@ -370,9 +399,10 @@ std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(const DenseGrid
 }
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
-                                                                 const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
-                                                                 const Vector<DIM>& gridMax, bool enableInterpolation)
+std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation)
 {
     std::shared_ptr<DenseGrid<S, CHANNELS, DIM>> grid =
         std::make_shared<DenseGrid<S, CHANNELS, DIM>>(
@@ -389,8 +419,9 @@ std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback1(const Eigen::Ma
 }
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(const DenseGrid<S, CHANNELS, DIM>& grid,
-                                                                 const DenseGrid<S, CHANNELS, DIM>& gridBoundaryNormalAligned)
+std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(
+    const DenseGrid<S, CHANNELS, DIM>& grid,
+    const DenseGrid<S, CHANNELS, DIM>& gridBoundaryNormalAligned)
 {
     if constexpr (std::is_floating_point<T>::value ||
                   std::is_integral<T>::value ||
@@ -407,10 +438,11 @@ std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(const DenseGrid
 }
 
 template <typename T, typename S, size_t CHANNELS, size_t DIM>
-std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
-                                                                 const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridDataBoundaryNormalAligned,
-                                                                 const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
-                                                                 const Vector<DIM>& gridMax, bool enableInterpolation)
+std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridDataBoundaryNormalAligned,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation)
 {
     std::shared_ptr<DenseGrid<S, CHANNELS, DIM>> grid =
         std::make_shared<DenseGrid<S, CHANNELS, DIM>>(
@@ -429,6 +461,87 @@ std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(const Eigen::Ma
     } else{
         return [grid, gridBoundaryNormalAligned](const Vector<DIM>& a, bool b) -> T {
             return b ? (*gridBoundaryNormalAligned)(a) : (*grid)(a);
+        };
+    }
+}
+
+template <typename T, typename S, size_t CHANNELS, size_t DIM>
+std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallback3(
+    const DenseGrid<S, CHANNELS, DIM>& grid)
+{
+    if constexpr (std::is_floating_point<T>::value ||
+                  std::is_integral<T>::value ||
+                  std::is_same<T, bool>::value) {
+        return [&grid](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T { return (grid(a))(0); };
+
+    } else {
+        return [&grid](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T { return grid(a); };
+    }
+}
+
+template <typename T, typename S, size_t CHANNELS, size_t DIM>
+std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallback3(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation)
+{
+    std::shared_ptr<DenseGrid<S, CHANNELS, DIM>> grid =
+        std::make_shared<DenseGrid<S, CHANNELS, DIM>>(
+            gridData, gridShape, gridMin, gridMax, enableInterpolation);
+
+    if constexpr (std::is_floating_point<T>::value ||
+                  std::is_integral<T>::value ||
+                  std::is_same<T, bool>::value) {
+        return [grid](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T { return ((*grid)(a))(0); };
+
+    } else {
+        return [grid](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T { return (*grid)(a); };
+    }
+}
+
+template <typename T, typename S, size_t CHANNELS, size_t DIM>
+std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallback4(
+    const DenseGrid<S, CHANNELS, DIM>& grid,
+    const DenseGrid<S, CHANNELS, DIM>& gridBoundaryNormalAligned)
+{
+    if constexpr (std::is_floating_point<T>::value ||
+                  std::is_integral<T>::value ||
+                  std::is_same<T, bool>::value) {
+        return [&grid, &gridBoundaryNormalAligned](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T {
+            return c ? (gridBoundaryNormalAligned(a))(0) : (grid(a))(0);
+        };
+
+    } else{
+        return [&grid, &gridBoundaryNormalAligned](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T {
+            return c ? gridBoundaryNormalAligned(a) : grid(a);
+        };
+    }
+}
+
+template <typename T, typename S, size_t CHANNELS, size_t DIM>
+std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallback4(
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridData,
+    const Eigen::Matrix<S, Eigen::Dynamic, CHANNELS>& gridDataBoundaryNormalAligned,
+    const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+    const Vector<DIM>& gridMax, bool enableInterpolation)
+{
+    std::shared_ptr<DenseGrid<S, CHANNELS, DIM>> grid =
+        std::make_shared<DenseGrid<S, CHANNELS, DIM>>(
+            gridData, gridShape, gridMin, gridMax, enableInterpolation);
+    std::shared_ptr<DenseGrid<S, CHANNELS, DIM>> gridBoundaryNormalAligned =
+        std::make_shared<DenseGrid<S, CHANNELS, DIM>>(
+            gridDataBoundaryNormalAligned, gridShape, gridMin, gridMax, enableInterpolation);
+
+    if constexpr (std::is_floating_point<T>::value ||
+                  std::is_integral<T>::value ||
+                  std::is_same<T, bool>::value) {
+        return [grid, gridBoundaryNormalAligned](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T {
+            return c ? ((*gridBoundaryNormalAligned)(a))(0) : ((*grid)(a))(0);
+        };
+
+    } else{
+        return [grid, gridBoundaryNormalAligned](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T {
+            return c ? (*gridBoundaryNormalAligned)(a) : (*grid)(a);
         };
     }
 }

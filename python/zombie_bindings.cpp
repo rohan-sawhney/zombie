@@ -14,6 +14,7 @@ NB_MODULE(py, m) {
 
     bindFloatNToTypeFunc<float, 2>(m, "float");
     bindFloatNBoolToTypeFunc<float, 2>(m, "float");
+    bindFloatNFloatNBoolToTypeFunc<float, 2>(m, "float");
     bindWalkStateFuncs<float, 2>(m, "float");
 
     bindFloatNToTypeFunc<zombie::Array<float, 3>, 2>(m, "float3");
@@ -25,6 +26,7 @@ NB_MODULE(py, m) {
 
     bindFloatNToTypeFunc<float, 3>(m, "float");
     bindFloatNBoolToTypeFunc<float, 3>(m, "float");
+    bindFloatNFloatNBoolToTypeFunc<float, 3>(m, "float");
     bindWalkStateFuncs<float, 3>(m, "float");
 
     bindFloatNToTypeFunc<zombie::Array<float, 3>, 3>(m, "float3");
