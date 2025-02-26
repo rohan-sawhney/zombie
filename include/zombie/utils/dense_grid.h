@@ -239,16 +239,6 @@ inline Vector<DIM> DenseGrid<T, CHANNELS, DIM>::get(const Vectori<DIM>& index) c
     return x;
 }
 
-template <typename T, size_t CHANNELS, size_t DIM>
-inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, DIM>& grid,
-                                      const Vector<DIM>& xLocal)
-{
-    std::cerr << "interpolate: not implemented for DIM = " << DIM << std::endl;
-    exit(EXIT_FAILURE);
-
-    return Array<T, CHANNELS>::Zero();
-}
-
 template <typename T, size_t CHANNELS>
 inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 2>& grid,
                                       const Vector2& xLocal)
