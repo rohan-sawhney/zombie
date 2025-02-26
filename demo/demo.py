@@ -143,9 +143,9 @@ def setup_pde(model_problem_config, bounding_box):
     pde = zombie.core.pde_float_2d()
     pde.source = zombie.utils.get_dense_grid_source_callback_float_2d(
         source_value_buffer, source_value_shape, domain_min, domain_max)
-    pde.dirichlet = zombie.utils.get_dense_grid_boundary_condition_callback_float_2d(
+    pde.dirichlet = zombie.utils.get_dense_grid_dirichlet_callback_float_2d(
         absorbing_boundary_value_buffer, absorbing_boundary_value_shape, domain_min, domain_max)
-    pde.robin = zombie.utils.get_dense_grid_boundary_condition_callback_float_2d(
+    pde.robin = zombie.utils.get_dense_grid_robin_callback_float_2d(
         reflecting_boundary_value_buffer, reflecting_boundary_value_shape, domain_min, domain_max)
     pde.has_reflecting_boundary_conditions = zombie.utils.get_dense_grid_indicator_callback_2d(
         is_reflecting_boundary_buffer, is_reflecting_boundary_shape, domain_min, domain_max)

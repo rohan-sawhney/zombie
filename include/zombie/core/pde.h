@@ -33,7 +33,7 @@ struct PDE {
     std::function<T(const Vector<DIM>&, bool)> dirichlet;
 
     // returns Robin boundary conditions and coefficients
-    std::function<T(const Vector<DIM>&, bool)> robin; // dual purposes for Neumann conditions when Robin coeff is zero
+    std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> robin; // dual purposes for Neumann conditions when Robin coeff is zero
     std::function<float(const Vector<DIM>&, const Vector<DIM>&, bool)> robinCoeff;
 
     // checks if the PDE has reflecting boundary conditions (Neumann or Robin) at the given point

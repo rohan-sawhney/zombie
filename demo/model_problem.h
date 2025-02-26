@@ -123,7 +123,7 @@ void ModelProblem::setupPDE()
         Vector2 uv = (x - bMin)/maxLength;
         return this->absorbingBoundaryValue.get(uv)[0];
     };
-    pde.robin = [this, bMin, maxLength](const Vector2& x, bool _) -> float {
+    pde.robin = [this, bMin, maxLength](const Vector2& x, const Vector2& n, bool _) -> float {
         Vector2 uv = (x - bMin)/maxLength;
         return this->reflectingBoundaryValue.get(uv)[0];
     };

@@ -196,7 +196,6 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                 // halfplane as the current walk location
                 directionToSample /= distToSample;
                 if (flipNormalOrientation) {
-                    boundarySample.normal *= -1.0f;
                     estimateBoundaryNormalAligned = true;
 
                 } else if (directionToSample.dot(boundarySample.normal) < -walkSettings.silhouettePrecision) {
@@ -210,20 +209,20 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                     }
 
                     if (flipBoundarySampleNormal) {
-                        boundarySample.normal *= -1.0f;
                         estimateBoundaryNormalAligned = true;
                     }
                 }
             }
 
+            Vector<DIM> boundarySampleNormal = boundarySample.normal*(estimateBoundaryNormalAligned ? -1.0f : 1.0f);
             if (boundarySample.pdf > 0.0f && distToSample < starRadius &&
                 !queries.intersectsWithReflectingBoundary(state.currentPt, boundarySample.pt,
-                                                          state.currentNormal, boundarySample.normal,
+                                                          state.currentNormal, boundarySampleNormal,
                                                           state.onReflectingBoundary, true)) {
                 float G = state.greensFn->evaluate(state.currentPt, boundarySample.pt);
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         estimateBoundaryNormalAligned;
-                T h = pde.robin(boundarySample.pt, returnBoundaryNormalAlignedValue);
+                T h = pde.robin(boundarySample.pt, boundarySample.normal, returnBoundaryNormalAlignedValue);
                 state.totalReflectingBoundaryContribution += state.throughput*alpha*G*h/boundarySample.pdf;
             }
         }
@@ -270,7 +269,8 @@ inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& p
                 normal *= flipNormalOrientation ? -1.0f : 1.0f;
             }
 
-            bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided && flipNormalOrientation;
+            bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
+                                                    flipNormalOrientation;
             robinCoeff = pde.robinCoeff(state.currentPt, state.currentNormal,
                                         returnBoundaryNormalAlignedValue);
         }

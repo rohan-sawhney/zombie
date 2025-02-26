@@ -61,34 +61,36 @@ using WalkStateToVoidFunc = std::function<void(const zombie::WalkState<T, DIM>&)
 template <typename T, size_t DIM>
 using WalkCodeStateToTypeFunc = std::function<T(zombie::WalkCompletionCode, const zombie::WalkState<T, DIM>&)>;
 
-NB_MAKE_OPAQUE(FloatIntToBoolFunc)                                   // ignoreCandidateSilhouette
-NB_MAKE_OPAQUE(FloatToFloatFunc)                                     // branchTraversalWeight
-NB_MAKE_OPAQUE(IntIntToVoidFunc)                                     // reportProgress
-NB_MAKE_OPAQUE(VoidToFloatFunc)                                      // computeSignedVolume
-NB_MAKE_OPAQUE(IntersectBoundaryFunc<2>)                             // intersectAbsorbingBoundary, intersectReflectingBoundary
-NB_MAKE_OPAQUE(IntersectBoundaryFunc<3>)                             // intersectAbsorbingBoundary, intersectReflectingBoundary
-NB_MAKE_OPAQUE(IntersectUnionedBoundaryFunc<2>)                      // intersectBoundary
-NB_MAKE_OPAQUE(IntersectUnionedBoundaryFunc<3>)                      // intersectBoundary
-NB_MAKE_OPAQUE(FloatNToTypeFunc<bool, 2>)                            // insideDomain, insideBoundingDomain, outsideBoundingDomain, hasReflectingBoundaryConditions, insideSolveRegion
-NB_MAKE_OPAQUE(FloatNToTypeFunc<bool, 3>)                            // insideDomain, insideBoundingDomain, outsideBoundingDomain, hasReflectingBoundaryConditions, insideSolveRegion
-NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 2>)                           // source
-NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 3>)                           // source
-NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 3>, 2>)         // source
-NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 3>, 3>)         // source
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 2>)                       // computeDistToBoundary, dirichlet, robin
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 3>)                       // computeDistToBoundary, dirichlet, robin
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>)     // dirichlet, robin
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>)     // dirichlet, robin
-NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 2>)                 // robinCoeff
-NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 3>)                 // robinCoeff
-NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 2>)                        // walkStateCallback
-NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 3>)                        // walkStateCallback
-NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 3>, 2>)      // walkStateCallback
-NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 3>, 3>)      // walkStateCallback
-NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<float, 2>)                    // terminalContributionCallback
-NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<float, 3>)                    // terminalContributionCallback
-NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 3>, 2>)  // terminalContributionCallback
-NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 3>, 3>)  // terminalContributionCallback
+NB_MAKE_OPAQUE(FloatIntToBoolFunc)                                     // ignoreCandidateSilhouette
+NB_MAKE_OPAQUE(FloatToFloatFunc)                                       // branchTraversalWeight
+NB_MAKE_OPAQUE(IntIntToVoidFunc)                                       // reportProgress
+NB_MAKE_OPAQUE(VoidToFloatFunc)                                        // computeSignedVolume
+NB_MAKE_OPAQUE(IntersectBoundaryFunc<2>)                               // intersectAbsorbingBoundary, intersectReflectingBoundary
+NB_MAKE_OPAQUE(IntersectBoundaryFunc<3>)                               // intersectAbsorbingBoundary, intersectReflectingBoundary
+NB_MAKE_OPAQUE(IntersectUnionedBoundaryFunc<2>)                        // intersectBoundary
+NB_MAKE_OPAQUE(IntersectUnionedBoundaryFunc<3>)                        // intersectBoundary
+NB_MAKE_OPAQUE(FloatNToTypeFunc<bool, 2>)                              // insideDomain, insideBoundingDomain, outsideBoundingDomain, hasReflectingBoundaryConditions, insideSolveRegion
+NB_MAKE_OPAQUE(FloatNToTypeFunc<bool, 3>)                              // insideDomain, insideBoundingDomain, outsideBoundingDomain, hasReflectingBoundaryConditions, insideSolveRegion
+NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 2>)                             // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 3>)                             // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 3>, 2>)           // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 3>, 3>)           // source
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 2>)                         // computeDistToBoundary, dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 3>)                         // computeDistToBoundary, dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>)       // dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>)       // dirichlet
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 2>)                   // robinCoeff, robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 3>)                   // robinCoeff, robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>) // robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>) // robin
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 2>)                          // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 3>)                          // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 3>, 2>)        // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 3>, 3>)        // walkStateCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<float, 2>)                      // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<float, 3>)                      // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 3>, 2>)    // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 3>, 3>)    // terminalContributionCallback
 
 // binding functions
 void bindNonTemplatedLibraryResources(nb::module_ m);
@@ -119,7 +121,9 @@ void bindPDECoefficientCallbacks(nb::module_ m, std::string typeStr="");
 template <typename T, size_t DIM>
 void bindPDESouceCallbacks(nb::module_ m, std::string typeStr="");
 template <typename T, size_t DIM>
-void bindPDEBoundaryConditionCallbacks(nb::module_ m, std::string typeStr="");
+void bindPDEDirichletCallbacks(nb::module_ m, std::string typeStr="");
+template <typename T, size_t DIM>
+void bindPDERobinCallbacks(nb::module_ m, std::string typeStr="");
 template <typename T, size_t DIM>
 void bindPDEStructure(nb::module_ m, std::string typeStr="");
 
@@ -850,49 +854,49 @@ void bindPDESouceCallbacks(nb::module_ m, std::string typeStr)
 }
 
 template <typename T, size_t DIM>
-void bindPDEBoundaryConditionCallbacks(nb::module_ m, std::string typeStr)
+void bindPDEDirichletCallbacks(nb::module_ m, std::string typeStr)
 {
     nb::module_ core_m = m.def_submodule("core", "Core module");
 
-    core_m.def(("get_constant_boundary_condition_callback" + typeStr).c_str(),
+    core_m.def(("get_constant_dirichlet_callback" + typeStr).c_str(),
               [](float value) -> FloatNBoolToTypeFunc<T, DIM> {
                 return [value](const zombie::Vector<DIM>& a, bool b) -> T { return T(value); };
               },
               "value"_a,
-              "Returns a constant boundary condition callback.");
-    core_m.def(("get_constant_boundary_condition_callback" + typeStr).c_str(),
+              "Returns a constant dirichlet boundary condition callback.");
+    core_m.def(("get_constant_dirichlet_callback" + typeStr).c_str(),
               [](float value, float valueBoundaryNormalAligned) -> FloatNBoolToTypeFunc<T, DIM> {
                 return [value, valueBoundaryNormalAligned](const zombie::Vector<DIM>& a, bool b) -> T {
                     return b ? T(valueBoundaryNormalAligned) : T(value);
                 };
               },
               "value"_a, "value_boundary_normal_aligned"_a,
-              "Returns a constant boundary condition callback.");
+              "Returns a constant dirichlet boundary condition callback.");
 
     nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
 
     if constexpr (std::is_floating_point<T>::value) {
-        utils_m.def(("get_dense_grid_boundary_condition_callback" + typeStr).c_str(),
+        utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
                    nb::overload_cast<const zombie::DenseGrid<T, 1, DIM>&>(
                    &zombie::getDenseGridCallback1<T, T, 1, DIM>),
                    "grid"_a,
-                   "Returns a dense grid boundary condition callback.");
-        utils_m.def(("get_dense_grid_boundary_condition_callback" + typeStr).c_str(),
+                   "Returns a dense grid dirichlet boundary condition callback.");
+        utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
                    nb::overload_cast<const Eigen::Matrix<T, Eigen::Dynamic, 1>&,
                                      const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
                                      const zombie::Vector<DIM>&, bool>(
                    &zombie::getDenseGridCallback1<T, T, 1, DIM>),
                    "grid_data"_a, "grid_shape"_a, "grid_min"_a, "grid_max"_a,
                    "enable_interpolation"_a=false,
-                   "Returns a dense grid boundary condition callback.");
+                   "Returns a dense grid dirichlet boundary condition callback.");
 
-        utils_m.def(("get_dense_grid_boundary_condition_callback" + typeStr).c_str(),
+        utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
                    nb::overload_cast<const zombie::DenseGrid<T, 1, DIM>&,
                                      const zombie::DenseGrid<T, 1, DIM>&>(
                    &zombie::getDenseGridCallback2<T, T, 1, DIM>),
                    "grid"_a, "grid_boundary_normal_aligned"_a,
-                   "Returns a dense grid boundary condition callback.");
-        utils_m.def(("get_dense_grid_boundary_condition_callback" + typeStr).c_str(),
+                   "Returns a dense grid dirichlet boundary condition callback.");
+        utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
                    nb::overload_cast<const Eigen::Matrix<T, Eigen::Dynamic, 1>&,
                                      const Eigen::Matrix<T, Eigen::Dynamic, 1>&,
                                      const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
@@ -900,30 +904,30 @@ void bindPDEBoundaryConditionCallbacks(nb::module_ m, std::string typeStr)
                    &zombie::getDenseGridCallback2<T, T, 1, DIM>),
                    "grid_data"_a, "grid_data_boundary_normal_aligned"_a, "grid_shape"_a,
                    "grid_min"_a, "grid_max"_a, "enable_interpolation"_a=false,
-                   "Returns a dense grid boundary condition callback.");
+                   "Returns a dense grid dirichlet boundary condition callback.");
 
     } else {
-        utils_m.def(("get_dense_grid_boundary_condition_callback" + typeStr).c_str(),
+        utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
                    nb::overload_cast<const zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>&>(
                    &zombie::getDenseGridCallback1<T, float, T::RowsAtCompileTime, DIM>),
                    "grid"_a,
-                   "Returns a dense grid boundary condition callback.");
-        utils_m.def(("get_dense_grid_boundary_condition_callback" + typeStr).c_str(),
+                   "Returns a dense grid dirichlet boundary condition callback.");
+        utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
                    nb::overload_cast<const Eigen::Matrix<float, Eigen::Dynamic, T::RowsAtCompileTime>&,
                                      const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
                                      const zombie::Vector<DIM>&, bool>(
                    &zombie::getDenseGridCallback1<T, float, T::RowsAtCompileTime, DIM>),
                    "grid_data"_a, "grid_shape"_a, "grid_min"_a, "grid_max"_a,
                    "enable_interpolation"_a=false,
-                   "Returns a dense grid boundary condition callback.");
+                   "Returns a dense grid dirichlet boundary condition callback.");
 
-        utils_m.def(("get_dense_grid_boundary_condition_callback" + typeStr).c_str(),
+        utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
                    nb::overload_cast<const zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>&,
                                      const zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>&>(
                    &zombie::getDenseGridCallback2<T, float, T::RowsAtCompileTime, DIM>),
                    "grid"_a, "grid_boundary_normal_aligned"_a,
-                   "Returns a dense grid boundary condition callback.");
-        utils_m.def(("get_dense_grid_boundary_condition_callback" + typeStr).c_str(),
+                   "Returns a dense grid dirichlet boundary condition callback.");
+        utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
                    nb::overload_cast<const Eigen::Matrix<float, Eigen::Dynamic, T::RowsAtCompileTime>&,
                                      const Eigen::Matrix<float, Eigen::Dynamic, T::RowsAtCompileTime>&,
                                      const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
@@ -931,7 +935,95 @@ void bindPDEBoundaryConditionCallbacks(nb::module_ m, std::string typeStr)
                    &zombie::getDenseGridCallback2<T, float, T::RowsAtCompileTime, DIM>),
                    "grid_data"_a, "grid_data_boundary_normal_aligned"_a, "grid_shape"_a,
                    "grid_min"_a, "grid_max"_a, "enable_interpolation"_a=false,
-                   "Returns a dense grid boundary condition callback.");
+                   "Returns a dense grid dirichlet boundary condition callback.");
+    }
+}
+
+template <typename T, size_t DIM>
+void bindPDERobinCallbacks(nb::module_ m, std::string typeStr)
+{
+    nb::module_ core_m = m.def_submodule("core", "Core module");
+
+    core_m.def(("get_constant_robin_callback" + typeStr).c_str(),
+              [](float value) -> FloatNFloatNBoolToTypeFunc<T, DIM> {
+                return [value](const zombie::Vector<DIM>& a,
+                               const zombie::Vector<DIM>& b, bool c) -> T { return T(value); };
+              },
+              "value"_a,
+              "Returns a constant robin boundary condition callback.");
+    core_m.def(("get_constant_robin_callback" + typeStr).c_str(),
+              [](float value, float valueBoundaryNormalAligned) -> FloatNFloatNBoolToTypeFunc<T, DIM> {
+                return [value, valueBoundaryNormalAligned](const zombie::Vector<DIM>& a,
+                                                           const zombie::Vector<DIM>& b, bool c) -> T {
+                    return c ? T(valueBoundaryNormalAligned) : T(value);
+                };
+              },
+              "value"_a, "value_boundary_normal_aligned"_a,
+              "Returns a constant robin boundary condition callback.");
+
+    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+
+    if constexpr (std::is_floating_point<T>::value) {
+        utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
+                   nb::overload_cast<const zombie::DenseGrid<T, 1, DIM>&>(
+                   &zombie::getDenseGridCallback3<T, T, 1, DIM>),
+                   "grid"_a,
+                   "Returns a dense grid robin boundary condition callback.");
+        utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
+                   nb::overload_cast<const Eigen::Matrix<T, Eigen::Dynamic, 1>&,
+                                     const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
+                                     const zombie::Vector<DIM>&, bool>(
+                   &zombie::getDenseGridCallback3<T, T, 1, DIM>),
+                   "grid_data"_a, "grid_shape"_a, "grid_min"_a, "grid_max"_a,
+                   "enable_interpolation"_a=false,
+                   "Returns a dense grid robin boundary condition callback.");
+
+        utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
+                   nb::overload_cast<const zombie::DenseGrid<T, 1, DIM>&,
+                                     const zombie::DenseGrid<T, 1, DIM>&>(
+                   &zombie::getDenseGridCallback4<T, T, 1, DIM>),
+                   "grid"_a, "grid_boundary_normal_aligned"_a,
+                   "Returns a dense grid robin boundary condition callback.");
+        utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
+                   nb::overload_cast<const Eigen::Matrix<T, Eigen::Dynamic, 1>&,
+                                     const Eigen::Matrix<T, Eigen::Dynamic, 1>&,
+                                     const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
+                                     const zombie::Vector<DIM>&, bool>(
+                   &zombie::getDenseGridCallback4<T, T, 1, DIM>),
+                   "grid_data"_a, "grid_data_boundary_normal_aligned"_a, "grid_shape"_a,
+                   "grid_min"_a, "grid_max"_a, "enable_interpolation"_a=false,
+                   "Returns a dense grid robin boundary condition callback.");
+
+    } else {
+        utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
+                   nb::overload_cast<const zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>&>(
+                   &zombie::getDenseGridCallback3<T, float, T::RowsAtCompileTime, DIM>),
+                   "grid"_a,
+                   "Returns a dense grid robin boundary condition callback.");
+        utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
+                   nb::overload_cast<const Eigen::Matrix<float, Eigen::Dynamic, T::RowsAtCompileTime>&,
+                                     const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
+                                     const zombie::Vector<DIM>&, bool>(
+                   &zombie::getDenseGridCallback3<T, float, T::RowsAtCompileTime, DIM>),
+                   "grid_data"_a, "grid_shape"_a, "grid_min"_a, "grid_max"_a,
+                   "enable_interpolation"_a=false,
+                   "Returns a dense grid robin boundary condition callback.");
+
+        utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
+                   nb::overload_cast<const zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>&,
+                                     const zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>&>(
+                   &zombie::getDenseGridCallback4<T, float, T::RowsAtCompileTime, DIM>),
+                   "grid"_a, "grid_boundary_normal_aligned"_a,
+                   "Returns a dense grid robin boundary condition callback.");
+        utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
+                   nb::overload_cast<const Eigen::Matrix<float, Eigen::Dynamic, T::RowsAtCompileTime>&,
+                                     const Eigen::Matrix<float, Eigen::Dynamic, T::RowsAtCompileTime>&,
+                                     const zombie::Vectori<DIM>&, const zombie::Vector<DIM>&,
+                                     const zombie::Vector<DIM>&, bool>(
+                   &zombie::getDenseGridCallback4<T, float, T::RowsAtCompileTime, DIM>),
+                   "grid_data"_a, "grid_data_boundary_normal_aligned"_a, "grid_shape"_a,
+                   "grid_min"_a, "grid_max"_a, "enable_interpolation"_a=false,
+                   "Returns a dense grid robin boundary condition callback.");
     }
 }
 

@@ -19,6 +19,7 @@ NB_MODULE(py, m) {
 
     bindFloatNToTypeFunc<zombie::Array<float, 3>, 2>(m, "float3");
     bindFloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>(m, "float3");
+    bindFloatNFloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>(m, "float3");
     bindWalkStateFuncs<zombie::Array<float, 3>, 2>(m, "float3");
 
     bindIntersectBoundaryFuncs<3>(m);
@@ -31,6 +32,7 @@ NB_MODULE(py, m) {
 
     bindFloatNToTypeFunc<zombie::Array<float, 3>, 3>(m, "float3");
     bindFloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>(m, "float3");
+    bindFloatNFloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>(m, "float3");
     bindWalkStateFuncs<zombie::Array<float, 3>, 3>(m, "float3");
 
     // bind dense grid
@@ -54,22 +56,26 @@ NB_MODULE(py, m) {
     bindPDECoefficientCallbacks<2>(m, "_2d");
 
     bindPDESouceCallbacks<float, 2>(m, "_float_2d");
-    bindPDEBoundaryConditionCallbacks<float, 2>(m, "_float_2d");
+    bindPDEDirichletCallbacks<float, 2>(m, "_float_2d");
+    bindPDERobinCallbacks<float, 2>(m, "_float_2d");
     bindPDEStructure<float, 2>(m, "_float_2d");
 
     bindPDESouceCallbacks<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindPDEBoundaryConditionCallbacks<zombie::Array<float, 3>, 2>(m, "_float3_2d");
+    bindPDEDirichletCallbacks<zombie::Array<float, 3>, 2>(m, "_float3_2d");
+    bindPDERobinCallbacks<zombie::Array<float, 3>, 2>(m, "_float3_2d");
     bindPDEStructure<zombie::Array<float, 3>, 2>(m, "_float3_2d");
 
     bindPDEIndicatorCallbacks<3>(m, "_3d");
     bindPDECoefficientCallbacks<3>(m, "_3d");
 
     bindPDESouceCallbacks<float, 3>(m, "_float_3d");
-    bindPDEBoundaryConditionCallbacks<float, 3>(m, "_float_3d");
+    bindPDEDirichletCallbacks<float, 3>(m, "_float_3d");
+    bindPDERobinCallbacks<float, 3>(m, "_float_3d");
     bindPDEStructure<float, 3>(m, "_float_3d");
 
     bindPDESouceCallbacks<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindPDEBoundaryConditionCallbacks<zombie::Array<float, 3>, 3>(m, "_float3_3d");
+    bindPDEDirichletCallbacks<zombie::Array<float, 3>, 3>(m, "_float3_3d");
+    bindPDERobinCallbacks<zombie::Array<float, 3>, 3>(m, "_float3_3d");
     bindPDEStructure<zombie::Array<float, 3>, 3>(m, "_float3_3d");
 
     // bind solver resources

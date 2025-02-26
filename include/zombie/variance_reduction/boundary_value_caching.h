@@ -632,10 +632,12 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         samplePt.estimateBoundaryNormalAligned;
                 if (pde.areRobinConditionsPureNeumann) {
-                    samplePt.normalDerivative = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
+                    samplePt.normalDerivative = pde.robin(samplePt.pt, samplePt.normal,
+                                                          returnBoundaryNormalAlignedValue);
 
                 } else {
-                    samplePt.contribution = pde.robin(samplePt.pt, returnBoundaryNormalAlignedValue);
+                    samplePt.contribution = pde.robin(samplePt.pt, samplePt.normal,
+                                                      returnBoundaryNormalAlignedValue);
                     if (std::fabs(samplePt.robinCoeff) > robinCoeffCutoffForNormalDerivative) {
                         samplePt.normalDerivative = samplePt.statistics.getEstimatedDerivative();
                     }
