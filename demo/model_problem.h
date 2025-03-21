@@ -22,12 +22,12 @@ public:
 
     // members
     bool solveDoubleSided;
-    std::vector<Vector2i> segments;
-    std::vector<Vector2i> absorbingBoundarySegments;
-    std::vector<Vector2i> reflectingBoundarySegments;
-    std::vector<Vector2> vertices;
-    std::vector<Vector2> absorbingBoundaryVertices;
-    std::vector<Vector2> reflectingBoundaryVertices;
+    std::vector<Vector2i> indices;
+    std::vector<Vector2i> absorbingBoundaryIndices;
+    std::vector<Vector2i> reflectingBoundaryIndices;
+    std::vector<Vector2> positions;
+    std::vector<Vector2> absorbingBoundaryPositions;
+    std::vector<Vector2> reflectingBoundaryPositions;
     std::pair<Vector2, Vector2> boundingBox;
     zombie::PDE<float, 2> pde;
     zombie::GeometricQueries<2> queries;
@@ -94,8 +94,8 @@ sdfGridForAbsorbingBoundary(nullptr)
 
     // specify the minimum and maximum Robin coefficient values for each reflecting boundary element:
     // we use a constant value for all elements in this demo, but Zombie supports variable coefficients
-    minRobinCoeffValues.resize(reflectingBoundarySegments.size(), std::fabs(robinCoeff));
-    maxRobinCoeffValues.resize(reflectingBoundarySegments.size(), std::fabs(robinCoeff));
+    minRobinCoeffValues.resize(reflectingBoundaryIndices.size(), std::fabs(robinCoeff));
+    maxRobinCoeffValues.resize(reflectingBoundaryIndices.size(), std::fabs(robinCoeff));
 
     // populate the geometric queries for the absorbing and reflecting boundary
     populateGeometricQueries();
@@ -103,10 +103,10 @@ sdfGridForAbsorbingBoundary(nullptr)
 
 void ModelProblem::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation)
 {
-    zombie::loadBoundaryMesh<2>(filename, vertices, segments);
-    if (normalize) zombie::normalize<2>(vertices);
-    if (flipOrientation) zombie::flipOrientation<2>(segments);
-    boundingBox = zombie::computeBoundingBox<2>(vertices, true, 1.0);
+    zombie::loadBoundaryMesh<2>(filename, positions, indices);
+    if (normalize) zombie::normalize<2>(positions);
+    if (flipOrientation) zombie::flipOrientation<2>(indices);
+    boundingBox = zombie::computeBoundingBox<2>(positions, true, 1.0);
 }
 
 void ModelProblem::setupPDE()
@@ -144,9 +144,9 @@ void ModelProblem::partitionBoundaryMesh()
     // use Zombie's default partitioning function, which assumes the boundary discretization
     // is perfectly adapted to the boundary conditions; this isn't always a correct assumption
     // and the user might want to override this function for their specific problem
-    zombie::partitionBoundaryMesh<2>(pde.hasReflectingBoundaryConditions, vertices, segments,
-                                     absorbingBoundaryVertices, absorbingBoundarySegments,
-                                     reflectingBoundaryVertices, reflectingBoundarySegments);
+    zombie::partitionBoundaryMesh<2>(pde.hasReflectingBoundaryConditions, positions, indices,
+                                     absorbingBoundaryPositions, absorbingBoundaryIndices,
+                                     reflectingBoundaryPositions, reflectingBoundaryIndices);
 }
 
 void ModelProblem::populateGeometricQueries()
@@ -157,7 +157,7 @@ void ModelProblem::populateGeometricQueries()
     queries.domainMax = boundingBox.second;
 
     // use an absorbing boundary handler to populate geometric queries for the absorbing boundary
-    absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryVertices, absorbingBoundarySegments);
+    absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryPositions, absorbingBoundaryIndices);
     zombie::populateGeometricQueriesForDirichletBoundary<2>(absorbingBoundaryHandler, queries);
 
     if (!solveDoubleSided && useSdfForAbsorbingBoundary) {
@@ -175,13 +175,13 @@ void ModelProblem::populateGeometricQueries()
 
     if (pde.areRobinConditionsPureNeumann) {
         reflectingNeumannBoundaryHandler.buildAccelerationStructure(
-            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette);
+            reflectingBoundaryPositions, reflectingBoundaryIndices, ignoreCandidateSilhouette);
         zombie::populateGeometricQueriesForNeumannBoundary<2>(
             reflectingNeumannBoundaryHandler, branchTraversalWeight, queries);
 
     } else {
         reflectingRobinBoundaryHandler.buildAccelerationStructure(
-            reflectingBoundaryVertices, reflectingBoundarySegments, ignoreCandidateSilhouette,
+            reflectingBoundaryPositions, reflectingBoundaryIndices, ignoreCandidateSilhouette,
             minRobinCoeffValues, maxRobinCoeffValues);
         zombie::populateGeometricQueriesForRobinBoundary<2>(
             reflectingRobinBoundaryHandler, branchTraversalWeight, queries);

@@ -121,10 +121,10 @@ void createBvcEvaluationPoints(const std::vector<Vector2>& solveLocations,
 }
 
 void runBoundaryValueCaching(const json& solverConfig,
-                             const std::vector<Vector2>& absorbingBoundaryVertices,
-                             const std::vector<Vector2i>& absorbingBoundarySegments,
-                             const std::vector<Vector2>& reflectingBoundaryVertices,
-                             const std::vector<Vector2i>& reflectingBoundarySegments,
+                             const std::vector<Vector2>& absorbingBoundaryPositions,
+                             const std::vector<Vector2i>& absorbingBoundaryIndices,
+                             const std::vector<Vector2>& reflectingBoundaryPositions,
+                             const std::vector<Vector2i>& reflectingBoundaryIndices,
                              const zombie::GeometricQueries<2>& queries,
                              const zombie::PDE<float, 2>& pde,
                              bool solveDoubleSided,
@@ -170,13 +170,13 @@ void runBoundaryValueCaching(const json& solverConfig,
     // initialize boundary samplers
     std::shared_ptr<zombie::BoundarySampler<float, 2>> absorbingBoundarySampler =
         zombie::createUniformLineSegmentBoundarySampler<float>(
-            absorbingBoundaryVertices, absorbingBoundarySegments,
+            absorbingBoundaryPositions, absorbingBoundaryIndices,
             queries, queries.insideBoundingDomain);
     absorbingBoundarySampler->initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
 
     std::shared_ptr<zombie::BoundarySampler<float, 2>> reflectingBoundarySampler =
         zombie::createUniformLineSegmentBoundarySampler<float>(
-            reflectingBoundaryVertices, reflectingBoundarySegments,
+            reflectingBoundaryPositions, reflectingBoundaryIndices,
             queries, queries.insideBoundingDomain);
     reflectingBoundarySampler->initialize(normalOffsetForReflectingBoundary, solveDoubleSided);
 
@@ -268,10 +268,10 @@ void createRwsEvaluationPoints(const std::vector<Vector2>& solveLocations,
 }
 
 void runReverseWalkOnStars(const json& solverConfig,
-                           const std::vector<Vector2>& absorbingBoundaryVertices,
-                           const std::vector<Vector2i>& absorbingBoundarySegments,
-                           const std::vector<Vector2>& reflectingBoundaryVertices,
-                           const std::vector<Vector2i>& reflectingBoundarySegments,
+                           const std::vector<Vector2>& absorbingBoundaryPositions,
+                           const std::vector<Vector2i>& absorbingBoundaryIndices,
+                           const std::vector<Vector2>& reflectingBoundaryPositions,
+                           const std::vector<Vector2i>& reflectingBoundaryIndices,
                            const zombie::GeometricQueries<2>& queries,
                            const zombie::PDE<float, 2>& pde,
                            bool solveDoubleSided,
@@ -308,14 +308,14 @@ void runReverseWalkOnStars(const json& solverConfig,
     // initialize boundary samplers
     std::shared_ptr<zombie::BoundarySampler<float, 2>> absorbingBoundarySampler =
         zombie::createUniformLineSegmentBoundarySampler<float>(
-            absorbingBoundaryVertices, absorbingBoundarySegments,
+            absorbingBoundaryPositions, absorbingBoundaryIndices,
             queries, queries.insideBoundingDomain);
     absorbingBoundarySampler->initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
     if (ignoreAbsorbingBoundaryContribution) absorbingBoundarySampleCount = 0;
 
     std::shared_ptr<zombie::BoundarySampler<float, 2>> reflectingBoundarySampler =
         zombie::createUniformLineSegmentBoundarySampler<float>(
-            reflectingBoundaryVertices, reflectingBoundarySegments,
+            reflectingBoundaryPositions, reflectingBoundaryIndices,
             queries, queries.insideBoundingDomain);
     reflectingBoundarySampler->initialize(0.0f, solveDoubleSided);
     if (ignoreReflectingBoundaryContribution) reflectingBoundarySampleCount = 0;
@@ -396,10 +396,10 @@ void getSolution(const std::vector<zombie::rws::EvaluationPoint<float, 2>>& eval
 }
 
 void runSolver(const std::string& solverType, const json& config,
-               const std::vector<Vector2>& absorbingBoundaryVertices,
-               const std::vector<Vector2i>& absorbingBoundarySegments,
-               const std::vector<Vector2>& reflectingBoundaryVertices,
-               const std::vector<Vector2i>& reflectingBoundarySegments,
+               const std::vector<Vector2>& absorbingBoundaryPositions,
+               const std::vector<Vector2i>& absorbingBoundaryIndices,
+               const std::vector<Vector2>& reflectingBoundaryPositions,
+               const std::vector<Vector2i>& reflectingBoundaryIndices,
                const zombie::GeometricQueries<2>& queries,
                const zombie::PDE<float, 2>& pde, bool solveDoubleSided,
                const std::vector<Vector2>& solveLocations,
@@ -423,8 +423,8 @@ void runSolver(const std::string& solverType, const json& config,
         createBvcEvaluationPoints(solveLocations, distanceInfo, evalPts);
 
         // run boundary value caching
-        runBoundaryValueCaching(config, absorbingBoundaryVertices, absorbingBoundarySegments,
-                                reflectingBoundaryVertices, reflectingBoundarySegments,
+        runBoundaryValueCaching(config, absorbingBoundaryPositions, absorbingBoundaryIndices,
+                                reflectingBoundaryPositions, reflectingBoundaryIndices,
                                 queries, pde, solveDoubleSided, evalPts);
 
         // extract solution from evaluation points
@@ -437,8 +437,8 @@ void runSolver(const std::string& solverType, const json& config,
 
         // run reverse walk on stars
         std::vector<int> sampleCounts;
-        runReverseWalkOnStars(config, absorbingBoundaryVertices, absorbingBoundarySegments,
-                              reflectingBoundaryVertices, reflectingBoundarySegments,
+        runReverseWalkOnStars(config, absorbingBoundaryPositions, absorbingBoundaryIndices,
+                              reflectingBoundaryPositions, reflectingBoundaryIndices,
                               queries, pde, solveDoubleSided, evalPts, sampleCounts);
 
         // extract solution from evaluation points
@@ -473,10 +473,10 @@ int main(int argc, const char *argv[])
 
     // initialize the model problem
     ModelProblem modelProblem(modelProblemConfig, zombieDirectoryPath);
-    const std::vector<Vector2i>& absorbingBoundarySegments = modelProblem.absorbingBoundarySegments;
-    const std::vector<Vector2i>& reflectingBoundarySegments = modelProblem.reflectingBoundarySegments;
-    const std::vector<Vector2>& absorbingBoundaryVertices = modelProblem.absorbingBoundaryVertices;
-    const std::vector<Vector2>& reflectingBoundaryVertices = modelProblem.reflectingBoundaryVertices;
+    const std::vector<Vector2i>& absorbingBoundaryIndices = modelProblem.absorbingBoundaryIndices;
+    const std::vector<Vector2i>& reflectingBoundaryIndices = modelProblem.reflectingBoundaryIndices;
+    const std::vector<Vector2>& absorbingBoundaryPositions = modelProblem.absorbingBoundaryPositions;
+    const std::vector<Vector2>& reflectingBoundaryPositions = modelProblem.reflectingBoundaryPositions;
     const std::pair<Vector2, Vector2>& boundingBox = modelProblem.boundingBox;
     const zombie::GeometricQueries<2>& queries = modelProblem.queries;
     const zombie::PDE<float, 2>& pde = modelProblem.pde;
@@ -490,8 +490,8 @@ int main(int argc, const char *argv[])
 
     // solve the model problem
     std::vector<float> solution;
-    runSolver(solverType, solverConfig, absorbingBoundaryVertices, absorbingBoundarySegments,
-              reflectingBoundaryVertices, reflectingBoundarySegments, queries, pde,
+    runSolver(solverType, solverConfig, absorbingBoundaryPositions, absorbingBoundaryIndices,
+              reflectingBoundaryPositions, reflectingBoundaryIndices, queries, pde,
               solveDoubleSided, solveLocations, distanceInfo, solution);
 
     // save the solution to disk
