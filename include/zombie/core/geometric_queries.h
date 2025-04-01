@@ -234,10 +234,13 @@ inline void GeometricQueries<DIM>::populate()
                                float& distance, bool computeSignedDistance) -> bool {
         distance = std::numeric_limits<float>::max();
         bool didProject = false;
-
         Vector<DIM> absorbingBoundaryPt = x;
+        Vector<DIM> reflectingBoundaryPt = x;
         Vector<DIM> absorbingBoundaryNormal;
+        Vector<DIM> reflectingBoundaryNormal;
         float distanceToAbsorbingBoundary;
+        float distanceToReflectingBoundary;
+
         if (this->projectToAbsorbingBoundary(absorbingBoundaryPt, absorbingBoundaryNormal,
                                              distanceToAbsorbingBoundary, computeSignedDistance)) {
             x = absorbingBoundaryPt;
@@ -246,9 +249,6 @@ inline void GeometricQueries<DIM>::populate()
             didProject = true;
         }
 
-        Vector<DIM> reflectingBoundaryPt = x;
-        Vector<DIM> reflectingBoundaryNormal;
-        float distanceToReflectingBoundary;
         if (this->projectToReflectingBoundary(reflectingBoundaryPt, reflectingBoundaryNormal,
                                               distanceToReflectingBoundary, computeSignedDistance)) {
             if (std::fabs(distanceToReflectingBoundary) < std::fabs(distance)) {
