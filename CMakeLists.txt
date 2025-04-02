@@ -43,7 +43,7 @@ else()
     set(ZOMBIE_NANOFLANN_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/deps/nanoflann/include)
 endif()
 
-set(FCPW_USE_ENOKI OFF CACHE BOOL "Enable Enoki support" FORCE)
+set(FCPW_USE_ENOKI OFF CACHE BOOL "Enable CPU vectorization" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/fcpw)
 
 list(APPEND ZOMBIE_DEPS_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/deps/bessel)
