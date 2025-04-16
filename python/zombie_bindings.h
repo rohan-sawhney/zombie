@@ -73,24 +73,24 @@ NB_MAKE_OPAQUE(FloatNToTypeFunc<bool, 2>)                              // inside
 NB_MAKE_OPAQUE(FloatNToTypeFunc<bool, 3>)                              // insideDomain, insideBoundingDomain, outsideBoundingDomain, hasReflectingBoundaryConditions, insideSolveRegion
 NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 2>)                             // source
 NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 3>)                             // source
-NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 3>, 2>)           // source
-NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 3>, 3>)           // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 4>, 2>)           // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 4>, 3>)           // source
 NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 2>)                         // computeDistToBoundary, dirichlet
 NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 3>)                         // computeDistToBoundary, dirichlet
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>)       // dirichlet
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>)       // dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 4>, 2>)       // dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 4>, 3>)       // dirichlet
 NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 2>)                   // robinCoeff, robin
 NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 3>)                   // robinCoeff, robin
-NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>) // robin
-NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>) // robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 4>, 2>) // robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 4>, 3>) // robin
 NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 2>)                          // walkStateCallback
 NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 3>)                          // walkStateCallback
-NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 3>, 2>)        // walkStateCallback
-NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 3>, 3>)        // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 4>, 2>)        // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 4>, 3>)        // walkStateCallback
 NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<float, 2>)                      // terminalContributionCallback
 NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<float, 3>)                      // terminalContributionCallback
-NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 3>, 2>)    // terminalContributionCallback
-NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 3>, 3>)    // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 4>, 2>)    // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 4>, 3>)    // terminalContributionCallback
 
 // binding functions
 void bindNonTemplatedLibraryResources(nb::module_ m);
@@ -499,8 +499,8 @@ void bindCoreGeometryStructures(nb::module_ m, std::string typeStr)
         .def(nb::init<>())
         .def(nb::init<bool, const zombie::Vector<DIM>&, const zombie::Vector<DIM>&>(),
             "domain_is_watertight"_a, "domain_min"_a, "domain_max"_a)
-        .def_ro("has_absorbing_boundary", &zombie::GeometricQueries<DIM>::hasAbsorbingBoundary)
-        .def_ro("has_reflecting_boundary", &zombie::GeometricQueries<DIM>::hasReflectingBoundary)
+        .def_ro("has_non_empty_absorbing_boundary", &zombie::GeometricQueries<DIM>::hasNonEmptyAbsorbingBoundary)
+        .def_ro("has_non_empty_reflecting_boundary", &zombie::GeometricQueries<DIM>::hasNonEmptyReflectingBoundary)
         .def_ro("domain_is_watertight", &zombie::GeometricQueries<DIM>::domainIsWatertight)
         .def_ro("domain_min", &zombie::GeometricQueries<DIM>::domainMin)
         .def_ro("domain_max", &zombie::GeometricQueries<DIM>::domainMax)
@@ -680,7 +680,7 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
             "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a,
             "min_robin_coeff_values"_a, "max_robin_coeff_values"_a,
             "build_bvh"_a=true, "enable_bvh_vectorization"_a=false)
-        .def("update_robin_coefficients", &zombie::FcpwRobinBoundaryHandler<DIM>::updateRobinCoefficients,
+        .def("update_coefficient_values", &zombie::FcpwRobinBoundaryHandler<DIM>::updateCoefficientValues,
             "updates the Robin coefficients on the boundary mesh.",
             "min_robin_coeff_values"_a, "max_robin_coeff_values"_a);
 
@@ -1164,20 +1164,21 @@ void bindSamplers(nb::module_ m, std::string typeStr)
             "n_total_samples"_a, "boundary_normal_aligned_samples"_a=false)
         .def("generate_samples", &zombie::BoundarySampler<T, DIM>::generateSamples,
             "Generates sample points on the boundary.",
-            "n_samples"_a, "sample_type"_a, "normal_offset_for_boundary"_a, "sample_pts"_a,
+            "n_samples"_a, "sample_type"_a, "normal_offset_for_boundary"_a,
+            "geometric_queries"_a, "sample_pts"_a,
             "generate_boundary_normal_aligned_samples"_a=false);
 
     if (DIM == 2) {
         samplers_m.def(("create_uniform_line_segment_boundary_sampler" + typeStr).c_str(),
                       &zombie::createUniformLineSegmentBoundarySampler<T>,
-                      "positions"_a, "indices"_a, "geometric_queries"_a, "inside_solve_region"_a,
+                      "positions"_a, "indices"_a, "inside_solve_region"_a,
                       "compute_weighted_normals"_a=false,
                       "Creates a uniform line segment boundary sampler.");
 
     } else if (DIM == 3) {
         samplers_m.def(("create_uniform_triangle_boundary_sampler" + typeStr).c_str(),
                       &zombie::createUniformTriangleBoundarySampler<T>,
-                      "positions"_a, "indices"_a, "geometric_queries"_a, "inside_solve_region"_a,
+                      "positions"_a, "indices"_a, "inside_solve_region"_a,
                       "compute_weighted_normals"_a=false,
                       "Creates a uniform triangle boundary sampler.");
     }
@@ -1185,12 +1186,12 @@ void bindSamplers(nb::module_ m, std::string typeStr)
     nb::class_<zombie::DomainSampler<T, DIM>>(samplers_m, ("domain_sampler" + typeStr).c_str())
         .def("generate_samples", &zombie::DomainSampler<T, DIM>::generateSamples,
             "Generates sample points inside the user-specified solve region.",
-            "n_samples"_a, "sample_pts"_a);
+            "n_samples"_a, "geometric_queries"_a, "sample_pts"_a);
 
     samplers_m.def(("create_uniform_domain_sampler" + typeStr).c_str(),
                   &zombie::createUniformDomainSampler<T, DIM>,
-                  "geometric_queries"_a, "inside_solve_region"_a,
-                  "solve_region_min"_a, "solve_region_max"_a, "solve_region_volume"_a,
+                  "inside_solve_region"_a, "solve_region_min"_a,
+                  "solve_region_max"_a, "solve_region_volume"_a,
                   "Creates a uniform domain sampler.");
 }
 
@@ -1270,10 +1271,11 @@ void bindReverseWalkOnStarsSolver(nb::module_ m, std::string typeStr)
 
     nb::class_<zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>>>(
         solvers_m, ("reverse_walk_on_stars" + typeStr).c_str())
-        .def(nb::init<std::shared_ptr<zombie::BoundarySampler<T, DIM>>,
+        .def(nb::init<const zombie::GeometricQueries<DIM>&,
+                      std::shared_ptr<zombie::BoundarySampler<T, DIM>>,
                       std::shared_ptr<zombie::BoundarySampler<T, DIM>>,
                       std::shared_ptr<zombie::DomainSampler<T, DIM>>>(),
-            "absorbing_boundary_sampler"_a, "reflecting_boundary_sampler"_a, "domain_sampler"_a)
+            "geometric_queries"_a, "absorbing_boundary_sampler"_a, "reflecting_boundary_sampler"_a, "domain_sampler"_a)
         .def("generate_samples",
             &zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>>::generateSamples,
             "Generates boundary and domain samples.",
@@ -1282,8 +1284,8 @@ void bindReverseWalkOnStarsSolver(nb::module_ m, std::string typeStr)
         .def("solve",
             &zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>>::solve,
             "Solves the PDE using the reverse walk on stars algorithm.",
-            "pde"_a, "geometric_queries"_a, "walk_settings"_a, "normal_offset_for_absorbing_boundary"_a,
-            "radius_clamp"_a, "kernel_regularization"_a, "eval_pts"_a, "updated_eval_pt_locations"_a=true,
+            "pde"_a, "walk_settings"_a, "normal_offset_for_absorbing_boundary"_a, "radius_clamp"_a,
+            "kernel_regularization"_a, "eval_pts"_a, "updated_eval_pt_locations"_a=true,
             "run_single_threaded"_a=false, "report_progress"_a.none())
         .def("get_absorbing_boundary_sample_count",
             &zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>>::getAbsorbingBoundarySampleCount,

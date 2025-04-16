@@ -9,7 +9,7 @@ namespace zombie {
 
 using namespace fcpw;
 
-template<size_t DIM>
+template <size_t DIM>
 struct ReflectanceMbvhNode {
     // constructor
     ReflectanceMbvhNode(): boxMin(FloatP<FCPW_MBVH_BRANCHING_FACTOR>(maxFloat)),
@@ -29,7 +29,7 @@ struct ReflectanceMbvhNode {
     IntP<FCPW_MBVH_BRANCHING_FACTOR> child; // use sign to differentiate between inner and leaf nodes
 };
 
-template<size_t WIDTH, size_t DIM>
+template <size_t WIDTH, size_t DIM>
 struct MbvhLeafNode {
     // constructor
     MbvhLeafNode(): maxCoefficientValue(minFloat), primitiveIndex(-1) {
@@ -50,10 +50,10 @@ struct MbvhLeafNode {
     MaskP<WIDTH> ignoreAdjacentFace[DIM];
 };
 
-template<size_t WIDTH, size_t DIM,
-         typename PrimitiveType,
-         typename NodeType,
-         typename NodeBound>
+template <size_t WIDTH, size_t DIM,
+          typename PrimitiveType,
+          typename NodeType,
+          typename NodeBound>
 class ReflectanceMbvh: public Mbvh<WIDTH, DIM,
                                    PrimitiveType,
                                    SilhouettePrimitive<DIM>,
@@ -85,7 +85,7 @@ protected:
                                                  MaskP<FCPW_MBVH_BRANCHING_FACTOR>& hasSilhouettes) const;
 };
 
-template<size_t DIM, typename PrimitiveType, typename MbvhNodeBound, typename BvhNodeBound>
+template <size_t DIM, typename PrimitiveType, typename MbvhNodeBound, typename BvhNodeBound>
 std::unique_ptr<ReflectanceMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, ReflectanceMbvhNode<DIM>, MbvhNodeBound>> createVectorizedReflectanceBvh(
                                                         ReflectanceBvh<DIM, ReflectanceBvhNode<DIM>, PrimitiveType, BvhNodeBound> *reflectanceBvh,
                                                         std::vector<PrimitiveType *>& primitives,
@@ -95,10 +95,7 @@ std::unique_ptr<ReflectanceMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, Reflectance
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-template<size_t WIDTH, size_t DIM,
-         typename PrimitiveType,
-         typename NodeType,
-         typename NodeBound>
+template <size_t WIDTH, size_t DIM, typename PrimitiveType, typename NodeType, typename NodeBound>
 inline ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::ReflectanceMbvh(std::vector<PrimitiveType *>& primitives_,
                                                                                         std::vector<SilhouettePrimitive<DIM> *>& silhouettes_):
 Mbvh<WIDTH, DIM,
@@ -119,7 +116,7 @@ Mbvh<WIDTH, DIM,
                                                        std::is_same<PrimitiveType, ReflectanceTriangle<typename PrimitiveType::Bound>>::value;
 }
 
-template<size_t DIM>
+template <size_t DIM>
 inline void assignGeometricDataToNode(const ReflectanceBvhNode<DIM>& bvhNode, ReflectanceMbvhNode<DIM>& mbvhNode, int index)
 {
     // assign bvh node's bounding cone and coefficient values to mbvh node
@@ -133,7 +130,7 @@ inline void assignGeometricDataToNode(const ReflectanceBvhNode<DIM>& bvhNode, Re
     mbvhNode.maxCoefficientValue[index] = bvhNode.maxCoefficientValue;
 }
 
-template<typename NodeType, typename LeafNodeType, typename PrimitiveBound>
+template <typename NodeType, typename LeafNodeType, typename PrimitiveBound>
 inline void populateLeafNode(const NodeType& node,
                              const std::vector<ReflectanceLineSegment<PrimitiveBound> *>& primitives,
                              std::vector<LeafNodeType>& leafNodes, size_t WIDTH)
@@ -164,7 +161,7 @@ inline void populateLeafNode(const NodeType& node,
     }
 }
 
-template<typename NodeType, typename LeafNodeType, typename PrimitiveBound>
+template <typename NodeType, typename LeafNodeType, typename PrimitiveBound>
 inline void populateLeafNode(const NodeType& node,
                              const std::vector<ReflectanceTriangle<PrimitiveBound> *>& primitives,
                              std::vector<LeafNodeType>& leafNodes, size_t WIDTH)
@@ -195,7 +192,7 @@ inline void populateLeafNode(const NodeType& node,
     }
 }
 
-template<size_t DIM>
+template <size_t DIM>
 inline void assignBoundingCone(const BoundingCone<DIM>& cone, ReflectanceMbvhNode<DIM>& node, int index)
 {
     for (size_t i = 0; i < DIM; i++) {
@@ -206,7 +203,7 @@ inline void assignBoundingCone(const BoundingCone<DIM>& cone, ReflectanceMbvhNod
     node.coneRadius[index] = cone.radius;
 }
 
-template<size_t DIM>
+template <size_t DIM>
 inline void mergeBoundingCones(const BoundingCone<DIM>& coneA, const BoundingCone<DIM>& coneB,
                                const BoundingBox<DIM>& boxA, const BoundingBox<DIM>& boxB,
                                const BoundingBox<DIM>& mergedBox, ReflectanceMbvhNode<DIM>& node,
@@ -215,10 +212,7 @@ inline void mergeBoundingCones(const BoundingCone<DIM>& coneA, const BoundingCon
     cone = mergeBoundingCones<DIM>(coneA, coneB, boxA.centroid(), boxB.centroid(), mergedBox.centroid());
 }
 
-template<size_t WIDTH,
-         size_t DIM,
-         typename NodeType,
-         typename PrimitiveType>
+template <size_t WIDTH, size_t DIM, typename NodeType, typename PrimitiveType>
 inline std::pair<BoundingBox<DIM>, BoundingCone<DIM>> refitRecursive(const std::vector<PrimitiveType *>& primitives,
                                                                      std::vector<NodeType>& flatTree, int nodeIndex)
 {
@@ -272,10 +266,7 @@ inline std::pair<BoundingBox<DIM>, BoundingCone<DIM>> refitRecursive(const std::
     return std::make_pair(box, cone);
 }
 
-template<size_t WIDTH, size_t DIM,
-         typename PrimitiveType,
-         typename NodeType,
-         typename NodeBound>
+template <size_t WIDTH, size_t DIM, typename PrimitiveType, typename NodeType, typename NodeBound>
 inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::refit()
 {
     using MbvhBase = Mbvh<WIDTH, DIM,
@@ -295,7 +286,7 @@ inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::ref
     }
 }
 
-template<size_t WIDTH, size_t DIM, typename NodeType, typename PrimitiveType>
+template <size_t WIDTH, size_t DIM, typename NodeType, typename PrimitiveType>
 inline std::pair<float, float> updateCoefficientValuesRecursive(const std::vector<PrimitiveType *>& primitives,
                                                                 std::vector<NodeType>& flatTree, int nodeIndex)
 {
@@ -334,10 +325,7 @@ inline std::pair<float, float> updateCoefficientValuesRecursive(const std::vecto
     return minMaxCoefficientValues;
 }
 
-template<size_t WIDTH, size_t DIM,
-         typename PrimitiveType,
-         typename NodeType,
-         typename NodeBound>
+template <size_t WIDTH, size_t DIM, typename PrimitiveType, typename NodeType, typename NodeBound>
 inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
                                                                                                      const std::vector<float>& maxCoefficientValues)
 {
@@ -378,10 +366,7 @@ inline void ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::upd
     }
 }
 
-template<size_t WIDTH, size_t DIM,
-         typename PrimitiveType,
-         typename NodeType,
-         typename NodeBound>
+template <size_t WIDTH, size_t DIM, typename PrimitiveType, typename NodeType, typename NodeBound>
 inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::visitNodes(
                                                                     const enokiVector<DIM>& sc, float r2, int nodeIndex,
                                                                     FloatP<FCPW_MBVH_BRANCHING_FACTOR>& r2MinBound,
@@ -440,7 +425,7 @@ inline MaskP<FCPW_MBVH_BRANCHING_FACTOR> ReflectanceMbvh<WIDTH, DIM, PrimitiveTy
     return overlapBox;
 }
 
-template<size_t WIDTH>
+template <size_t WIDTH>
 inline void enqueueNodes(const IntP<WIDTH>& child, const FloatP<WIDTH>& tMin, const FloatP<WIDTH>& tMax,
                          const MaskP<WIDTH>& hasSilhouettes, const MaskP<WIDTH>& mask, float minDist,
                          float& tMaxMin, int& stackPtr, TraversalStack *subtree)
@@ -467,7 +452,7 @@ inline void enqueueNodes(const IntP<WIDTH>& child, const FloatP<WIDTH>& tMin, co
     }
 }
 
-template<>
+template <>
 inline void enqueueNodes<4>(const IntP<4>& child, const FloatP<4>& tMin, const FloatP<4>& tMax,
                             const MaskP<4>& hasSilhouettes, const MaskP<4>& mask, float minDist,
                             float& tMaxMin, int& stackPtr, TraversalStack *subtree)
@@ -489,10 +474,7 @@ inline void enqueueNodes<4>(const IntP<4>& child, const FloatP<4>& tMin, const F
     }
 }
 
-template<size_t WIDTH, size_t DIM,
-         typename PrimitiveType,
-         typename NodeType,
-         typename NodeBound>
+template <size_t WIDTH, size_t DIM, typename PrimitiveType, typename NodeType, typename NodeBound>
 inline int ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
                                                                                                      bool flipNormalOrientation,
                                                                                                      float silhouettePrecision) const
@@ -583,7 +565,7 @@ inline int ReflectanceMbvh<WIDTH, DIM, PrimitiveType, NodeType, NodeBound>::comp
     return nodesVisited;
 }
 
-template<size_t DIM, typename PrimitiveType, typename MbvhNodeBound, typename BvhNodeBound>
+template <size_t DIM, typename PrimitiveType, typename MbvhNodeBound, typename BvhNodeBound>
 std::unique_ptr<ReflectanceMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, ReflectanceMbvhNode<DIM>, MbvhNodeBound>> createVectorizedReflectanceBvh(
                                                         ReflectanceBvh<DIM, ReflectanceBvhNode<DIM>, PrimitiveType, BvhNodeBound> *reflectanceBvh,
                                                         std::vector<PrimitiveType *>& primitives,

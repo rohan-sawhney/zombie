@@ -11,7 +11,7 @@
 
 namespace zombie {
 
-template<size_t DIM>
+template <size_t DIM>
 using Vector = Eigen::Matrix<float, DIM, 1>;
 using Vector2 = Vector<2>;
 using Vector3 = Vector<3>;

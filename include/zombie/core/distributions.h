@@ -80,7 +80,7 @@ class HarmonicGreensFnFreeSpace: public GreensFnFreeSpace<DIM> {
 public:
     // constructor
     HarmonicGreensFnFreeSpace(): GreensFnFreeSpace<DIM>() {
-        std::cerr << "HarmonicGreensFnFreeSpac() not implemented for DIM: " << DIM << std::endl;
+        std::cerr << "HarmonicGreensFnFreeSpace() not implemented for DIM: " << DIM << std::endl;
         exit(EXIT_FAILURE);
     }
 };

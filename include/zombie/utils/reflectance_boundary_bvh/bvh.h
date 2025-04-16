@@ -9,7 +9,7 @@ namespace zombie {
 
 using namespace fcpw;
 
-template<size_t DIM>
+template <size_t DIM>
 struct ReflectanceBvhNode {
     // constructor
     ReflectanceBvhNode(): nReferences(0) {}
@@ -26,12 +26,12 @@ struct ReflectanceBvhNode {
     float maxCoefficientValue;
 };
 
-template<typename PrimitiveBound,
-         typename PrimitiveType,
-         typename NodeType, size_t DIM>
+template <typename PrimitiveBound,
+          typename PrimitiveType,
+          typename NodeType, size_t DIM>
 struct SortReflectanceSoupPositions;
 
-template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
 class ReflectanceBvh: public Bvh<DIM, NodeType, PrimitiveType> {
 public:
     // constructor
@@ -63,7 +63,7 @@ protected:
                    bool& hasSilhouette) const;
 };
 
-template<size_t DIM, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename PrimitiveType, typename NodeBound>
 std::unique_ptr<ReflectanceBvh<DIM, ReflectanceBvhNode<DIM>, PrimitiveType, NodeBound>> createReflectanceBvh(
                                                                                         PolygonSoup<DIM>& soup,
                                                                                         std::vector<PrimitiveType *>& primitives,
@@ -73,7 +73,7 @@ std::unique_ptr<ReflectanceBvh<DIM, ReflectanceBvhNode<DIM>, PrimitiveType, Node
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
+template <size_t DIM, typename NodeType, typename PrimitiveType>
 inline void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType *>& primitives,
                                                 const std::vector<Vector<DIM>>& primitiveNormals,
                                                 std::vector<NodeType>& flatTree, int start, int end)
@@ -158,7 +158,7 @@ inline void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType 
     }
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
 inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::assignGeometricDataToNodes(const std::function<bool(float, int)>& ignoreSilhouette)
 {
     // precompute normals for each primitive
@@ -185,7 +185,7 @@ inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::assignGeome
     }
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
 inline ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::ReflectanceBvh(const CostHeuristic& costHeuristic_,
                                                                                std::vector<PrimitiveType *>& primitives_,
                                                                                std::vector<SilhouettePrimitive<DIM> *>& silhouettes_,
@@ -202,13 +202,13 @@ Bvh<DIM, NodeType, PrimitiveType, SilhouettePrimitive<DIM>>(costHeuristic_, prim
     assignGeometricDataToNodes({});
 }
 
-template<size_t DIM>
+template <size_t DIM>
 inline void mergeBoundingCones(const ReflectanceBvhNode<DIM>& left, const ReflectanceBvhNode<DIM>& right, ReflectanceBvhNode<DIM>& node)
 {
     node.cone = mergeBoundingCones<DIM>(left.cone, right.cone, left.box.centroid(), right.box.centroid(), node.box.centroid());
 }
 
-template<size_t DIM, typename PrimitiveType>
+template <size_t DIM, typename PrimitiveType>
 inline BoundingCone<DIM> computeBoundingConeForPrimitives(const std::vector<PrimitiveType *>& primitives,
                                                           const Vector<DIM>& centroid,
                                                           int nReferences, int referenceOffset)
@@ -267,7 +267,7 @@ inline BoundingCone<DIM> computeBoundingConeForPrimitives(const std::vector<Prim
     return cone;
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
+template <size_t DIM, typename NodeType, typename PrimitiveType>
 inline void refitRecursive(const std::vector<PrimitiveType *>& primitives,
                            std::vector<NodeType>& flatTree, int nodeIndex)
 {
@@ -301,7 +301,7 @@ inline void refitRecursive(const std::vector<PrimitiveType *>& primitives,
     }
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
 inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::refit()
 {
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
@@ -312,7 +312,7 @@ inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::refit()
     }
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType>
+template <size_t DIM, typename NodeType, typename PrimitiveType>
 inline std::pair<float, float> updateCoefficientValuesRecursive(const std::vector<PrimitiveType *>& primitives,
                                                                 std::vector<NodeType>& flatTree, int nodeIndex)
 {
@@ -344,7 +344,7 @@ inline std::pair<float, float> updateCoefficientValuesRecursive(const std::vecto
     return std::make_pair(node.minCoefficientValue, node.maxCoefficientValue);
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
 inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
                                                                                              const std::vector<float>& maxCoefficientValues)
 {
@@ -366,7 +366,7 @@ inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::updateCoeff
     }
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
 inline bool ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(const BoundingSphere<DIM>& s, int nodeIndex,
                                                                                float& r2MinBound, float& r2MaxBound,
                                                                                bool& hasSilhouette) const
@@ -411,7 +411,7 @@ inline bool ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(c
     return false;
 }
 
-template<size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
 inline int ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
                                                                                              bool flipNormalOrientation,
                                                                                              float silhouettePrecision) const
@@ -505,7 +505,7 @@ inline int ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::computeSquar
     return nodesVisited;
 }
 
-template<typename PrimitiveBound, typename PrimitiveType, typename NodeType, size_t DIM>
+template <typename PrimitiveBound, typename PrimitiveType, typename NodeType, size_t DIM>
 struct SortReflectanceSoupPositions {
     // constructor
     SortReflectanceSoupPositions(PolygonSoup<DIM>& soup_) {}
@@ -517,7 +517,7 @@ struct SortReflectanceSoupPositions {
     }
 };
 
-template<typename PrimitiveBound>
+template <typename PrimitiveBound>
 struct SortReflectanceSoupPositions<PrimitiveBound, ReflectanceLineSegment<PrimitiveBound>, ReflectanceBvhNode<2>, 2> {
     // constructor
     SortReflectanceSoupPositions(PolygonSoup<2>& soup_): soup(soup_) {}
@@ -532,7 +532,7 @@ struct SortReflectanceSoupPositions<PrimitiveBound, ReflectanceLineSegment<Primi
     PolygonSoup<2>& soup;
 };
 
-template<typename PrimitiveBound>
+template <typename PrimitiveBound>
 struct SortReflectanceSoupPositions<PrimitiveBound, ReflectanceTriangle<PrimitiveBound>, ReflectanceBvhNode<3>, 3> {
     // constructor
     SortReflectanceSoupPositions(PolygonSoup<3>& soup_): soup(soup_) {}
@@ -547,7 +547,7 @@ struct SortReflectanceSoupPositions<PrimitiveBound, ReflectanceTriangle<Primitiv
     PolygonSoup<3>& soup;
 };
 
-template<size_t DIM, typename PrimitiveType, typename NodeBound>
+template <size_t DIM, typename PrimitiveType, typename NodeBound>
 std::unique_ptr<ReflectanceBvh<DIM, ReflectanceBvhNode<DIM>, PrimitiveType, NodeBound>> createReflectanceBvh(
                                                                                         PolygonSoup<DIM>& soup,
                                                                                         std::vector<PrimitiveType *>& primitives,

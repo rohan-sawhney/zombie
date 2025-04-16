@@ -47,15 +47,14 @@ protected:
     // computes the contribution from the reflecting boundary at a particular point in the walk
     void computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                const WalkSettings& walkSettings,
-                                               const IntersectionPoint<DIM>& intersectionPt,
                                                float starRadius, bool flipNormalOrientation,
                                                pcg32& sampler, WalkState<T, DIM>& state) const;
 
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
                                    const WalkSettings& walkSettings,
-                                   const IntersectionPoint<DIM>& intersectionPt,
-                                   const Vector<DIM>& direction, pcg32& sampler,
+                                   const Vector<DIM>& direction,
+                                   float intersectionDist, pcg32& sampler,
                                    WalkState<T, DIM>& state) const;
 
     // computes the throughput of a single walk step
@@ -173,7 +172,6 @@ inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                                        const WalkSettings& walkSettings,
-                                                                       const IntersectionPoint<DIM>& intersectionPt,
                                                                        float starRadius, bool flipNormalOrientation,
                                                                        pcg32& sampler, WalkState<T, DIM>& state) const
 {
@@ -232,8 +230,8 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
 template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pde,
                                                            const WalkSettings& walkSettings,
-                                                           const IntersectionPoint<DIM>& intersectionPt,
-                                                           const Vector<DIM>& direction, pcg32& sampler,
+                                                           const Vector<DIM>& direction,
+                                                           float intersectionDist, pcg32& sampler,
                                                            WalkState<T, DIM>& state) const
 {
     if (!walkSettings.ignoreSourceContribution) {
@@ -241,7 +239,7 @@ inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pd
         // define the source value to be zero outside this region
         float sourceRadius, sourcePdf;
         Vector<DIM> sourcePt = state.greensFn->sampleVolume(direction, sampler, sourceRadius, sourcePdf);
-        if (sourceRadius <= intersectionPt.dist) {
+        if (sourceRadius <= intersectionDist) {
             // NOTE: hemispherical sampling causes the alpha term to be cancelled out when
             // currentPt is on the reflecting boundary; in this case, the green's function
             // norm remains unchanged even though our domain is a hemisphere;
@@ -411,11 +409,10 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // compute the contribution from the reflecting boundary
-        computeReflectingBoundaryContribution(pde, walkSettings, intersectionPt, starRadius, 
-                                              flipNormalOrientation, sampler, state);
+        computeReflectingBoundaryContribution(pde, walkSettings, starRadius, flipNormalOrientation, sampler, state);
 
         // compute the source contribution
-        computeSourceContribution(pde, walkSettings, intersectionPt, direction, sampler, state);
+        computeSourceContribution(pde, walkSettings, direction, intersectionPt.dist, sampler, state);
 
         // update walk position
         state.prevDistance = intersectionPt.dist;

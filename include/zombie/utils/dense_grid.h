@@ -37,9 +37,9 @@ public:
     // getters
     Vector<DIM> get(int index) const;
     Vector<DIM> get(const Vectori<DIM>& index) const;
-    Array<T, CHANNELS> operator()(const Vector<DIM>& x) const;
 
     // data accessors
+    Array<T, CHANNELS> operator()(const Vector<DIM>& x) const;
     Array<T, CHANNELS> min() const;
     Array<T, CHANNELS> max() const;
 

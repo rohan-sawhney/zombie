@@ -356,19 +356,21 @@ def create_domain_sampler(geometric_queries, solve_double_sided):
     if solve_double_sided:
         solve_region_volume = np.prod(solve_region_max - solve_region_min)
         return zombie.samplers.create_uniform_domain_sampler_float_2d(
-                geometric_queries, geometric_queries.inside_bounding_domain,
-                solve_region_min, solve_region_max, solve_region_volume)
+                geometric_queries.inside_bounding_domain,
+                solve_region_min, solve_region_max,
+                solve_region_volume)
 
     else:
         solve_region_volume = np.abs(geometric_queries.compute_domain_signed_volume())
         return zombie.samplers.create_uniform_domain_sampler_float_2d(
-                geometric_queries, geometric_queries.inside_domain,
-                solve_region_min, solve_region_max, solve_region_volume)
+                geometric_queries.inside_domain,
+                solve_region_min, solve_region_max,
+                solve_region_volume)
 
 def create_boundary_sampler(positions, indices, geometric_queries,
                             normal_offset_for_boundary, solve_double_sided):
     boundary_sampler = zombie.samplers.create_uniform_line_segment_boundary_sampler_float_2d(
-                        positions, indices, geometric_queries, geometric_queries.inside_bounding_domain)
+                        positions, indices, geometric_queries.inside_bounding_domain)
     boundary_sampler.initialize(normal_offset_for_boundary, solve_double_sided)
 
     return boundary_sampler
@@ -617,7 +619,8 @@ def run_reverse_walk_on_stars(solver_config, evaluation_pts,
     progress_bar = zombie.utils.progress_bar(total_work)
     report_progress = zombie.utils.get_report_progress_callback(progress_bar)
 
-    reverse_walk_on_stars = zombie.solvers.reverse_walk_on_stars_float_2d(absorbing_boundary_sampler,
+    reverse_walk_on_stars = zombie.solvers.reverse_walk_on_stars_float_2d(geometric_queries,
+                                                                          absorbing_boundary_sampler,
                                                                           reflecting_boundary_sampler,
                                                                           domain_sampler)
 
@@ -639,7 +642,7 @@ def run_reverse_walk_on_stars(solver_config, evaluation_pts,
                                                  ignore_absorbing_boundary_contribution,
                                                  ignore_reflecting_boundary_contribution,
                                                  ignore_source_contribution, print_logs)
-    reverse_walk_on_stars.solve(pde, geometric_queries, walk_settings, normal_offset_for_absorbing_boundary,
+    reverse_walk_on_stars.solve(pde, walk_settings, normal_offset_for_absorbing_boundary,
                                 radius_clamp_for_kernels, regularization_for_kernels, evaluation_pts,
                                 True, run_single_threaded, report_progress)
     progress_bar.finish()

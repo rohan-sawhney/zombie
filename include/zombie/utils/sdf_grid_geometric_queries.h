@@ -107,7 +107,7 @@ inline Array<float, 1> SdfHierarchy<SdfLeft, SdfRight, DIM>::operator()(const Ve
 template <typename Sdf, size_t DIM>
 void populateGeometricQueriesForDirichletBoundary(const Sdf& sdf, GeometricQueries<DIM>& geometricQueries)
 {
-    geometricQueries.hasAbsorbingBoundary = true;
+    geometricQueries.hasNonEmptyAbsorbingBoundary = true;
     geometricQueries.computeDistToAbsorbingBoundary = [&sdf](const Vector<DIM>& x,
                                                              bool computeSignedDistance) -> float {
         return computeSignedDistance ? sdf(x)(0) : std::fabs(sdf(x)(0));

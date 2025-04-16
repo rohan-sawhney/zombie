@@ -17,10 +17,10 @@ NB_MODULE(py, m) {
     bindFloatNFloatNBoolToTypeFunc<float, 2>(m, "float");
     bindWalkStateFuncs<float, 2>(m, "float");
 
-    bindFloatNToTypeFunc<zombie::Array<float, 3>, 2>(m, "float3");
-    bindFloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>(m, "float3");
-    bindFloatNFloatNBoolToTypeFunc<zombie::Array<float, 3>, 2>(m, "float3");
-    bindWalkStateFuncs<zombie::Array<float, 3>, 2>(m, "float3");
+    bindFloatNToTypeFunc<zombie::Array<float, 4>, 2>(m, "rgba");
+    bindFloatNBoolToTypeFunc<zombie::Array<float, 4>, 2>(m, "rgba");
+    bindFloatNFloatNBoolToTypeFunc<zombie::Array<float, 4>, 2>(m, "rgba");
+    bindWalkStateFuncs<zombie::Array<float, 4>, 2>(m, "rgba");
 
     bindIntersectBoundaryFuncs<3>(m);
     bindFloatNToTypeFunc<bool, 3>(m, "bool");
@@ -30,19 +30,19 @@ NB_MODULE(py, m) {
     bindFloatNFloatNBoolToTypeFunc<float, 3>(m, "float");
     bindWalkStateFuncs<float, 3>(m, "float");
 
-    bindFloatNToTypeFunc<zombie::Array<float, 3>, 3>(m, "float3");
-    bindFloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>(m, "float3");
-    bindFloatNFloatNBoolToTypeFunc<zombie::Array<float, 3>, 3>(m, "float3");
-    bindWalkStateFuncs<zombie::Array<float, 3>, 3>(m, "float3");
+    bindFloatNToTypeFunc<zombie::Array<float, 4>, 3>(m, "rgba");
+    bindFloatNBoolToTypeFunc<zombie::Array<float, 4>, 3>(m, "rgba");
+    bindFloatNFloatNBoolToTypeFunc<zombie::Array<float, 4>, 3>(m, "rgba");
+    bindWalkStateFuncs<zombie::Array<float, 4>, 3>(m, "rgba");
 
     // bind dense grid
     bindDenseGrid<bool, 2>(m, "_bool_2d");
     bindDenseGrid<float, 2>(m, "_float_2d");
-    bindDenseGrid<zombie::Array<float, 3>, 2>(m, "_float3_2d");
+    bindDenseGrid<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
 
     bindDenseGrid<bool, 3>(m, "_bool_3d");
     bindDenseGrid<float, 3>(m, "_float_3d");
-    bindDenseGrid<zombie::Array<float, 3>, 3>(m, "_float3_3d");
+    bindDenseGrid<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
 
     // bind geometry resources
     bindCoreGeometryStructures<2>(m, "_2d");
@@ -60,10 +60,10 @@ NB_MODULE(py, m) {
     bindPDERobinCallbacks<float, 2>(m, "_float_2d");
     bindPDEStructure<float, 2>(m, "_float_2d");
 
-    bindPDESouceCallbacks<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindPDEDirichletCallbacks<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindPDERobinCallbacks<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindPDEStructure<zombie::Array<float, 3>, 2>(m, "_float3_2d");
+    bindPDESouceCallbacks<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindPDEDirichletCallbacks<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindPDERobinCallbacks<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindPDEStructure<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
 
     bindPDEIndicatorCallbacks<3>(m, "_3d");
     bindPDECoefficientCallbacks<3>(m, "_3d");
@@ -73,10 +73,10 @@ NB_MODULE(py, m) {
     bindPDERobinCallbacks<float, 3>(m, "_float_3d");
     bindPDEStructure<float, 3>(m, "_float_3d");
 
-    bindPDESouceCallbacks<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindPDEDirichletCallbacks<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindPDERobinCallbacks<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindPDEStructure<zombie::Array<float, 3>, 3>(m, "_float3_3d");
+    bindPDESouceCallbacks<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindPDEDirichletCallbacks<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindPDERobinCallbacks<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindPDEStructure<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
 
     // bind solver resources
     bindRandomWalkStructures<float, 2>(m, "_float_2d");
@@ -86,12 +86,12 @@ NB_MODULE(py, m) {
     bindBoundaryValueCachingSolver<float, 2>(m, "_float_2d");
     bindReverseWalkOnStarsSolver<float, 2>(m, "_float_2d");
 
-    bindRandomWalkStructures<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindWalkOnSpheresSolver<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindWalkOnStarsSolver<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindSamplers<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindBoundaryValueCachingSolver<zombie::Array<float, 3>, 2>(m, "_float3_2d");
-    bindReverseWalkOnStarsSolver<zombie::Array<float, 3>, 2>(m, "_float3_2d");
+    bindRandomWalkStructures<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindWalkOnSpheresSolver<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindWalkOnStarsSolver<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindSamplers<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindBoundaryValueCachingSolver<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindReverseWalkOnStarsSolver<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
 
     bindRandomWalkStructures<float, 3>(m, "_float_3d");
     bindWalkOnSpheresSolver<float, 3>(m, "_float_3d");
@@ -100,10 +100,10 @@ NB_MODULE(py, m) {
     bindBoundaryValueCachingSolver<float, 3>(m, "_float_3d");
     bindReverseWalkOnStarsSolver<float, 3>(m, "_float_3d");
 
-    bindRandomWalkStructures<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindWalkOnSpheresSolver<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindWalkOnStarsSolver<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindSamplers<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindBoundaryValueCachingSolver<zombie::Array<float, 3>, 3>(m, "_float3_3d");
-    bindReverseWalkOnStarsSolver<zombie::Array<float, 3>, 3>(m, "_float3_3d");
+    bindRandomWalkStructures<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindWalkOnSpheresSolver<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindWalkOnStarsSolver<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindSamplers<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindBoundaryValueCachingSolver<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindReverseWalkOnStarsSolver<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
 }

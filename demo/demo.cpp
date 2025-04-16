@@ -131,7 +131,7 @@ std::shared_ptr<zombie::BoundarySampler<T, 2>> createBoundarySampler(const std::
                                                                      const zombie::GeometricQueries<2>& queries)
 {
     return zombie::createUniformLineSegmentBoundarySampler<T>(boundaryPositions, boundaryIndices,
-                                                              queries, queries.insideBoundingDomain);
+                                                              queries.insideBoundingDomain);
 }
 
 template <typename T>
@@ -140,7 +140,7 @@ std::shared_ptr<zombie::BoundarySampler<T, 3>> createBoundarySampler(const std::
                                                                      const zombie::GeometricQueries<3>& queries)
 {
     return zombie::createUniformTriangleBoundarySampler<T>(boundaryPositions, boundaryIndices,
-                                                           queries, queries.insideBoundingDomain);
+                                                           queries.insideBoundingDomain);
 }
 
 template <typename T, size_t DIM>
@@ -213,7 +213,7 @@ void runBoundaryValueCaching(const json& solverConfig,
     }
 
     std::shared_ptr<zombie::DomainSampler<T, DIM>> domainSampler =
-        zombie::createUniformDomainSampler<T, DIM>(queries, insideSolveRegionDomainSampler,
+        zombie::createUniformDomainSampler<T, DIM>(insideSolveRegionDomainSampler,
                                                    queries.domainMin, queries.domainMax,
                                                    solveRegionVolume);
     if (ignoreSourceContribution) domainCacheSize = 0;
@@ -352,7 +352,7 @@ void runReverseWalkOnStars(const json& solverConfig,
     }
 
     std::shared_ptr<zombie::DomainSampler<T, DIM>> domainSampler =
-        zombie::createUniformDomainSampler<T, DIM>(queries, insideSolveRegionDomainSampler,
+        zombie::createUniformDomainSampler<T, DIM>(insideSolveRegionDomainSampler,
                                                    queries.domainMin, queries.domainMax,
                                                    solveRegionVolume);
     if (ignoreSourceContribution) domainSampleCount = 0;
@@ -363,7 +363,7 @@ void runReverseWalkOnStars(const json& solverConfig,
     std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
 
     zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>> reverseWalkOnStars(
-                                        absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
+                                        queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
 
     // generate boundary and domain samples
     reverseWalkOnStars.generateSamples(absorbingBoundarySampleCount, reflectingBoundarySampleCount,
@@ -380,7 +380,7 @@ void runReverseWalkOnStars(const json& solverConfig,
                                       ignoreAbsorbingBoundaryContribution,
                                       ignoreReflectingBoundaryContribution,
                                       ignoreSourceContribution, printLogs);
-    reverseWalkOnStars.solve(pde, queries, walkSettings, normalOffsetForAbsorbingBoundary,
+    reverseWalkOnStars.solve(pde, walkSettings, normalOffsetForAbsorbingBoundary,
                              radiusClampForKernels, regularizationForKernels, evalPts,
                              true, runSingleThreaded, reportProgress);
     pb.finish();

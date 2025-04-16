@@ -114,7 +114,7 @@ public:
                                     bool buildBvh=true, bool enableBvhVectorization=false);
 
     // updates the Robin coefficients on the boundary mesh
-    void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
+    void updateCoefficientValues(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues);
 };
 
@@ -641,10 +641,10 @@ void FcpwRobinBoundaryHandler<DIM>::buildAccelerationStructure(const std::vector
 }
 
 template <size_t DIM>
-void FcpwRobinBoundaryHandler<DIM>::updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
+void FcpwRobinBoundaryHandler<DIM>::updateCoefficientValues(const std::vector<float>& minRobinCoeffValues,
                                                             const std::vector<float>& maxRobinCoeffValues)
 {
-    std::cerr << "FcpwRobinBoundaryHandler::updateRobinCoefficients: Unsupported dimension: " << DIM << std::endl;
+    std::cerr << "FcpwRobinBoundaryHandler::updateCoefficientValues: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
 }
 
@@ -762,7 +762,7 @@ public:
     }
 
     // updates the Robin coefficients on the boundary mesh
-    void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
+    void updateCoefficientValues(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
         if (baseline) {
             baseline->updateCoefficientValues(minRobinCoeffValues, maxRobinCoeffValues);
@@ -934,7 +934,7 @@ public:
     }
 
     // updates the Robin coefficients on the boundary mesh
-    void updateRobinCoefficients(const std::vector<float>& minRobinCoeffValues,
+    void updateCoefficientValues(const std::vector<float>& minRobinCoeffValues,
                                  const std::vector<float>& maxRobinCoeffValues) {
         if (baseline) {
             baseline->updateCoefficientValues(minRobinCoeffValues, maxRobinCoeffValues);
@@ -1004,7 +1004,7 @@ void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<D
 {
     fcpw::Aggregate<DIM> *absorbingBoundaryAggregate = dirichletBoundaryHandler.scene.getSceneData()->aggregate.get();
     if (absorbingBoundaryAggregate) {
-        geometricQueries.hasAbsorbingBoundary = true;
+        geometricQueries.hasNonEmptyAbsorbingBoundary = true;
         geometricQueries.computeDistToAbsorbingBoundary = [absorbingBoundaryAggregate](
                                                           const Vector<DIM>& x, bool computeSignedDistance) -> float {
             Vector<DIM> queryPt = x;
@@ -1080,7 +1080,7 @@ void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggre
                                                    GeometricQueries<DIM>& geometricQueries)
 {
     if (reflectingBoundaryAggregate) {
-        geometricQueries.hasReflectingBoundary = true;
+        geometricQueries.hasNonEmptyReflectingBoundary = true;
         geometricQueries.computeDistToReflectingBoundary = [reflectingBoundaryAggregate](
                                                            const Vector<DIM>& x, bool computeSignedDistance) -> float {
             Vector<DIM> queryPt = x;

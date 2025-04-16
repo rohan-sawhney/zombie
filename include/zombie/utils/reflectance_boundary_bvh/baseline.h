@@ -9,7 +9,7 @@ namespace zombie {
 
 using namespace fcpw;
 
-template<size_t DIM, typename PrimitiveType=Primitive<DIM>>
+template <size_t DIM, typename PrimitiveType=Primitive<DIM>>
 class ReflectanceBaseline: public Baseline<DIM, PrimitiveType> {
 public:
     // constructor
@@ -26,7 +26,7 @@ public:
                                  float silhouettePrecision) const;
 };
 
-template<size_t DIM, typename PrimitiveType>
+template <size_t DIM, typename PrimitiveType>
 std::unique_ptr<ReflectanceBaseline<DIM, PrimitiveType>> createReflectanceBaseline(
                                             std::vector<PrimitiveType *>& primitives,
                                             std::vector<SilhouettePrimitive<DIM> *>& silhouettes);
@@ -34,7 +34,7 @@ std::unique_ptr<ReflectanceBaseline<DIM, PrimitiveType>> createReflectanceBaseli
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-template<size_t DIM, typename PrimitiveType>
+template <size_t DIM, typename PrimitiveType>
 inline ReflectanceBaseline<DIM, PrimitiveType>::ReflectanceBaseline(std::vector<PrimitiveType *>& primitives_,
                                                                     std::vector<SilhouettePrimitive<DIM> *>& silhouettes_):
 Baseline<DIM, PrimitiveType>(primitives_, silhouettes_)
@@ -42,7 +42,7 @@ Baseline<DIM, PrimitiveType>(primitives_, silhouettes_)
     // do nothing
 }
 
-template<size_t DIM, typename PrimitiveType>
+template <size_t DIM, typename PrimitiveType>
 inline void ReflectanceBaseline<DIM, PrimitiveType>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
                                                                              const std::vector<float>& maxCoefficientValues)
 {
@@ -54,7 +54,7 @@ inline void ReflectanceBaseline<DIM, PrimitiveType>::updateCoefficientValues(con
     }
 }
 
-template<size_t DIM, typename PrimitiveType>
+template <size_t DIM, typename PrimitiveType>
 inline int ReflectanceBaseline<DIM, PrimitiveType>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
                                                                              bool flipNormalOrientation,
                                                                              float silhouettePrecision) const
@@ -68,7 +68,7 @@ inline int ReflectanceBaseline<DIM, PrimitiveType>::computeSquaredStarRadius(Bou
     return nPrimitives;
 }
 
-template<size_t DIM, typename PrimitiveType>
+template <size_t DIM, typename PrimitiveType>
 std::unique_ptr<ReflectanceBaseline<DIM, PrimitiveType>> createReflectanceBaseline(
                                             std::vector<PrimitiveType *>& primitives,
                                             std::vector<SilhouettePrimitive<DIM> *>& silhouettes)

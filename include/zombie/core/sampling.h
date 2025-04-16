@@ -19,12 +19,12 @@
 
 namespace zombie {
 
-template<size_t DIM>
+template <size_t DIM>
 using Vector = Eigen::Matrix<float, DIM, 1>;
 using Vector2 = Vector<2>;
 using Vector3 = Vector<3>;
 
-template<size_t DIM>
+template <size_t DIM>
 using Vectori = Eigen::Matrix<int, DIM, 1>;
 using Vector2i = Vectori<2>;
 using Vector3i = Vectori<3>;
@@ -293,6 +293,11 @@ public:
         return std::clamp(first - 1, 0, size - 2);
     }
 
+    // returns reference to the cdf table
+    const std::vector<float>& getTable() const {
+        return table;
+    }
+
 protected:
     // member
     std::vector<float> table;
@@ -301,6 +306,13 @@ protected:
 // source: https://github.com/NVIDIAGameWorks/Falcor/blob/master/Source/Falcor/Utils/Sampling/AliasTable.cpp
 class AliasTable {
 public:
+    // alias table data entry
+    struct AliasTableItem {
+        float threshold; // if rand() < threshold, pick indexB (else pick indexA)
+        uint32_t indexA; // the "redirect" index, if uniform sampling would overweight indexB
+        uint32_t indexB; // the original / permutation index, sampled uniformly in [0...mCount-1]
+    };
+
     // This builds an alias table via the O(N) algorithm from Vose 1991, "A linear algorithm for generating random
     // numbers with a given distribution," IEEE Transactions on Software Engineering 17(9), 972-975.
     //
@@ -397,13 +409,13 @@ public:
         return u2 >= item.threshold ? item.indexA : item.indexB;
     }
 
+    // returns reference to the alias table
+    const std::vector<AliasTableItem>& getTable() const {
+        return table;
+    }
+
 protected:
     // member
-    struct AliasTableItem {
-        float threshold; // if rand() < threshold, pick indexB (else pick indexA)
-        uint32_t indexA; // the "redirect" index, if uniform sampling would overweight indexB
-        uint32_t indexB; // the original / permutation index, sampled uniformly in [0...mCount-1]
-    };
     std::vector<AliasTableItem> table;
 };
 

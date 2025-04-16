@@ -823,23 +823,23 @@ inline void BoundaryValueCachingSolver<T, DIM>::generateSamples(int absorbingBou
 {
     absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundaryCacheSize, false),
                                               SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
-                                              absorbingBoundaryCache, false);
+                                              queries, absorbingBoundaryCache, false);
     if (solveDoubleSided) {
         absorbingBoundarySampler->generateSamples(absorbingBoundarySampler->getSampleCount(absorbingBoundaryCacheSize, true),
                                                   SampleType::OnAbsorbingBoundary, normalOffsetForAbsorbingBoundary,
-                                                  absorbingBoundaryCacheNormalAligned, true);
+                                                  queries, absorbingBoundaryCacheNormalAligned, true);
     }
 
     reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundaryCacheSize, false),
                                                SampleType::OnReflectingBoundary, normalOffsetForReflectingBoundary,
-                                               reflectingBoundaryCache, false);
+                                               queries, reflectingBoundaryCache, false);
     if (solveDoubleSided) {
         reflectingBoundarySampler->generateSamples(reflectingBoundarySampler->getSampleCount(reflectingBoundaryCacheSize, true),
                                                    SampleType::OnReflectingBoundary, normalOffsetForReflectingBoundary,
-                                                   reflectingBoundaryCacheNormalAligned, true);
+                                                   queries, reflectingBoundaryCacheNormalAligned, true);
     }
 
-    domainSampler->generateSamples(domainCacheSize, domainCache);
+    domainSampler->generateSamples(domainCacheSize, queries, domainCache);
 }
 
 template <typename T, size_t DIM>

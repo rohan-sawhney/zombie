@@ -14,7 +14,7 @@ namespace zombie {
 
 using namespace fcpw;
 
-template<typename PrimitiveBound>
+template <typename PrimitiveBound>
 class ReflectanceLineSegment: public LineSegment {
 public:
     // constructor
@@ -35,7 +35,7 @@ public:
     typedef PrimitiveBound Bound;
 };
 
-template<typename PrimitiveBound>
+template <typename PrimitiveBound>
 class ReflectanceTriangle: public Triangle {
 public:
     // constructor
@@ -59,7 +59,7 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-template<size_t DIM>
+template <size_t DIM>
 inline float findClosestPointPlane(const Vector<DIM>& p, const Vector<DIM>& n,
                                    const Vector<DIM>& x, Vector<DIM>& pt)
 {
@@ -69,7 +69,7 @@ inline float findClosestPointPlane(const Vector<DIM>& p, const Vector<DIM>& n,
     return std::fabs(t);
 }
 
-template<typename PrimitiveBound>
+template <typename PrimitiveBound>
 inline ReflectanceLineSegment<PrimitiveBound>::ReflectanceLineSegment():
 LineSegment(),
 n{Vector2::Zero(), Vector2::Zero()},
@@ -82,7 +82,7 @@ maxCoefficientValue(maxFloat)
     }
 }
 
-template<typename PrimitiveBound>
+template <typename PrimitiveBound>
 inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(BoundingSphere<2>& s,
                                                                              bool flipNormalOrientation,
                                                                              float silhouettePrecision,
@@ -152,7 +152,7 @@ inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(Bou
     }
 }
 
-template<typename PrimitiveBound>
+template <typename PrimitiveBound>
 inline ReflectanceTriangle<PrimitiveBound>::ReflectanceTriangle():
 Triangle(),
 n{Vector3::Zero(), Vector3::Zero(), Vector3::Zero()},
@@ -165,7 +165,7 @@ maxCoefficientValue(maxFloat)
     }
 }
 
-template<typename PrimitiveBound>
+template <typename PrimitiveBound>
 inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(BoundingSphere<3>& s,
                                                                           bool flipNormalOrientation,
                                                                           float silhouettePrecision,
@@ -238,7 +238,7 @@ inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(Boundi
 
 #ifdef FCPW_USE_ENOKI
 
-template<size_t WIDTH, size_t DIM>
+template <size_t WIDTH, size_t DIM>
 inline FloatP<WIDTH> findClosestPointWidePlane(const VectorP<WIDTH, DIM>& p, const VectorP<WIDTH, DIM>& n,
                                                const VectorP<WIDTH, DIM>& x, VectorP<WIDTH, DIM>& pt)
 {
@@ -248,7 +248,7 @@ inline FloatP<WIDTH> findClosestPointWidePlane(const VectorP<WIDTH, DIM>& p, con
     return enoki::abs(t);
 }
 
-template<size_t WIDTH>
+template <size_t WIDTH>
 inline FloatP<WIDTH> findFarthestPointWideLineSegment(const Vector2P<WIDTH>& pa, const Vector2P<WIDTH>& pb,
                                                       const Vector2P<WIDTH>& x, Vector2P<WIDTH>& pt)
 {
@@ -264,7 +264,7 @@ inline FloatP<WIDTH> findFarthestPointWideLineSegment(const Vector2P<WIDTH>& pa,
     return d;
 }
 
-template<size_t WIDTH>
+template <size_t WIDTH>
 inline FloatP<WIDTH> findFarthestPointWideTriangle(const Vector3P<WIDTH>& pa, const Vector3P<WIDTH>& pb,
                                                    const Vector3P<WIDTH>& pc, const Vector3P<WIDTH>& x,
                                                    Vector3P<WIDTH>& pt)
@@ -287,7 +287,7 @@ inline FloatP<WIDTH> findFarthestPointWideTriangle(const Vector3P<WIDTH>& pa, co
     return d;
 }
 
-template<size_t WIDTH>
+template <size_t WIDTH>
 inline Vector2P<WIDTH> computeNormalWideLineSegment(const Vector2P<WIDTH>& pa,
                                                     const Vector2P<WIDTH>& pb)
 {
@@ -299,7 +299,7 @@ inline Vector2P<WIDTH> computeNormalWideLineSegment(const Vector2P<WIDTH>& pa,
     return enoki::normalize(n);
 }
 
-template<size_t WIDTH>
+template <size_t WIDTH>
 inline Vector3P<WIDTH> computeNormalWideTriangle(const Vector3P<WIDTH>& pa,
                                                  const Vector3P<WIDTH>& pb,
                                                  const Vector3P<WIDTH>& pc)
@@ -310,7 +310,7 @@ inline Vector3P<WIDTH> computeNormalWideTriangle(const Vector3P<WIDTH>& pa,
     return enoki::normalize(enoki::cross(v1, v2));
 }
 
-template<size_t WIDTH, size_t DIM, typename PrimitiveBound>
+template <size_t WIDTH, size_t DIM, typename PrimitiveBound>
 struct ReflectanceWidePrimitive {
     // computes the squared reflectance sphere radius
     static FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
@@ -325,7 +325,7 @@ struct ReflectanceWidePrimitive {
     }
 };
 
-template<size_t WIDTH, typename PrimitiveBound>
+template <size_t WIDTH, typename PrimitiveBound>
 struct ReflectanceWidePrimitive<WIDTH, 2, PrimitiveBound> {
     // computes the squared reflectance sphere radius
     static FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(
@@ -404,7 +404,7 @@ struct ReflectanceWidePrimitive<WIDTH, 2, PrimitiveBound> {
     }
 };
 
-template<size_t WIDTH, typename PrimitiveBound>
+template <size_t WIDTH, typename PrimitiveBound>
 struct ReflectanceWidePrimitive<WIDTH, 3, PrimitiveBound> {
     // computes the squared reflectance sphere radius
     static FloatP<WIDTH> computeSquaredStarRadiusWidePrimitive(

@@ -19,7 +19,7 @@
 
 namespace zombie {
 
-template<size_t DIM>
+template <size_t DIM>
 using Vector = Eigen::Matrix<float, DIM, 1>;
 using Vector2 = Vector<2>;
 using Vector3 = Vector<3>;
@@ -60,8 +60,8 @@ struct GeometricQueries {
                      const Vector<DIM>& domainMax_);
 
     // members
-    bool hasAbsorbingBoundary;
-    bool hasReflectingBoundary;
+    bool hasNonEmptyAbsorbingBoundary;
+    bool hasNonEmptyReflectingBoundary;
     bool domainIsWatertight;
     Vector<DIM> domainMin, domainMax;
 
@@ -124,8 +124,8 @@ protected:
 
 template <size_t DIM>
 inline GeometricQueries<DIM>::GeometricQueries():
-hasAbsorbingBoundary(false),
-hasReflectingBoundary(false),
+hasNonEmptyAbsorbingBoundary(false),
+hasNonEmptyReflectingBoundary(false),
 domainIsWatertight(true),
 domainMin(Vector<DIM>::Constant(std::numeric_limits<float>::lowest())),
 domainMax(Vector<DIM>::Constant(std::numeric_limits<float>::max()))
@@ -137,8 +137,8 @@ template <size_t DIM>
 inline GeometricQueries<DIM>::GeometricQueries(bool domainIsWatertight_,
                                                const Vector<DIM>& domainMin_,
                                                const Vector<DIM>& domainMax_):
-hasAbsorbingBoundary(false),
-hasReflectingBoundary(false),
+hasNonEmptyAbsorbingBoundary(false),
+hasNonEmptyReflectingBoundary(false),
 domainIsWatertight(domainIsWatertight_),
 domainMin(domainMin_),
 domainMax(domainMax_)

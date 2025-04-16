@@ -29,7 +29,7 @@ struct RobinLineSegmentBound {
 
 #ifdef FCPW_USE_ENOKI
     // computes the squared star radius bound
-    template<size_t WIDTH>
+    template <size_t WIDTH>
     static void computeSquaredStarRadiusBound(const enokiVector2& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
                                               const MaskP<WIDTH> activeRobin, const Vector2P<WIDTH>& viewDirClosest,
                                               const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
@@ -61,7 +61,7 @@ struct RobinTriangleBound {
 
 #ifdef FCPW_USE_ENOKI
     // computes the squared star radius bound
-    template<size_t WIDTH>
+    template <size_t WIDTH>
     static void computeSquaredStarRadiusBound(const enokiVector3& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
                                               const MaskP<WIDTH> activeRobin, const Vector3P<WIDTH>& viewDirClosest,
                                               const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
@@ -70,7 +70,7 @@ struct RobinTriangleBound {
 #endif
 };
 
-template<size_t DIM>
+template <size_t DIM>
 struct RobinBvhNodeBound {
     // computes the minimum squared star radius bound
     static float computeMinSquaredStarRadiusBound(float rMin, float rMax,
@@ -93,7 +93,7 @@ struct RobinBvhNodeBound {
     }
 };
 
-template<>
+template <>
 struct RobinBvhNodeBound<2> {
     // computes the minimum squared star radius bound
     static float computeMinSquaredStarRadiusBound(float rMin, float rMax,
@@ -112,7 +112,7 @@ struct RobinBvhNodeBound<2> {
     }
 };
 
-template<>
+template <>
 struct RobinBvhNodeBound<3> {
     // computes the minimum squared star radius bound
     static float computeMinSquaredStarRadiusBound(float rMin, float rMax,
@@ -144,7 +144,7 @@ struct RobinBvhNodeBound<3> {
 
 #ifdef FCPW_USE_ENOKI
 
-template<size_t WIDTH>
+template <size_t WIDTH>
 inline void RobinLineSegmentBound::computeSquaredStarRadiusBound(const enokiVector2& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
                                                                  const MaskP<WIDTH> activeRobin, const Vector2P<WIDTH>& viewDirClosest,
                                                                  const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
@@ -163,7 +163,7 @@ inline void RobinLineSegmentBound::computeSquaredStarRadiusBound(const enokiVect
     enoki::masked(r2, activeRobin && r2 > closestPtDist2) = enoki::min(r2, lineSegmentRadius2);
 }
 
-template<size_t WIDTH>
+template <size_t WIDTH>
 inline void RobinTriangleBound::computeSquaredStarRadiusBound(const enokiVector3& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
                                                               const MaskP<WIDTH> activeRobin, const Vector3P<WIDTH>& viewDirClosest,
                                                               const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
@@ -183,7 +183,7 @@ inline void RobinTriangleBound::computeSquaredStarRadiusBound(const enokiVector3
     enoki::masked(r2, activeRobin && maxCosForBound >= cosLowerBound && r2 > closestPtDist2) = enoki::min(r2, triangleRadius2);
 }
 
-template<size_t DIM>
+template <size_t DIM>
 struct RobinMbvhNodeBound {
     // computes the minimum squared star radius bound
     static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMinSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,
@@ -212,7 +212,7 @@ struct RobinMbvhNodeBound {
     }
 };
 
-template<>
+template <>
 struct RobinMbvhNodeBound<2> {
     // computes the minimum squared star radius bound
     static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMinSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,
@@ -237,7 +237,7 @@ struct RobinMbvhNodeBound<2> {
     }
 };
 
-template<>
+template <>
 struct RobinMbvhNodeBound<3> {
     // computes the minimum squared star radius bound
     static FloatP<FCPW_MBVH_BRANCHING_FACTOR> computeMinSquaredStarRadiusBound(const FloatP<FCPW_MBVH_BRANCHING_FACTOR>& rMin,

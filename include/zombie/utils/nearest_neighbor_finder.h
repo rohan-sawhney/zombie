@@ -9,7 +9,7 @@
 
 namespace zombie {
 
-template<size_t DIM>
+template <size_t DIM>
 using Vector = Eigen::Matrix<float, DIM, 1>;
 
 // Helper class to implement interface for nanoflann
