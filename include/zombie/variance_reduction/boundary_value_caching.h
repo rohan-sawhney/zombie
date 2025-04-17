@@ -28,8 +28,8 @@ struct EvaluationPoint {
     // returns estimated gradient
     void getEstimatedGradient(std::vector<T>& gradient) const;
 
-    // returns estimated gradient coordinate value
-    T getEstimatedGradient(int coord) const;
+    // returns estimated gradient for specified channel
+    T getEstimatedGradient(int channel) const;
 
     // resets statistics
     void reset();
@@ -283,13 +283,13 @@ inline void EvaluationPoint<T, DIM>::getEstimatedGradient(std::vector<T>& gradie
 }
 
 template <typename T, size_t DIM>
-inline T EvaluationPoint<T, DIM>::getEstimatedGradient(int coord) const
+inline T EvaluationPoint<T, DIM>::getEstimatedGradient(int channel) const
 {
-    T gradient = absorbingBoundaryStatistics.getEstimatedGradient()[coord];
-    gradient += absorbingBoundaryNormalAlignedStatistics.getEstimatedGradient()[coord];
-    gradient += reflectingBoundaryStatistics.getEstimatedGradient()[coord];
-    gradient += reflectingBoundaryNormalAlignedStatistics.getEstimatedGradient()[coord];
-    gradient += sourceStatistics.getEstimatedGradient()[coord];
+    T gradient = absorbingBoundaryStatistics.getEstimatedGradient()[channel];
+    gradient += absorbingBoundaryNormalAlignedStatistics.getEstimatedGradient()[channel];
+    gradient += reflectingBoundaryStatistics.getEstimatedGradient()[channel];
+    gradient += reflectingBoundaryNormalAlignedStatistics.getEstimatedGradient()[channel];
+    gradient += sourceStatistics.getEstimatedGradient()[channel];
 
     return gradient;
 }

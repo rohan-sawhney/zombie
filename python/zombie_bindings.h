@@ -1065,8 +1065,8 @@ void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
             "Returns estimated solution.")
         .def("get_estimated_gradient", nb::overload_cast<int>(
             &zombie::SampleStatistics<T, DIM>::getEstimatedGradient, nb::const_),
-            "Returns estimated gradient coordinate value.",
-            "coordinate"_a)
+            "Returns estimated gradient for specified channel.",
+            "channel"_a)
         .def("get_estimated_derivative", &zombie::SampleStatistics<T, DIM>::getEstimatedDerivative,
             "Returns estimated directional derivative.")
         .def("get_solution_estimate_count", &zombie::SampleStatistics<T, DIM>::getSolutionEstimateCount,
@@ -1207,8 +1207,8 @@ void bindBoundaryValueCachingSolver(nb::module_ m, std::string typeStr)
             "Returns estimated solution.")
         .def("get_estimated_gradient", nb::overload_cast<int>(
             &zombie::bvc::EvaluationPoint<T, DIM>::getEstimatedGradient, nb::const_),
-            "Returns estimated gradient coordinate value.",
-            "coordinate"_a)
+            "Returns estimated gradient for specified channel.",
+            "channel"_a)
         .def("reset", &zombie::bvc::EvaluationPoint<T, DIM>::reset,
             "Resets statistics.")
         .def_rw("pt", &zombie::bvc::EvaluationPoint<T, DIM>::pt)

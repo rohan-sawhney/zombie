@@ -212,9 +212,9 @@ public:
         return gradientMean;
     }
 
-    // returns estimated gradient coordinate value
-    T getEstimatedGradient(int coord) const {
-        return gradientMean[coord];
+    // returns estimated gradient for specified channel
+    T getEstimatedGradient(int channel) const {
+        return gradientMean[channel];
     }
 
     // returns variance of estimated gradient
