@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include <algorithm>
 #include <functional>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <vector>
+#include "oneapi/tbb/parallel_for.h"
 
 namespace zombie {
 
@@ -146,7 +148,7 @@ inline void DenseGrid<T, CHANNELS, DIM>::set(const Eigen::Matrix<T, Eigen::Dynam
     // check data consistency
     if (gridData.rows() != gridShape.prod()) {
         std::cerr << "DenseGrid::set(): Number of rows in data (" << gridData.rows()
-                  << ") does not match the product of gridShape (" << shape.prod() << ")."
+                  << ") does not match the product of gridShape (" << gridShape.prod() << ")."
                   << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -161,18 +163,23 @@ inline void DenseGrid<T, CHANNELS, DIM>::set(std::function<Array<T, CHANNELS>(co
                                              const Vectori<DIM>& gridShape)
 {
     // resize the data vector
-    int gridSize = gridShape.prod();
+    size_t gridSize = gridShape.prod();
     data = Eigen::Matrix<T, Eigen::Dynamic, CHANNELS>::Zero(gridSize, CHANNELS);
     shape = gridShape;
 
     // populate the grid using the data callback
-    for (int i = 0; i < gridSize; i++) {
-        // compute the world-space position for this index
-        Vector<DIM> x = get(i);
+    auto run = [&](const tbb::blocked_range<size_t>& range) {
+        for (size_t i = range.begin(); i < range.end(); ++i) {
+            // compute the world-space position for this index
+            Vector<DIM> x = get(i);
 
-        // evaluate the callback at the computed position
-        data.row(i) = gridDataCallback(x);
-    }
+            // evaluate the callback at the computed position
+            data.row(i) = gridDataCallback(x);
+        }
+    };
+
+    tbb::blocked_range<size_t> range(0, gridSize);
+    tbb::parallel_for(range, run);
 }
 
 template <typename T, size_t CHANNELS, size_t DIM>
@@ -216,7 +223,8 @@ inline Vector<DIM> DenseGrid<T, CHANNELS, DIM>::get(int index) const
 
     Vector<DIM> x = Vector<DIM>::Zero();
     for (int i = DIM - 1; i >= 0; i--) {
-        x[i] = origin[i] + (index%shape[i])*(extent[i]/shape[i]);
+        float spacing = shape[i] == 1 ? 0.0f : extent[i]/(shape[i] - 1);
+        x[i] = origin[i] + (index%shape[i])*spacing;
         index /= shape[i];
     }
 
@@ -233,7 +241,8 @@ inline Vector<DIM> DenseGrid<T, CHANNELS, DIM>::get(const Vectori<DIM>& index) c
             exit(EXIT_FAILURE);
         }
 
-        x[i] = origin[i] + index[i]*(extent[i]/shape[i]);
+        float spacing = shape[i] == 1 ? 0.0f : extent[i]/(shape[i] - 1);
+        x[i] = origin[i] + index[i]*spacing;
     }
 
     return x;
@@ -247,9 +256,11 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 2>& grid,
     const Eigen::Matrix<T, Eigen::Dynamic, CHANNELS>& data = grid.data;
     const Vector2i& shape = grid.shape;
 
-    int i0 = std::clamp(static_cast<int>(std::floor(xLocal[0]*shape[0])), 0, shape[0] - 1);
+    float u = shape[0] == 1 ? 0.0f : xLocal[0]*(shape[0] - 1);
+    float v = shape[1] == 1 ? 0.0f : xLocal[1]*(shape[1] - 1);
+    int i0 = std::clamp(static_cast<int>(std::floor(u)), 0, shape[0] - 1);
     int i1 = std::clamp(i0 + 1, 0, shape[0] - 1);
-    int j0 = std::clamp(static_cast<int>(std::floor(xLocal[1]*shape[1])), 0, shape[1] - 1);
+    int j0 = std::clamp(static_cast<int>(std::floor(v)), 0, shape[1] - 1);
     int j1 = std::clamp(j0 + 1, 0, shape[1] - 1);
 
     Array<T, CHANNELS> f00 = data.row(i0*shape[1] + j0);
@@ -257,8 +268,8 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 2>& grid,
     Array<T, CHANNELS> f10 = data.row(i1*shape[1] + j0);
     Array<T, CHANNELS> f11 = data.row(i1*shape[1] + j1);
 
-    float x = xLocal[0]*shape[0] - i0;
-    float y = xLocal[1]*shape[1] - j0;
+    float x = u - i0;
+    float y = v - j0;
 
     return f00*(1.0f - x)*(1.0f - y) + f10*x*(1.0f - y) + f01*(1.0f - x)*y + f11*x*y;
 }
@@ -271,11 +282,14 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 3>& grid,
     const Eigen::Matrix<T, Eigen::Dynamic, CHANNELS>& data = grid.data;
     const Vector3i& shape = grid.shape;
 
-    int i0 = std::clamp(static_cast<int>(std::floor(xLocal[0]*shape[0])), 0, shape[0] - 1);
+    float u = shape[0] == 1 ? 0.0f : xLocal[0]*(shape[0] - 1);
+    float v = shape[1] == 1 ? 0.0f : xLocal[1]*(shape[1] - 1);
+    float w = shape[2] == 1 ? 0.0f : xLocal[2]*(shape[2] - 1);
+    int i0 = std::clamp(static_cast<int>(std::floor(u)), 0, shape[0] - 1);
     int i1 = std::clamp(i0 + 1, 0, shape[0] - 1);
-    int j0 = std::clamp(static_cast<int>(std::floor(xLocal[1]*shape[1])), 0, shape[1] - 1);
+    int j0 = std::clamp(static_cast<int>(std::floor(v)), 0, shape[1] - 1);
     int j1 = std::clamp(j0 + 1, 0, shape[1] - 1);
-    int k0 = std::clamp(static_cast<int>(std::floor(xLocal[2]*shape[2])), 0, shape[2] - 1);
+    int k0 = std::clamp(static_cast<int>(std::floor(w)), 0, shape[2] - 1);
     int k1 = std::clamp(k0 + 1, 0, shape[2] - 1);
 
     Array<T, CHANNELS> f000 = data.row((i0*shape[1] + j0)*shape[2] + k0);
@@ -287,9 +301,9 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 3>& grid,
     Array<T, CHANNELS> f110 = data.row((i1*shape[1] + j1)*shape[2] + k0);
     Array<T, CHANNELS> f111 = data.row((i1*shape[1] + j1)*shape[2] + k1);
 
-    float x = xLocal[0]*shape[0] - i0;
-    float y = xLocal[1]*shape[1] - j0;
-    float z = xLocal[2]*shape[2] - k0;
+    float x = u - i0;
+    float y = v - j0;
+    float z = w - k0;
 
     return f000*(1.0f - x)*(1.0f - y)*(1.0f - z) + f100*x*(1.0f - y)*(1.0f - z) +
            f010*(1.0f - x)*y*(1.0f - z) + f110*x*y*(1.0f - z) +
@@ -314,7 +328,7 @@ inline Array<T, CHANNELS> DenseGrid<T, CHANNELS, DIM>::operator()(const Vector<D
     size_t flatIndex = 0;
     size_t stride = 1;
     for (int i = DIM - 1; i >= 0; i--) {
-        int index = std::clamp(static_cast<int>(std::floor(xLocal[i]*shape[i])), 0, shape[i] - 1);
+        int index = std::clamp(static_cast<int>(std::floor(xLocal[i]*(shape[i] - 1))), 0, shape[i] - 1);
         flatIndex += index*stride;
         stride *= shape[i];
     }
@@ -325,13 +339,13 @@ inline Array<T, CHANNELS> DenseGrid<T, CHANNELS, DIM>::operator()(const Vector<D
 template <typename T, size_t CHANNELS, size_t DIM>
 inline Array<T, CHANNELS> DenseGrid<T, CHANNELS, DIM>::min() const
 {
-    return data.colwise().minCoeff();
+    return data.colwise().minCoeff().transpose().array();
 }
 
 template <typename T, size_t CHANNELS, size_t DIM>
 inline Array<T, CHANNELS> DenseGrid<T, CHANNELS, DIM>::max() const
 {
-    return data.colwise().maxCoeff();
+    return data.colwise().maxCoeff().transpose().array();
 }
 
 template <typename T, size_t CHANNELS, size_t DIM>
