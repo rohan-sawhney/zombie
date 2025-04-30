@@ -108,22 +108,23 @@ inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(Bou
                 if (!ignoreAdjacentFace[j]) {
                     const Vector2& pj = soup->positions[indices[j]];
                     const Vector2& nj = n[j];
-
+                    Vector2 viewDir = s.c - pj;
+                    float silhouettePtDist = viewDir.norm();
                     bool isSilhouette = !hasAdjacentFace[j];
+
                     if (!isSilhouette) {
                         if (j == 0) {
-                            isSilhouette = isSilhouetteVertex(n0, nj, viewDirClosest, closestPtDist,
+                            isSilhouette = isSilhouetteVertex(n0, nj, viewDir, silhouettePtDist,
                                                               flipNormalOrientation, silhouettePrecision);
 
                         } else {
-                            isSilhouette = isSilhouetteVertex(nj, n0, viewDirClosest, closestPtDist,
+                            isSilhouette = isSilhouetteVertex(nj, n0, viewDir, silhouettePtDist,
                                                               flipNormalOrientation, silhouettePrecision);
                         }
                     }
 
                     if (isSilhouette) {
-                        float silhouettePtDist2 = (s.c - pj).squaredNorm();
-                        s.r2 = std::min(s.r2, silhouettePtDist2);
+                        s.r2 = std::min(s.r2, silhouettePtDist*silhouettePtDist);
                     }
                 }
             }
@@ -193,17 +194,18 @@ inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(Boundi
                     const Vector3& pj = soup->positions[indices[j]];
                     const Vector3& pk = soup->positions[indices[(j + 1)%3]];
                     const Vector3& nj = n[j];
-
+                    Vector3 pt;
+                    float t;
+                    float silhouettePtDist = findClosestPointLineSegment<3>(pj, pk, s.c, pt, t);
+                    Vector3 viewDir = s.c - pt;
                     bool isSilhouette = !hasAdjacentFace[j];
+
                     if (!isSilhouette) {
-                        isSilhouette = isSilhouetteEdge(pj, pk, nj, n0, viewDirClosest, closestPtDist,
+                        isSilhouette = isSilhouetteEdge(pj, pk, nj, n0, viewDir, silhouettePtDist,
                                                         flipNormalOrientation, silhouettePrecision);
                     }
 
                     if (isSilhouette) {
-                        Vector3 pt;
-                        float t;
-                        float silhouettePtDist = findClosestPointLineSegment<3>(pj, pk, s.c, pt, t);
                         s.r2 = std::min(s.r2, silhouettePtDist*silhouettePtDist);
                     }
                 }
@@ -361,21 +363,22 @@ struct ReflectanceWidePrimitive<WIDTH, 2, PrimitiveBound> {
                         if (enoki::any(performTest)) {
                             const Vector2P<WIDTH>& pj = p[j];
                             const Vector2P<WIDTH>& nj = n[j];
-
+                            Vector2P<WIDTH> viewDir = sc - pj;
+                            FloatP<WIDTH> silhouettePtDist = enoki::norm(viewDir);
                             MaskP<WIDTH> isSilhouette = ~hasAdjacentFace[j];
+
                             if (j == 0) {
                                 enoki::masked(isSilhouette, hasAdjacentFace[j]) = isWideSilhouetteVertex<WIDTH>(
-                                    n0, nj, viewDirClosest, closestPtDist, flipNormalOrientation, silhouettePrecision);
+                                    n0, nj, viewDir, silhouettePtDist, flipNormalOrientation, silhouettePrecision);
 
                             } else {
                                 enoki::masked(isSilhouette, hasAdjacentFace[j]) = isWideSilhouetteVertex<WIDTH>(
-                                    nj, n0, viewDirClosest, closestPtDist, flipNormalOrientation, silhouettePrecision);
+                                    nj, n0, viewDir, silhouettePtDist, flipNormalOrientation, silhouettePrecision);
                             }
 
                             MaskP<WIDTH> activeSilhouette = performTest && isSilhouette;
                             if (enoki::any(activeSilhouette)) {
-                                FloatP<WIDTH> silhouettePtDist2 = enoki::squared_norm(sc - pj);
-                                enoki::masked(r2, activeSilhouette) = enoki::min(r2, silhouettePtDist2);
+                                enoki::masked(r2, activeSilhouette) = enoki::min(r2, silhouettePtDist*silhouettePtDist);
                             }
                         }
                     }
@@ -442,18 +445,18 @@ struct ReflectanceWidePrimitive<WIDTH, 3, PrimitiveBound> {
                             const Vector3P<WIDTH>& pj = p[j];
                             const Vector3P<WIDTH>& pk = p[(j + 1)%3];
                             const Vector3P<WIDTH>& nj = n[j];
+                            Vector3P<WIDTH> pt;
+                            FloatP<WIDTH> t;
+                            FloatP<WIDTH> silhouettePtDist = findClosestPointWideLineSegment<WIDTH, 3>(pj, pk, sc, pt, t);
+                            Vector3P<WIDTH> viewDir = sc - pt;
 
                             MaskP<WIDTH> isSilhouette = ~hasAdjacentFace[j];
                             enoki::masked(isSilhouette, hasAdjacentFace[j]) = isWideSilhouetteEdge<WIDTH>(
-                                pj, pk, nj, n0, viewDirClosest, closestPtDist, flipNormalOrientation, silhouettePrecision);
+                                pj, pk, nj, n0, viewDir, silhouettePtDist, flipNormalOrientation, silhouettePrecision);
 
                             MaskP<WIDTH> activeSilhouette = performTest && isSilhouette;
                             if (enoki::any(activeSilhouette)) {
-                                Vector3P<WIDTH> pt;
-                                FloatP<WIDTH> t;
-                                FloatP<WIDTH> silhouettePtDist = findClosestPointWideLineSegment<WIDTH, 3>(pj, pk, sc, pt, t);
-                                FloatP<WIDTH> silhouettePtDist2 = silhouettePtDist*silhouettePtDist;
-                                enoki::masked(r2, activeSilhouette) = enoki::min(r2, silhouettePtDist2);
+                                enoki::masked(r2, activeSilhouette) = enoki::min(r2, silhouettePtDist*silhouettePtDist);
                             }
                         }
                     }
