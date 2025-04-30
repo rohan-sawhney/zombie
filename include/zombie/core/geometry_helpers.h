@@ -194,4 +194,4 @@ Vector3 samplePointOnTriangle(const Vector3& pa, const Vector3& pb, const Vector
     return pt;
 }
 
-} // namespace zombie
+} // zombie

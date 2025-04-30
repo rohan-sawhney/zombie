@@ -163,13 +163,13 @@ inline void DenseGrid<T, CHANNELS, DIM>::set(std::function<Array<T, CHANNELS>(co
                                              const Vectori<DIM>& gridShape)
 {
     // resize the data vector
-    size_t gridSize = gridShape.prod();
+    int gridSize = gridShape.prod();
     data = Eigen::Matrix<T, Eigen::Dynamic, CHANNELS>::Zero(gridSize, CHANNELS);
     shape = gridShape;
 
     // populate the grid using the data callback
-    auto run = [&](const tbb::blocked_range<size_t>& range) {
-        for (size_t i = range.begin(); i < range.end(); ++i) {
+    auto run = [&](const tbb::blocked_range<int>& range) {
+        for (int i = range.begin(); i < range.end(); ++i) {
             // compute the world-space position for this index
             Vector<DIM> x = get(i);
 
@@ -178,7 +178,7 @@ inline void DenseGrid<T, CHANNELS, DIM>::set(std::function<Array<T, CHANNELS>(co
         }
     };
 
-    tbb::blocked_range<size_t> range(0, gridSize);
+    tbb::blocked_range<int> range(0, gridSize);
     tbb::parallel_for(range, run);
 }
 
@@ -223,8 +223,8 @@ inline Vector<DIM> DenseGrid<T, CHANNELS, DIM>::get(int index) const
 
     Vector<DIM> x = Vector<DIM>::Zero();
     for (int i = DIM - 1; i >= 0; i--) {
-        float spacing = shape[i] == 1 ? 0.0f : extent[i]/(shape[i] - 1);
-        x[i] = origin[i] + (index%shape[i])*spacing;
+        float spacing = (shape[i] == 0) ? 0.0f : extent[i]/static_cast<float>(shape[i]);
+        x[i] = origin[i] + (static_cast<float>(index%shape[i]) + 0.5f)*spacing;
         index /= shape[i];
     }
 
@@ -241,8 +241,8 @@ inline Vector<DIM> DenseGrid<T, CHANNELS, DIM>::get(const Vectori<DIM>& index) c
             exit(EXIT_FAILURE);
         }
 
-        float spacing = shape[i] == 1 ? 0.0f : extent[i]/(shape[i] - 1);
-        x[i] = origin[i] + index[i]*spacing;
+        float spacing = (shape[i] == 0) ? 0.0f : extent[i]/static_cast<float>(shape[i]);
+        x[i] = origin[i] + (static_cast<float>(index[i]) + 0.5f)*spacing;
     }
 
     return x;
@@ -256,8 +256,8 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 2>& grid,
     const Eigen::Matrix<T, Eigen::Dynamic, CHANNELS>& data = grid.data;
     const Vector2i& shape = grid.shape;
 
-    float u = shape[0] == 1 ? 0.0f : xLocal[0]*(shape[0] - 1);
-    float v = shape[1] == 1 ? 0.0f : xLocal[1]*(shape[1] - 1);
+    float u = shape[0] == 1 ? 0.0f : xLocal[0]*shape[0] - 0.5f;
+    float v = shape[1] == 1 ? 0.0f : xLocal[1]*shape[1] - 0.5f;
     int i0 = std::clamp(static_cast<int>(std::floor(u)), 0, shape[0] - 1);
     int i1 = std::clamp(i0 + 1, 0, shape[0] - 1);
     int j0 = std::clamp(static_cast<int>(std::floor(v)), 0, shape[1] - 1);
@@ -267,9 +267,8 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 2>& grid,
     Array<T, CHANNELS> f01 = data.row(i0*shape[1] + j1);
     Array<T, CHANNELS> f10 = data.row(i1*shape[1] + j0);
     Array<T, CHANNELS> f11 = data.row(i1*shape[1] + j1);
-
-    float x = u - i0;
-    float y = v - j0;
+    float x = u - static_cast<float>(i0);
+    float y = v - static_cast<float>(j0);
 
     return f00*(1.0f - x)*(1.0f - y) + f10*x*(1.0f - y) + f01*(1.0f - x)*y + f11*x*y;
 }
@@ -282,9 +281,9 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 3>& grid,
     const Eigen::Matrix<T, Eigen::Dynamic, CHANNELS>& data = grid.data;
     const Vector3i& shape = grid.shape;
 
-    float u = shape[0] == 1 ? 0.0f : xLocal[0]*(shape[0] - 1);
-    float v = shape[1] == 1 ? 0.0f : xLocal[1]*(shape[1] - 1);
-    float w = shape[2] == 1 ? 0.0f : xLocal[2]*(shape[2] - 1);
+    float u = shape[0] == 1 ? 0.0f : xLocal[0]*shape[0] - 0.5f;
+    float v = shape[1] == 1 ? 0.0f : xLocal[1]*shape[1] - 0.5f;
+    float w = shape[2] == 1 ? 0.0f : xLocal[2]*shape[2] - 0.5f;
     int i0 = std::clamp(static_cast<int>(std::floor(u)), 0, shape[0] - 1);
     int i1 = std::clamp(i0 + 1, 0, shape[0] - 1);
     int j0 = std::clamp(static_cast<int>(std::floor(v)), 0, shape[1] - 1);
@@ -300,10 +299,9 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 3>& grid,
     Array<T, CHANNELS> f101 = data.row((i1*shape[1] + j0)*shape[2] + k1);
     Array<T, CHANNELS> f110 = data.row((i1*shape[1] + j1)*shape[2] + k0);
     Array<T, CHANNELS> f111 = data.row((i1*shape[1] + j1)*shape[2] + k1);
-
-    float x = u - i0;
-    float y = v - j0;
-    float z = w - k0;
+    float x = u - static_cast<float>(i0);
+    float y = v - static_cast<float>(j0);
+    float z = w - static_cast<float>(k0);
 
     return f000*(1.0f - x)*(1.0f - y)*(1.0f - z) + f100*x*(1.0f - y)*(1.0f - z) +
            f010*(1.0f - x)*y*(1.0f - z) + f110*x*y*(1.0f - z) +
@@ -324,11 +322,11 @@ inline Array<T, CHANNELS> DenseGrid<T, CHANNELS, DIM>::operator()(const Vector<D
         }
     }
 
-    // perform nearest neighbor lookup
+    // perform nearest neighbor (texel centre) lookup
     size_t flatIndex = 0;
     size_t stride = 1;
     for (int i = DIM - 1; i >= 0; i--) {
-        int index = std::clamp(static_cast<int>(std::floor(xLocal[i]*(shape[i] - 1))), 0, shape[i] - 1);
+        int index = std::clamp(static_cast<int>(std::floor(xLocal[i]*shape[i])), 0, shape[i] - 1);
         flatIndex += index*stride;
         stride *= shape[i];
     }

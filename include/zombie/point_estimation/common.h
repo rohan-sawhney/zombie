@@ -127,8 +127,9 @@ enum class WalkCompletionCode {
     EscapedDomain
 };
 
-// NOTE: For data with multiple channels (e.g., 2D or 3D positions, rgb etc.), use
-// Eigen::Array (in place of Eigen::VectorXf) as it supports component wise operations
+// NOTE: For data with multiple channels (e.g., 2D or 3D positions, rgb etc.),
+// use Eigen::Array<float, CHANNELS, 1> (in place of Eigen::<float, CHANNELS, 1>)
+// as it supports component wise operations
 template <typename T, size_t DIM>
 class SampleStatistics {
 public:

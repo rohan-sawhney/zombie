@@ -33,7 +33,7 @@ public:
 };
 
 template <typename T>
-class UniformLineSegmentBoundarySampler : public BoundarySampler<T, 2> {
+class UniformLineSegmentBoundarySampler: public BoundarySampler<T, 2> {
 public:
     // constructor
     UniformLineSegmentBoundarySampler(const std::vector<Vector2>& positions_,
@@ -97,7 +97,7 @@ std::shared_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
                                         bool computeWeightedNormals=false);
 
 template <typename T>
-class UniformTriangleBoundarySampler : public BoundarySampler<T, 3> {
+class UniformTriangleBoundarySampler: public BoundarySampler<T, 3> {
 public:
     // constructor
     UniformTriangleBoundarySampler(const std::vector<Vector3>& positions_,
