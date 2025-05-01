@@ -458,9 +458,17 @@ class ImportanceSampler {
     using SamplerFactoryFn = std::function<std::shared_ptr<ImportanceSampler<DIM>>()>;
 
     // virtual functions
+
+    // Volume Sampler returns the location where source is located. Runs only when canGenerateSamples is set to true.
     virtual Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound=-1) = 0; // If bound == -1, no bound passed.
+
+    // Direction sampler returns the direction to the dirac source point from current ball position. Runs only when canGenerateSamples is set to true.
     virtual Vector<DIM> directionSampler(pcg32& sampler) = 0;
+
+    // updateSamplerState is called everytime the greens's function ball is moved
     virtual void updateSamplerState(const Vector<DIM>& c_, float R_, float rClamp_) = 0;
+
+    // pdf of the sampled point.
     virtual float pdf() = 0;
 
     // member functions
@@ -473,7 +481,10 @@ class ImportanceSampler {
 
 
   protected:
-    // Helper function for creating to create an object factory
+    // Helper function to build sampler factory. Every derived implementation must have a public function:
+    // which invokes the helper as:
+    //  return ImportanceSampler<DIM>::template helpBuildSamplerFactory<Derived>(args, to, constructor)
+
     template<typename Derived, typename... Args>
     static ImportanceSampler<DIM>::SamplerFactoryFn helpBuildSamplerFactory(Args&&... args) {
       return [&]() -> std::shared_ptr<ImportanceSampler<DIM>> {

@@ -376,7 +376,7 @@ public:
         return 0.0f;
     }
 
-    // returns direction sampler
+    // returns direction sampler. returns importance sampler when possible, else returns fallback sampler
     Vector<DIM> getDirectionSample(pcg32& sampler, std::function<Vector<DIM>(pcg32&)> fallbackSampler) {
       if(importanceSampler != nullptr && importanceSampler->canGenerateSamples()) {
           usingFallbackSampler = false;
@@ -386,6 +386,7 @@ public:
       return fallbackSampler(sampler);
     }
 
+    // flips the sign of direction when point on neumann boundary.
     Vector<DIM> flipDirection(const Vector<DIM>& direction) {
       if(importanceSampler != nullptr && importanceSampler->canGenerateSamples() && !usingFallbackSampler) {
         importanceSampler->flipDirection();
@@ -393,6 +394,7 @@ public:
       return -1.0f * direction;
     }
 
+    // returns direction sample using the fallback sampler when the stratified sample set is passed. no importance sampling.
     Vector<DIM> getDirectionSample(float *u, std::function<Vector<DIM>(float*)> fallbackSampler) {
       usingFallbackSampler = true;
       return fallbackSampler(u);
@@ -402,7 +404,6 @@ public:
     Vector<DIM> c; // ball center
     float R; // ball radius
     float rClamp;
-    bool usingFallbackSampler = true;
 
 
 protected:
@@ -430,6 +431,8 @@ protected:
 
         return c + r*dir;
     }
+    bool usingFallbackSampler = true;
+
 
 };
 
