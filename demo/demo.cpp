@@ -2,6 +2,7 @@
 // It reads a 'model problem' description from a JSON file, runs the WalkOnStars, BoundaryValueCaching
 // or ReverseWalkonOnStars solvers, and writes the result to a PMF or PNG file.
 
+#include <zombie/core/sampling.h>
 #include "model_problem.h"
 #include "grid.h"
 
@@ -508,6 +509,18 @@ int main(int argc, const char *argv[])
     std::vector<DistanceInfo> distanceInfo;
     createGridPoints(outputConfig, boundingBox, solveLocations);
     computeDistanceInfo<2>(solveLocations, queries, solveDoubleSided, distanceInfo);
+
+
+    // setup importance sampling
+    if(getOptional<bool>(modelProblemConfig, "useImportanceSampling", false)) {
+      const std::pair<int, int>& sourceDimensions = modelProblem.sourceDimensions;
+      const json samplerConfig = getRequired<json>(config, "sampler");
+      std::vector<int> location = getRequired<std::vector<int>>(samplerConfig, "diracLocation");
+      Vector2 uv(
+          ((float)location[0]) / sourceDimensions.first,
+          ((float)location[1]) / sourceDimensions.second);
+      modelProblem.pde.importanceSampler = zombie::SingleSourceDiracSampler<2>::getSamplerFactory(uv);
+    }
 
     // solve the model problem
     std::vector<float> solution;

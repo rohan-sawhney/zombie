@@ -459,7 +459,7 @@ class ImportanceSampler {
 
     // virtual functions
     virtual Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound=-1) = 0; // If bound == -1, no bound passed.
-    virtual Vector<DIM>& directionSampler(pcg32& sampler) = 0;
+    virtual Vector<DIM> directionSampler(pcg32& sampler) = 0;
     virtual void updateSamplerState(const Vector<DIM>& c_, float R_, float rClamp_) = 0;
     virtual float pdf() = 0;
 
@@ -486,7 +486,7 @@ class ImportanceSampler {
       canGenerateSamples_ = value;
     }
 
-    Vector<DIM> direction;
+    Vector<DIM> direction, c;
     float r_, pdf_;
 
 
@@ -501,7 +501,7 @@ class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
     SingleSourceDiracSampler(const Vector<DIM>& location):location(location)  {}
 
     static ImportanceSampler<DIM>::SamplerFactoryFn getSamplerFactory(const Vector<DIM>& location) {
-      return helpBuildSamplerFactory<SingleSourceDiracSampler>(location);
+      return ImportanceSampler<DIM>::template helpBuildSamplerFactory<SingleSourceDiracSampler>(location);
     }
     Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound) override {
       r = this->r_;
@@ -509,18 +509,17 @@ class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
       return this->c + (r * this->direction);
     }
 
-    Vector<DIM>& directionSampler(pcg32& sampler) override {
+    Vector<DIM> directionSampler(pcg32& sampler) override {
       return this->direction;
     }
 
-    float pdf() const {
+    float pdf() override {
       return this->pdf_;
     }
 
-  private:
-    const Vector<DIM>& location;
-
     void updateSamplerState(const Vector<DIM>& c_, float R_, float rClamp_) override {
+      this->c = c_;
+
       Vector<DIM> xy = location - c_;
 
       if(std::max(xy.norm(), rClamp_) > R_) {
@@ -533,6 +532,11 @@ class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
         this->pdf_ = 1.0;
       }
     }
+
+
+  private:
+    const Vector<DIM>& location;
+
 };
 
 

@@ -29,6 +29,7 @@ public:
     std::vector<Vector2> absorbingBoundaryPositions;
     std::vector<Vector2> reflectingBoundaryPositions;
     std::pair<Vector2, Vector2> boundingBox;
+    std::pair<int, int> sourceDimensions;
     zombie::PDE<float, 2> pde;
     zombie::GeometricQueries<2> queries;
 
@@ -76,6 +77,7 @@ sdfGridForAbsorbingBoundary(nullptr)
     absorbingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryValue"));
     reflectingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryValue"));
     sourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
+    sourceDimensions = std::tie(sourceValue.w, sourceValue.h);
     solveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
     domainIsWatertight = getOptional<bool>(config, "domainIsWatertight", true);
     useSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);
