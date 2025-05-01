@@ -407,7 +407,7 @@ public:
 
 protected:
     // samples a point inside the ball
-    const std::unique_ptr<ImportanceSampler<DIM>> importanceSampler;
+    const std::shared_ptr<ImportanceSampler<DIM>> importanceSampler;
 
     virtual Vector<DIM> rejectionSampleGreensFn(const Vector<DIM>& dir, float bound,
                                                 pcg32& sampler, float& r, float& pdf) {

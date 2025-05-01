@@ -455,7 +455,7 @@ class ImportanceSampler {
     // Destructor
     ~ImportanceSampler() {}
 
-    using SamplerFactoryFn = std::function<std::unique_ptr<ImportanceSampler<DIM>>()>;
+    using SamplerFactoryFn = std::function<std::shared_ptr<ImportanceSampler<DIM>>()>;
 
     // virtual functions
     virtual Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound=-1) = 0; // If bound == -1, no bound passed.
@@ -476,8 +476,8 @@ class ImportanceSampler {
     // Helper function for creating to create an object factory
     template<typename Derived, typename... Args>
     static ImportanceSampler<DIM>::SamplerFactoryFn helpBuildSamplerFactory(Args&&... args) {
-      return [&]() -> std::unique_ptr<ImportanceSampler<DIM>> {
-        return std::make_unique<Derived>(std::forward<Args>(args)...);
+      return [&]() -> std::shared_ptr<ImportanceSampler<DIM>> {
+        return std::make_shared<Derived>(std::forward<Args>(args)...);
       };
     }
 
