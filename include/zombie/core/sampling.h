@@ -446,4 +446,94 @@ inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples,
     }
 }
 
+
+template<size_t DIM>
+class ImportanceSampler {
+  public:
+    // Constructor
+    ImportanceSampler() {}
+    // Destructor
+    ~ImportanceSampler() {}
+
+    using SamplerFactoryFn = std::function<std::unique_ptr<ImportanceSampler<DIM>>()>;
+
+    // virtual functions
+    virtual Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound=-1) = 0; // If bound == -1, no bound passed.
+    virtual Vector<DIM>& directionSampler(pcg32& sampler) = 0;
+    virtual void updateSamplerState(const Vector<DIM>& c_, float R_, float rClamp_) = 0;
+    virtual float pdf() = 0;
+
+    // member functions
+    bool canGenerateSamples() {
+      return canGenerateSamples_;
+    }
+    void flipDirection() {
+      direction = -1.0f * direction;
+    }
+
+
+  protected:
+    // Helper function for creating to create an object factory
+    template<typename Derived, typename... Args>
+    static ImportanceSampler<DIM>::SamplerFactoryFn helpBuildSamplerFactory(Args&&... args) {
+      return [&]() -> std::unique_ptr<ImportanceSampler<DIM>> {
+        return std::make_unique<Derived>(std::forward<Args>(args)...);
+      };
+    }
+
+    // setter for canGenerateSamples variable. If true, importance sampler samples used, else fallback on rejection sampler
+    void setCanGenerateSamples(const bool value) {
+      canGenerateSamples_ = value;
+    }
+
+    Vector<DIM> direction;
+    float r_, pdf_;
+
+
+  private:
+    bool canGenerateSamples_ = false;
+
+};
+
+template<size_t DIM>
+class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
+  public:
+    SingleSourceDiracSampler(const Vector<DIM>& location):location(location)  {}
+
+    static ImportanceSampler<DIM>::SamplerFactoryFn getSamplerFactory(const Vector<DIM>& location) {
+      return helpBuildSamplerFactory<SingleSourceDiracSampler>(location);
+    }
+    Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound) override {
+      r = this->r_;
+      pdf = this->pdf_;
+      return this->c + (r * this->direction);
+    }
+
+    Vector<DIM>& directionSampler(pcg32& sampler) override {
+      return this->direction;
+    }
+
+    float pdf() const {
+      return this->pdf_;
+    }
+
+  private:
+    const Vector<DIM>& location;
+
+    void updateSamplerState(const Vector<DIM>& c_, float R_, float rClamp_) override {
+      Vector<DIM> xy = location - c_;
+
+      if(std::max(xy.norm(), rClamp_) > R_) {
+        this->setCanGenerateSamples(false);
+      }
+      else {
+        this->setCanGenerateSamples(true);
+        this->direction = xy.normalized();
+        this->r_ = xy.norm();
+        this->pdf_ = 1.0;
+      }
+    }
+};
+
+
 } // zombie

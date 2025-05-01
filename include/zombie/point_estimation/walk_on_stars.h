@@ -245,8 +245,11 @@ inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pd
             // norm remains unchanged even though our domain is a hemisphere;
             // for double-sided problems in watertight domains, both the current pt
             // and source pt lie either inside or outside the domain by construction
-            T sourceContribution = state.greensFn->norm()*pde.source(sourcePt);
-            state.totalSourceContribution += state.throughput*sourceContribution;
+            float pdf = state.greensFn->pdf();
+            if(pdf > 0.) {
+              T sourceContribution = pde.source(sourcePt) / pdf;
+              state.totalSourceContribution += state.throughput*sourceContribution;
+            }
         }
     }
 }
@@ -380,12 +383,14 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // sample a direction uniformly
-        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(sampler);
+        Vector<DIM> direction = state.greensFn->getDirectionSample(sampler, [](pcg32& sampler) -> Vector<DIM> {
+            return SphereSampler<DIM>::sampleUnitSphereUniform(sampler);
+            });
 
         // perform hemispherical sampling if on the reflecting boundary, which cancels
         // the alpha term in our integral expression
         if (state.onReflectingBoundary && state.currentNormal.dot(direction) > 0.0f) {
-            direction *= -1.0f;
+            direction = state.greensFn->flipDirection(direction);
         }
 
         // check if there is an intersection with the reflecting boundary along the ray:
@@ -448,7 +453,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
 
         // check whether to start applying Tikhonov regularization
         if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
-            state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+            state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff, pde.importanceSampler);
         }
 
         // compute the distance to the absorbing boundary
@@ -583,10 +588,10 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
             // initialize the greens function
             if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff, pde.importanceSampler);
 
             } else {
-                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>(pde.importanceSampler);
             }
 
             // recompute the distance to the absorbing boundary and the first sphere radius
@@ -673,10 +678,10 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
 
             // initialize the greens function
             if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff, pde.importanceSampler);
 
             } else {
-                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>(pde.importanceSampler);
             }
 
             // update the ball center and radius
@@ -689,19 +694,24 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
             if (!walkSettings.ignoreSourceContribution) {
                 if (antitheticIter == 0) {
                     float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
-                    Vector<DIM> sourceDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
+                    Vector<DIM> sourceDirection = greensFn->getDirectionSample(u, [](float *u) -> Vector<DIM> {
+                        return SphereSampler<DIM>::sampleUnitSphereUniform(u);
+                    });
                     sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.sampler, sourceRadius, sourcePdf);
-
                 } else {
                     Vector<DIM> sourceDirection = sourcePt - state.currentPt;
                     sourcePt = state.currentPt - sourceDirection;
                 }
 
-                float greensFnNorm = greensFn->norm();
-                T sourceContribution = greensFnNorm*pde.source(sourcePt);
-                state.totalSourceContribution += state.throughput*sourceContribution;
-                firstSourceContribution = sourceContribution;
-                sourceGradientDirection = greensFn->gradient(sourceRadius, sourcePt)/(sourcePdf*greensFnNorm);
+                float pdf = greensFn->pdf();
+
+                if(pdf > 0.){
+                  T sourceContribution = pde.source(sourcePt) / pdf;
+                  state.totalSourceContribution += state.throughput*sourceContribution;
+                  firstSourceContribution = sourceContribution;
+                }
+                if(sourcePdf > 0.)
+                  sourceGradientDirection = pdf * greensFn->gradient(sourceRadius, sourcePt)/(sourcePdf); // TODO (@captain-pool): need to verify
             }
 
             // sample a point uniformly on the sphere; update the current position
@@ -750,10 +760,10 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                 // initialize the greens function
                 if (splitsPerformed > 0) {
                     if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                        state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                        state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff, pde.importanceSampler);
 
                     } else {
-                        state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+                        state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>(pde.importanceSampler);
                     }
                 }
 

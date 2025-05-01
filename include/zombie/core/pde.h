@@ -8,6 +8,7 @@
 #include <functional>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <zombie/core/sampling.h>
 
 namespace zombie {
 
@@ -41,6 +42,9 @@ struct PDE {
 
     // check if the PDE has a non-zero robin coefficient value at the given point
     std::function<bool(const Vector<DIM>&)> hasNonZeroRobinCoeff; // set automatically
+
+    // importance sampling factory
+    ImportanceSampler<DIM>::SamplerFactoryFn importanceSampler;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +59,8 @@ source({}),
 dirichlet({}),
 robin({}),
 robinCoeff({}),
-hasReflectingBoundaryConditions({})
+hasReflectingBoundaryConditions({}),
+importanceSampler({})
 {
     hasNonZeroRobinCoeff = [this](const Vector<DIM>& x) {
         if (this->robinCoeff) {
