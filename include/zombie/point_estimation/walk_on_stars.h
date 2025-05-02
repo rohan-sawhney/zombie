@@ -382,7 +382,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
             walkStateCallback(state);
         }
 
-        // sample a direction uniformly
+        // either sample a direction via importance sampling or sample uniformly
         Vector<DIM> direction = state.greensFn->getDirectionSample(sampler, [](pcg32& sampler) -> Vector<DIM> {
             return SphereSampler<DIM>::sampleUnitSphereUniform(sampler);
             });
@@ -459,6 +459,11 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         // compute the distance to the absorbing boundary
         distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(state.currentPt, false);
         firstStep = false;
+
+
+        if(state.greensFn->terminationRequestedByImportanceSampler()) {
+          return WalkCompletionCode::TerminatedByImportanceSampler;
+        }
     }
 
     return WalkCompletionCode::ReachedAbsorbingBoundary;
@@ -610,7 +615,8 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
             if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                 code == WalkCompletionCode::TerminatedWithRussianRoulette ||
-                code == WalkCompletionCode::ExceededMaxWalkLength) {
+                code == WalkCompletionCode::ExceededMaxWalkLength ||
+                code == WalkCompletionCode::TerminatedByImportanceSampler) {
                 // compute the walk contribution
                 T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
                 totalContribution += state.throughput*terminalContribution +
@@ -776,7 +782,8 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
 
                 if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                     code == WalkCompletionCode::TerminatedWithRussianRoulette ||
-                    code == WalkCompletionCode::ExceededMaxWalkLength) {
+                    code == WalkCompletionCode::ExceededMaxWalkLength ||
+                    code == WalkCompletionCode::TerminatedByImportanceSampler) {
                     // compute the walk contribution
                     T terminalContribution = getTerminalContribution(code, pde, walkSettings, state);
                     totalContribution += state.throughput*terminalContribution +

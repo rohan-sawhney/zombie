@@ -471,6 +471,11 @@ class ImportanceSampler {
     // pdf of the sampled point.
     virtual float pdf() = 0;
 
+    // termination hook by importance sampler
+    bool terminateWalk() const {
+      return terminateWalk_;
+    }
+
     // member functions
     bool canGenerateSamples() {
       return canGenerateSamples_;
@@ -499,6 +504,7 @@ class ImportanceSampler {
 
     Vector<DIM> direction, c;
     float r_, pdf_;
+    bool terminateWalk_ = false;
 
 
   private:
@@ -541,6 +547,7 @@ class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
         this->direction = xy.normalized();
         this->r_ = xy.norm();
         this->pdf_ = 1.0;
+        this->terminateWalk_ = true;
       }
     }
 

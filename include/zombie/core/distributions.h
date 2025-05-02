@@ -287,7 +287,7 @@ public:
     // destructor
     virtual ~GreensFnBall() {}
 
-    // updates the ball center and radius
+    // updates the ball center and radius and importance sampler state
     virtual void updateBall(const Vector<DIM>& c_, float R_, float rClamp_=1e-4f) {
         c = c_;
         R = R_;
@@ -399,6 +399,14 @@ public:
       usingFallbackSampler = true;
       return fallbackSampler(u);
     }
+
+    // check if importance sampler is requesting a walk termination
+    bool terminationRequestedByImportanceSampler() const {
+      if(importanceSampler != nullptr)
+        return importanceSampler->terminateWalk();
+      return false;
+    }
+
 
     // members
     Vector<DIM> c; // ball center

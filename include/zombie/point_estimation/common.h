@@ -124,7 +124,8 @@ enum class WalkCompletionCode {
     ReachedAbsorbingBoundary,
     TerminatedWithRussianRoulette,
     ExceededMaxWalkLength,
-    EscapedDomain
+    EscapedDomain,
+    TerminatedByImportanceSampler
 };
 
 // NOTE: For data with multiple channels (e.g., 2D or 3D positions, rgb etc.), use
