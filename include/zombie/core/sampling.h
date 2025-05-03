@@ -502,23 +502,43 @@ class ImportanceSampler {
       canGenerateSamples_ = value;
     }
 
+    // setter for terminateWalk_ variable. If true, random walk is terminated right after the current step
+    void setWalkTerminationRequest(const bool value) {
+      terminateWalk_ = value;
+    }
+
+
     Vector<DIM> direction, c;
     float r_, pdf_;
-    bool terminateWalk_ = false;
 
 
   private:
     bool canGenerateSamples_ = false;
+    bool terminateWalk_ = false;
+
 
 };
 
 template<size_t DIM>
 class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
   public:
-    SingleSourceDiracSampler(const Vector<DIM>& location):location(location)  {}
+    SingleSourceDiracSampler(
+        const Vector<DIM>& location,
+        const bool ignoreAbsorbingBoundary,
+        const bool ignoreSourceContribution
+        ):location(location),
+          ignoreAbsorbingBoundary(ignoreAbsorbingBoundary),
+          ignoreSourceContribution(ignoreSourceContribution) {}
 
-    static ImportanceSampler<DIM>::SamplerFactoryFn getSamplerFactory(const Vector<DIM>& location) {
-      return ImportanceSampler<DIM>::template helpBuildSamplerFactory<SingleSourceDiracSampler>(location);
+    static ImportanceSampler<DIM>::SamplerFactoryFn getSamplerFactory(
+        const Vector<DIM>& location,
+        const bool ignoreAbsorbingBoundary,
+        const bool ignoreSourceContribution) {
+      // sampler factory builder function
+      return ImportanceSampler<DIM>::template helpBuildSamplerFactory<SingleSourceDiracSampler>(
+          location,
+          ignoreAbsorbingBoundary,
+          ignoreSourceContribution);
     }
     Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound) override {
       r = this->r_;
@@ -539,21 +559,24 @@ class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
 
       Vector<DIM> xy = location - c_;
 
-      if(std::max(xy.norm(), rClamp_) > R_) {
+      if(std::max(xy.norm(), rClamp_) > R_ || this->ignoreSourceContribution) {
         this->setCanGenerateSamples(false);
+        this->setWalkTerminationRequest(false);
       }
       else {
         this->setCanGenerateSamples(true);
         this->direction = xy.normalized();
         this->r_ = xy.norm();
         this->pdf_ = 1.0;
-        this->terminateWalk_ = true;
+        if(this->ignoreAbsorbingBoundary)
+          this->setWalkTerminationRequest(true);
       }
     }
 
 
   private:
     const Vector<DIM>& location;
+    bool ignoreAbsorbingBoundary, ignoreSourceContribution;
 
 };
 

@@ -515,11 +515,18 @@ int main(int argc, const char *argv[])
     if(getOptional<bool>(modelProblemConfig, "useImportanceSampling", false)) {
       const std::pair<int, int>& sourceDimensions = modelProblem.sourceDimensions;
       const json samplerConfig = getRequired<json>(config, "sampler");
+
       std::vector<int> location = getRequired<std::vector<int>>(samplerConfig, "diracLocation");
-      Vector2 uv(
+      const bool ignoreAbsorbingBoundaryContribution = getOptional<bool>(solverConfig, "ignoreAbsorbingBoundaryContribution", false);
+      const bool ignoreSourceContribution = getOptional<bool>(solverConfig, "ignoreSourceContribution", false);
+
+      Vector2 locationVector(
           ((float)location[0]) / sourceDimensions.first,
           ((float)location[1]) / sourceDimensions.second);
-      modelProblem.pde.importanceSampler = zombie::SingleSourceDiracSampler<2>::getSamplerFactory(uv);
+      modelProblem.pde.importanceSampler = zombie::SingleSourceDiracSampler<2>::getSamplerFactory(
+          locationVector,
+          ignoreAbsorbingBoundaryContribution,
+          ignoreSourceContribution);
     }
 
     // solve the model problem
