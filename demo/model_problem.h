@@ -77,7 +77,7 @@ sdfGridForAbsorbingBoundary(nullptr)
     absorbingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryValue"));
     reflectingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryValue"));
     sourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
-    sourceDimensions = std::tie(sourceValue.w, sourceValue.h);
+    sourceDimensions = {sourceValue.w, sourceValue.h};
     solveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
     domainIsWatertight = getOptional<bool>(config, "domainIsWatertight", true);
     useSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);

@@ -278,7 +278,7 @@ template <size_t DIM>
 class GreensFnBall {
 public:
     // constructor
-    GreensFnBall(const ImportanceSampler<DIM>::SamplerFactoryFn samplerFactory = {}):
+    GreensFnBall(const typename ImportanceSampler<DIM>::SamplerFactoryFn samplerFactory = {}):
       importanceSampler(samplerFactory ? samplerFactory() : nullptr)
     {
         updateBall(Vector<DIM>::Zero(), 0.0f);
@@ -680,7 +680,7 @@ template <size_t DIM>
 class YukawaGreensFnBall: public GreensFnBall<DIM> {
 public:
     // constructor
-    YukawaGreensFnBall(float lambda_, const ImportanceSampler<DIM>::SamplerFactoryFn samplerFactory = {}): GreensFnBall<DIM>(samplerFactory) {
+    YukawaGreensFnBall(float lambda_, const typename ImportanceSampler<DIM>::SamplerFactoryFn samplerFactory = {}): GreensFnBall<DIM>(samplerFactory) {
         std::cerr << "YukawaGreensFnBall() not implemented for DIM: " << DIM << std::endl;
         exit(EXIT_FAILURE);
     }

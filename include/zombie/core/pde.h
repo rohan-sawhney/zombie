@@ -44,7 +44,7 @@ struct PDE {
     std::function<bool(const Vector<DIM>&)> hasNonZeroRobinCoeff; // set automatically
 
     // importance sampling factory
-    ImportanceSampler<DIM>::SamplerFactoryFn importanceSampler;
+    typename ImportanceSampler<DIM>::SamplerFactoryFn importanceSampler;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

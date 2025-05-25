@@ -530,7 +530,7 @@ class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
           ignoreAbsorbingBoundary(ignoreAbsorbingBoundary),
           ignoreSourceContribution(ignoreSourceContribution) {}
 
-    static ImportanceSampler<DIM>::SamplerFactoryFn getSamplerFactory(
+    static typename ImportanceSampler<DIM>::SamplerFactoryFn getSamplerFactory(
         const Vector<DIM>& location,
         const bool ignoreAbsorbingBoundary,
         const bool ignoreSourceContribution) {
