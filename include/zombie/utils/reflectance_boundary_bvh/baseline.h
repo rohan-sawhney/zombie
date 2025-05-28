@@ -16,7 +16,7 @@ public:
     ReflectanceBaseline(std::vector<PrimitiveType *>& primitives_,
                         std::vector<SilhouettePrimitive<DIM> *>& silhouettes_);
 
-    // updates coefficient values for each triangle
+    // updates coefficient values for each primitive
     void updateCoefficientValues(const std::vector<float>& minCoefficientValues,
                                  const std::vector<float>& maxCoefficientValues);
 

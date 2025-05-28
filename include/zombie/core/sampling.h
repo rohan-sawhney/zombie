@@ -1,4 +1,4 @@
-// This file provides various utiiity functions, used internally by the algorithms
+// This file provides various utility functions, used internally by the algorithms
 // implemented in Zombie, for generating random samples.
 
 #pragma once
@@ -82,7 +82,7 @@ public:
 
     // transforms a vector d to a coordinate system aligned with the direction n
     static void transformCoordinates(const Vector<DIM>& n, Vector<DIM>& d) {
-        std::cerr << "phereSampler::transformCoordinates not implemented for DIM: " << DIM << std::endl;
+        std::cerr << "SphereSampler::transformCoordinates not implemented for DIM: " << DIM << std::endl;
     }
 };
 

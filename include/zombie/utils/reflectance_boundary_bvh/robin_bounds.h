@@ -1,5 +1,5 @@
-// This file implements reflectance bounds for Robin boundary conditions. Users of
-// Zombie need not interact with this file directly.
+// This file implements reflectance bounds for Robin boundary conditions.
+// Users of Zombie need not interact with this file directly.
 
 #pragma once
 

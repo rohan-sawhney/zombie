@@ -32,8 +32,8 @@ public:
                const WalkSettings& walkSettings,
                int nWalks, SamplePoint<T, DIM>& samplePt) const;
 
-    // solves the given PDE at the input points (in parallel by default); NOTE:
-    // assumes points do not lie on the boundary when estimating gradients
+    // solves the given PDE at the input points (in parallel by default);
+    // NOTE: assumes points do not lie on the boundary when estimating gradients
     void solve(const PDE<T, DIM>& pde,
                const WalkSettings& walkSettings,
                const std::vector<int>& nWalks,

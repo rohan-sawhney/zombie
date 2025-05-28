@@ -1,6 +1,6 @@
-// This file defines a BoundarySampler for generating uniformly distributed sample points
+// This file defines a boundary sampler for generating uniformly distributed sample points
 // on a 2D or 3D boundary mesh defined by a set of vertices and indices. These sample points
-// are required by the Boundary Value Caching (BVC) and Reverse Walk Splatting (RWS) techniques
+// are required by the Boundary Value Caching (BVC) and Reverse Walk Splatting (RWS) algorithms
 // for reducing variance of the walk-on-spheres and walk-on-stars estimators. BVC and RWS currently
 // require sample points on the absorbing boundary to be displaced slightly along the boundary normal.
 

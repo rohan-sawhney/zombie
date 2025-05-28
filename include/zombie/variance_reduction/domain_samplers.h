@@ -1,6 +1,6 @@
-// This file defines a DomainSampler for generating uniformly distributed sample points
+// This file defines a domain sampler for generating uniformly distributed sample points
 // in a 2D or 3D domain. These sample points are required by the Boundary Value Caching (BVC)
-// and Reverse Walk Splatting (RWS) techniques for reducing variance of the walk-on-spheres
+// and Reverse Walk Splatting (RWS) algorithms for reducing variance of the walk-on-spheres
 // and walk-on-stars estimators for PDEs with non-zero source.
 
 #pragma once

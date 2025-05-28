@@ -72,7 +72,7 @@ struct WalkSettings {
     int maxWalkLength;
     int stepsBeforeApplyingTikhonov;
     int stepsBeforeUsingMaximalSpheres;
-    bool solveDoubleSided; // NOTE: this flag should be set to true if domain is open
+    bool solveDoubleSided; // NOTE: this flag should be set to true if the domain is not watertight
     bool useGradientControlVariates;
     bool useGradientAntitheticVariates;
     bool useCosineSamplingForDerivatives;
@@ -94,8 +94,8 @@ struct WalkState {
                  prevDistance(0.0f), throughput(1.0f),
                  walkLength(0), onReflectingBoundary(false) {}
     WalkState(const Vector<DIM>& currentPt_, const Vector<DIM>& currentNormal_,
-              const Vector<DIM>& prevDirection_, float prevDistance_, float throughput_,
-              int walkLength_, bool onReflectingBoundary_):
+              const Vector<DIM>& prevDirection_, float prevDistance_,
+              float throughput_, int walkLength_, bool onReflectingBoundary_):
               greensFn(nullptr),
               totalReflectingBoundaryContribution(0.0f),
               totalSourceContribution(0.0f),
@@ -128,7 +128,7 @@ enum class WalkCompletionCode {
 };
 
 // NOTE: For data with multiple channels (e.g., 2D or 3D positions, rgb etc.),
-// use Eigen::Array<float, CHANNELS, 1> (in place of Eigen::<float, CHANNELS, 1>)
+// use Eigen::Array<float, CHANNELS, 1> (in place of Eigen::Matrix<float, CHANNELS, 1>)
 // as it supports component wise operations
 template <typename T, size_t DIM>
 class SampleStatistics {
@@ -283,7 +283,7 @@ protected:
 };
 
 enum class SampleType {
-    InDomain, // applies to both interior and exterior sample points for closed domains
+    InDomain, // applies to both interior and exterior sample points for watertight domains
     OnAbsorbingBoundary,
     OnReflectingBoundary
 };
@@ -325,18 +325,18 @@ struct SamplePoint {
 
     // members
     pcg32 sampler;
-    SampleStatistics<T, DIM> statistics;                  // populated by WoSt
+    SampleStatistics<T, DIM> statistics;         // populated by WoSt
     Vector<DIM> pt;
     Vector<DIM> normal;
-    Vector<DIM> directionForDerivative;                   // needed only for computing directional derivatives
+    Vector<DIM> directionForDerivative;          // needed only for computing directional derivatives
     SampleType type;
     EstimationQuantity estimationQuantity;
     float pdf;
     float distToAbsorbingBoundary;
     float distToReflectingBoundary;
-    float firstSphereRadius;                              // populated by WoSt
-    float robinCoeff;                                     // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
-    T solution, normalDerivative, contribution;           // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
+    float firstSphereRadius;                     // populated by WoSt
+    float robinCoeff;                            // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
+    T solution, normalDerivative, contribution;  // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
     bool estimateBoundaryNormalAligned;
 };
 

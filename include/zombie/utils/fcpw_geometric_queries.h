@@ -1,5 +1,5 @@
 // This file provides utility functions to load 2D or 3D boundary meshes from OBJ files,
-// normalize mesh positions to lie within a unit sphere, swap mesh indices to flip orientation,
+// normalize mesh positions to lie within a unit sphere, swap indices to flip mesh orientation,
 // and compute the bounding box of a mesh. The FcpwBoundaryHandler class builds an acceleration
 // structure to perform geometric queries against a mesh, while the 'populateGeometricQueriesForBoundary'
 // functions populate the GeometricQueries structure using FcpwBoundaryHandler objects for the
@@ -53,7 +53,7 @@ void addBoundingBoxToBoundaryMesh(const Vector<DIM>& boundingBoxMin,
                                   std::vector<Vector<DIM>>& positions,
                                   std::vector<Vectori<DIM>>& indices);
 
-// partitions boundary mesh into absorbing and reflecting parts using primitive centroids---
+// partitions a boundary mesh into absorbing and reflecting parts using primitive centroids---
 // this assumes the boundary discretization is perfectly adapted to the boundary conditions,
 // which isn't always a correct assumption
 template <size_t DIM>
@@ -65,8 +65,8 @@ void partitionBoundaryMesh(std::function<bool(const Vector<DIM>&)> onReflectingB
                            std::vector<Vector<DIM>>& reflectingPositions,
                            std::vector<Vectori<DIM>>& reflectingIndices);
 
-// Helper classes to build an acceleration structure to perform geometric queries such as
-// ray intersections, closest points, etc. against a boundary mesh with Dirichlet, Neumann
+// Helper classes to build acceleration structures for performing geometric queries such as
+// ray intersections, closest points, etc. against boundary meshes with Dirichlet, Neumann
 // and Robin conditions.
 template <size_t DIM>
 class FcpwDirichletBoundaryHandler {

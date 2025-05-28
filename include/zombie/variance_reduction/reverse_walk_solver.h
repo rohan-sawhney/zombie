@@ -1,4 +1,4 @@
-// This file implements a "reverse walk" splatting technique for reducing variance
+// This file implements a "reverse walk" splatting algorithm for reducing variance
 // of the walk-on-spheres and walk-on-stars estimators at a set of user-selected
 // evaluation points.
 //
@@ -106,7 +106,7 @@ protected:
 // - improve Poisson kernel estimation on Dirichlet boundary (currently using finite differencing on
 //   Greens function and self-normalization to reduce bias, but self-normalization only works with
 //   interior Poisson problems with pure Dirichlet or mixed Dirichet/Neumann boundary conditions)
-// - splat gradient estimates (challenge is again with Poisson kernel on Dirichlet boundary, rather
+// - splat gradient estimates (challenge again is with Poisson kernel on Dirichlet boundary, rather
 //   than Greens function for reflecting Neumann/Robin boundaries and source term)
 
 template <typename T, size_t DIM>

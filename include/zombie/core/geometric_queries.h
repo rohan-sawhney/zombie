@@ -96,10 +96,10 @@ struct GeometricQueries {
     std::function<bool(const Vector<DIM>&, const Vector<DIM>&, const Vector<DIM>&,
                        const Vector<DIM>&, bool, bool)> intersectsWithReflectingBoundary;
 
-    // samples a point on the boundary
+    // samples a point on the reflecting boundary
     std::function<bool(const Vector<DIM>&, float, const Vector<DIM>&, BoundarySample<DIM>&)> sampleReflectingBoundary;
 
-    // computes the radius of a star-shaped region on a reflecting boundary
+    // computes the radius of a star-shaped region on the reflecting boundary
     std::function<float(const Vector<DIM>&, float, float, float, bool)> computeStarRadiusForReflectingBoundary;
 
     // checks if a point is inside the domain (assuming it is watertight)
