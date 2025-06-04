@@ -23,6 +23,7 @@ using namespace nb::literals;
 // vector types
 using BoolList = std::vector<bool>;
 using IntList = std::vector<int>;
+using UintList = std::vector<uint32_t>;
 using FloatList = std::vector<float>;
 
 template <size_t DIM>
@@ -185,6 +186,23 @@ nb::ndarray<nb::numpy, int> convertListToNumpyArray(const IntList& v)
 }
 
 template <>
+nb::ndarray<nb::numpy, uint32_t> convertListToNumpyArray(const UintList& v)
+{
+    // allocate a memory region an initialize it
+    uint32_t *data = new uint32_t[v.size()];
+    for (size_t i = 0; i < v.size(); i++) {
+        data[i] = v[i];
+    }
+
+    // delete 'data' when the 'owner' capsule expires
+    nb::capsule owner(data, [](void *p) noexcept {
+        delete[] (uint32_t *)p;
+    });
+
+    return nb::ndarray<nb::numpy, uint32_t>(data, { v.size() }, owner);
+}
+
+template <>
 nb::ndarray<nb::numpy, float> convertListToNumpyArray(const FloatList& v)
 {
     // allocate a memory region an initialize it
@@ -282,6 +300,9 @@ void bindNonTemplatedLibraryResources(nb::module_ m)
 
     nb::bind_vector<IntList>(m, "int_list");
     m.def("convert_list_to_numpy_array", &convertListToNumpyArray<IntList, int>);
+
+    nb::bind_vector<UintList>(m, "uint_list");
+    m.def("convert_list_to_numpy_array", &convertListToNumpyArray<UintList, uint32_t>);
 
     nb::bind_vector<FloatList>(m, "float_list");
     m.def("convert_list_to_numpy_array", &convertListToNumpyArray<FloatList, float>);
@@ -719,6 +740,11 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
                &zombie::populateGeometricQueriesForRobinBoundary<DIM>,
                "fcpw_robin_boundary_handler"_a, "branch_traversal_weight"_a, "geometric_queries"_a,
                "Populates geometric queries for a reflecting Robin boundary.");
+
+    utils_m.def(("get_spatially_sorted_point_indices" + typeStr).c_str(),
+               &zombie::getSpatiallySortedPointIndices<DIM>,
+               "points"_a, "out_indices"_a,
+               "Outputs a list of indices that spatially sort the input points.");
 }
 
 template <size_t DIM>

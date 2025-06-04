@@ -81,4 +81,4 @@ std::unique_ptr<ReflectanceBaseline<DIM, PrimitiveType>> createReflectanceBaseli
     return nullptr;
 }
 
-} // namespace zombie
+} // zombie

@@ -487,4 +487,4 @@ struct ReflectanceWidePrimitive<WIDTH, 3, PrimitiveBound> {
 
 #endif // FCPW_USE_ENOKI
 
-} // namespace zombie
+} // zombie

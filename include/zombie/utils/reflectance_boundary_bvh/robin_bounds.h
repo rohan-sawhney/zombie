@@ -270,4 +270,4 @@ struct RobinMbvhNodeBound<3> {
 
 #endif
 
-} // namespace zombie
+} // zombie

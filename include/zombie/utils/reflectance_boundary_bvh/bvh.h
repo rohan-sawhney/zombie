@@ -579,4 +579,4 @@ std::unique_ptr<ReflectanceBvh<DIM, ReflectanceBvhNode<DIM>, PrimitiveType, Node
     return nullptr;
 }
 
-} // namespace zombie
+} // zombie

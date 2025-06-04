@@ -593,4 +593,4 @@ std::unique_ptr<ReflectanceMbvh<FCPW_SIMD_WIDTH, DIM, PrimitiveType, Reflectance
     return nullptr;
 }
 
-} // namespace zombie
+} // zombie

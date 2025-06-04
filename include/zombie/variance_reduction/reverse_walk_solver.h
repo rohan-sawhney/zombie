@@ -227,7 +227,7 @@ void splatContribution(const WalkState<T, DIM>& state,
 {
     // perform nearest neighbor queries to determine evaluation points that lie
     // within the sphere centered at the current random walk position
-    std::vector<size_t> nnIndices;
+    std::vector<uint32_t> nnIndices;
     size_t nnCount = nearestNeighborFinder.radiusSearch(state.currentPt, state.greensFn->R, nnIndices);
     bool useSelfNormalization = queries.domainIsWatertight && pde.absorptionCoeff == 0.0f;
     if (queries.hasNonEmptyReflectingBoundary && useSelfNormalization) useSelfNormalization = pde.areRobinConditionsPureNeumann;

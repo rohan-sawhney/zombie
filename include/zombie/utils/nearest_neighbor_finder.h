@@ -37,11 +37,14 @@ public:
 
     // returns the indices of points in the input set
     size_t kNearest(const Vector<DIM>& queryPt, size_t k,
-                    std::vector<size_t>& outIndices) const;
+                    std::vector<uint32_t>& outIndices) const;
 
     // returns all neighbors within a ball of input radius
     size_t radiusSearch(const Vector<DIM>& queryPt, float radius,
-                        std::vector<size_t>& outIndices) const;
+                        std::vector<uint32_t>& outIndices) const;
+
+    // returns spatially sorted indices for the input point set
+    void getSpatiallySortedIndices(std::vector<uint32_t>& outIndices) const;
 
 protected:
     // members
@@ -51,6 +54,10 @@ protected:
                                                           PointCloud<DIM>, DIM>;
     KD_Tree_T tree;
 };
+
+template <size_t DIM>
+void getSpatiallySortedPointIndices(const std::vector<Vector<DIM>>& points,
+                                    std::vector<uint32_t>& outIndices);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -72,7 +79,7 @@ inline void NearestNeighborFinder<DIM>::buildAccelerationStructure(const std::ve
 
 template <size_t DIM>
 inline size_t NearestNeighborFinder<DIM>::kNearest(const Vector<DIM>& queryPt, size_t k,
-                                                   std::vector<size_t>& outIndices) const
+                                                   std::vector<uint32_t>& outIndices) const
 {
     if (k > data.points.size()) {
         std::cerr << "k is greater than number of points" << std::endl;
@@ -86,7 +93,7 @@ inline size_t NearestNeighborFinder<DIM>::kNearest(const Vector<DIM>& queryPt, s
 
 template <size_t DIM>
 inline size_t NearestNeighborFinder<DIM>::radiusSearch(const Vector<DIM>& queryPt, float radius,
-                                                       std::vector<size_t>& outIndices) const
+                                                       std::vector<uint32_t>& outIndices) const
 {
     float squaredRadius = radius*radius; // nanoflann wants a SQUARED raidus
     std::vector<nanoflann::ResultItem<uint32_t, float>> resultItems;
@@ -98,6 +105,25 @@ inline size_t NearestNeighborFinder<DIM>::radiusSearch(const Vector<DIM>& queryP
     }
 
     return nResultItems;
+}
+
+template <size_t DIM>
+inline void NearestNeighborFinder<DIM>::getSpatiallySortedIndices(std::vector<uint32_t>& outIndices) const
+{
+    const auto& vAcc = tree.vAcc_;
+    outIndices.resize(vAcc.size());
+    for (size_t i = 0; i < vAcc.size(); i++) {
+        outIndices[i] = static_cast<uint32_t>(vAcc[i]);
+    }
+}
+
+template <size_t DIM>
+inline void getSpatiallySortedPointIndices(const std::vector<Vector<DIM>>& points,
+                                           std::vector<uint32_t>& outIndices)
+{
+    NearestNeighborFinder<DIM> nnFinder;
+    nnFinder.buildAccelerationStructure(points);
+    nnFinder.getSpatiallySortedIndices(outIndices);
 }
 
 } // zombie
