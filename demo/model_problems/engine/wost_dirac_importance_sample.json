@@ -1,0 +1,38 @@
+{
+    "solverType": "wost",
+    "solver": {
+        "nWalks": 128,
+        "maxWalkLength": 1024,
+        "epsilonShellForAbsorbingBoundary": 1e-3,
+        "epsilonShellForReflectingBoundary": 1e-3,
+        "russianRouletteThreshold": 0.99,
+        "splittingThreshold": 1.5,
+        "ignoreAbsorbingBoundaryContribution": true,
+        "ignoreReflectingBoundaryContribution": true,
+        "ignoreSourceContribution": false 
+    },
+    "modelProblem": {
+        "geometry": "demo/model_problems/engine/data/geometry.obj",
+        "isReflectingBoundary": "demo/model_problems/engine/data/is_reflecting_boundary.pfm",
+        "absorbingBoundaryValue": "demo/model_problems/engine/data/absorbing_boundary_value.pfm",
+        "reflectingBoundaryValue": "demo/model_problems/engine/data/reflecting_boundary_value.pfm",
+        "sourceValue": "demo/model_problems/engine/data/dirac.pfm",
+        "robinCoeff": 0.0,
+        "absorptionCoeff": 1000.0,
+        "useSdfForAbsorbingBoundary": false,
+        "useImportanceSampling": true
+    },
+    "sampler": {
+      "diracLocation": [74, 109]
+    },
+    "output": {
+        "solutionFile": "demo/model_problems/engine/solutions/wost.pfm",
+        "gridRes": 256,
+        "boundaryDistanceMask": 1e-2,
+        "saveDebug": false,
+        "saveColormapped": true,
+        "colormap": "turbo",
+        "colormapMinVal": 0.0,
+        "colormapMaxVal": 1.1
+    }
+}
