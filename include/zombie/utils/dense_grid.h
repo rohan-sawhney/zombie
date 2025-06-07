@@ -432,7 +432,7 @@ std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(
             return b ? (gridBoundaryNormalAligned(a))(0) : (grid(a))(0);
         };
 
-    } else{
+    } else {
         return [&grid, &gridBoundaryNormalAligned](const Vector<DIM>& a, bool b) -> T {
             return b ? gridBoundaryNormalAligned(a) : grid(a);
         };
@@ -460,7 +460,7 @@ std::function<T(const Vector<DIM>&, bool)> getDenseGridCallback2(
             return b ? ((*gridBoundaryNormalAligned)(a))(0) : ((*grid)(a))(0);
         };
 
-    } else{
+    } else {
         return [grid, gridBoundaryNormalAligned](const Vector<DIM>& a, bool b) -> T {
             return b ? (*gridBoundaryNormalAligned)(a) : (*grid)(a);
         };
@@ -513,7 +513,7 @@ std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallb
             return c ? (gridBoundaryNormalAligned(a))(0) : (grid(a))(0);
         };
 
-    } else{
+    } else {
         return [&grid, &gridBoundaryNormalAligned](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T {
             return c ? gridBoundaryNormalAligned(a) : grid(a);
         };
@@ -541,7 +541,7 @@ std::function<T(const Vector<DIM>&, const Vector<DIM>&, bool)> getDenseGridCallb
             return c ? ((*gridBoundaryNormalAligned)(a))(0) : ((*grid)(a))(0);
         };
 
-    } else{
+    } else {
         return [grid, gridBoundaryNormalAligned](const Vector<DIM>& a, const Vector<DIM>& b, bool c) -> T {
             return c ? (*gridBoundaryNormalAligned)(a) : (*grid)(a);
         };

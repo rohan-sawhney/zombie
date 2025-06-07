@@ -710,7 +710,20 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
             "grid_min"_a, "grid_max"_a)
         .def(nb::init<const Eigen::VectorXf&, const zombie::Vectori<DIM>&,
                       const zombie::Vector<DIM>&, const zombie::Vector<DIM>&>(),
-            "sdf_data"_a, "grid_shape"_a, "grid_min"_a, "grid_max"_a);
+            "sdf_data"_a, "grid_shape"_a, "grid_min"_a, "grid_max"_a)
+        .def("compute_gradient", &zombie::SdfGrid<DIM>::computeGradient,
+            "Computes the gradient of the SDF at the given point.",
+            "x"_a)
+        .def("compute_normal", &zombie::SdfGrid<DIM>::computeNormal,
+            "Computes the normal of the level set at the given point.", 
+            "x"_a)
+        .def("project_to_zero_level_set", &zombie::SdfGrid<DIM>::projectToZeroLevelSet,
+            "Projects the given point to the zero level set.",
+            "x"_a, "normal"_a, "max_iterations"_a=8, "epsilon"_a=1e-6f)
+        .def("intersect_zero_level_set", &zombie::SdfGrid<DIM>::intersectZeroLevelSet,
+            "Intersects the zero level set with the given ray.",
+            "origin"_a, "direction"_a, "t_max"_a, "intersection_pt"_a,
+            "max_iterations"_a=128, "epsilon"_a=1e-6f);
 
     utils_m.def(("populate_sdf_grid" + typeStr).c_str(),
                &zombie::populateSdfGrid<DIM>,
