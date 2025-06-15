@@ -278,18 +278,23 @@ template <size_t DIM>
 class GreensFnBall {
 public:
     // constructor
-    GreensFnBall() {
+    GreensFnBall(const typename ImportanceSampler<DIM>::SamplerFactoryFn samplerFactory = {}):
+      importanceSampler(samplerFactory ? samplerFactory() : nullptr)
+    {
         updateBall(Vector<DIM>::Zero(), 0.0f);
     }
 
     // destructor
     virtual ~GreensFnBall() {}
 
-    // updates the ball center and radius
+    // updates the ball center and radius and importance sampler state
     virtual void updateBall(const Vector<DIM>& c_, float R_, float rClamp_=1e-4f) {
         c = c_;
         R = R_;
         rClamp = rClamp_;
+        if(importanceSampler != nullptr) {
+          importanceSampler->updateSamplerState(c_, R_, rClamp_);
+        }
     }
 
     // samples a point inside the ball given the direction along which to sample the point
@@ -320,6 +325,14 @@ public:
     // evaluates the gradient norm of the Green's function
     virtual float gradientNorm(float r) const {
         return 0.0f;
+    }
+
+
+    // evaluates the pdf for monte carlo integration
+    float pdf() const {
+      if(importanceSampler != nullptr && importanceSampler->canGenerateSamples() && !usingFallbackSampler)
+        return importanceSampler->pdf();
+      return 1.0 / norm();
     }
 
     // evaluates the gradient of the Green's function
@@ -363,13 +376,48 @@ public:
         return 0.0f;
     }
 
+    // returns direction sampler. returns importance sampler when possible, else returns fallback sampler
+    Vector<DIM> getDirectionSample(pcg32& sampler, std::function<Vector<DIM>(pcg32&)> fallbackSampler) {
+      if(importanceSampler != nullptr && importanceSampler->canGenerateSamples()) {
+          usingFallbackSampler = false;
+          return importanceSampler->directionSampler(sampler);
+        }
+      usingFallbackSampler = true;
+      return fallbackSampler(sampler);
+    }
+
+    // flips the sign of direction when point on neumann boundary.
+    Vector<DIM> flipDirection(const Vector<DIM>& direction) {
+      if(importanceSampler != nullptr && importanceSampler->canGenerateSamples() && !usingFallbackSampler) {
+        importanceSampler->flipDirection();
+      }
+      return -1.0f * direction;
+    }
+
+    // returns direction sample using the fallback sampler when the stratified sample set is passed. no importance sampling.
+    Vector<DIM> getDirectionSample(float *u, std::function<Vector<DIM>(float*)> fallbackSampler) {
+      usingFallbackSampler = true;
+      return fallbackSampler(u);
+    }
+
+    // check if importance sampler is requesting a walk termination
+    bool terminationRequestedByImportanceSampler() const {
+      if(importanceSampler != nullptr)
+        return importanceSampler->terminateWalk();
+      return false;
+    }
+
+
     // members
     Vector<DIM> c; // ball center
     float R; // ball radius
     float rClamp;
 
+
 protected:
     // samples a point inside the ball
+    const std::shared_ptr<ImportanceSampler<DIM>> importanceSampler;
+
     virtual Vector<DIM> rejectionSampleGreensFn(const Vector<DIM>& dir, float bound,
                                                 pcg32& sampler, float& r, float& pdf) {
         int iter = 0;
@@ -391,6 +439,9 @@ protected:
 
         return c + r*dir;
     }
+    bool usingFallbackSampler = true;
+
+
 };
 
 template <size_t DIM>
@@ -407,7 +458,7 @@ template <>
 class HarmonicGreensFnBall<2>: public GreensFnBall<2> {
 public:
     // constructor
-    HarmonicGreensFnBall(): GreensFnBall<2>() {}
+    HarmonicGreensFnBall(const ImportanceSampler<2>::SamplerFactoryFn samplerFactory = {}): GreensFnBall<2>(samplerFactory) {}
 
     // samples a point inside the ball given the direction along which to sample the point
     Vector2 sampleVolume(const Vector2& dir, pcg32& sampler, float& r, float& pdf) {
@@ -415,12 +466,17 @@ public:
         // rejection sample radius r from pdf 4.0 * r * ln(R / r) / R^2
         float bound = 1.5f/R;
 
+        if(importanceSampler != nullptr && importanceSampler->canGenerateSamples() && !usingFallbackSampler)
+          return importanceSampler->volumeSampler(sampler, r, pdf, bound);
         return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
     }
 
     // samples a point inside the ball
     Vector2 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(SphereSampler<2>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
+        std::function<Vector2(pcg32&)> fallback = [](pcg32& sampler) -> Vector2 {
+          return SphereSampler<2>::sampleUnitSphereUniform(sampler);
+        };
+        return sampleVolume(getDirectionSample(sampler, fallback), sampler, r, pdf);
     }
 
     // evaluates the Green's function
@@ -508,11 +564,14 @@ template <>
 class HarmonicGreensFnBall<3>: public GreensFnBall<3> {
 public:
     // constructor
-    HarmonicGreensFnBall(): GreensFnBall<3>() {}
+    HarmonicGreensFnBall(const ImportanceSampler<3>::SamplerFactoryFn samplerFactory = {}): GreensFnBall<3>(samplerFactory) {}
 
     // samples a point inside the ball given the direction along which to sample the point
     Vector3 sampleVolume(const Vector3& dir, pcg32& sampler, float& r, float& pdf) {
         // sample radius r from pdf 6.0f * r * (R - r) / R^3 using Ulrich's polar method
+        if(importanceSampler != nullptr && importanceSampler->canGenerateSamples() && !usingFallbackSampler)
+          return importanceSampler->volumeSampler(sampler, r, pdf);
+
         float u1 = sampler.nextFloat();
         float u2 = sampler.nextFloat();
         float phi = 2.0f*M_PI*u2;
@@ -527,7 +586,11 @@ public:
 
     // samples a point inside the ball
     Vector3 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(SphereSampler<3>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
+        std::function<Vector3(pcg32&)> fallback = [](pcg32& sampler) -> Vector3 {
+          return SphereSampler<3>::sampleUnitSphereUniform(sampler);
+        };
+
+        return sampleVolume(getDirectionSample(sampler, fallback), sampler, r, pdf);
     }
 
     // evaluates the Green's function
@@ -617,7 +680,7 @@ template <size_t DIM>
 class YukawaGreensFnBall: public GreensFnBall<DIM> {
 public:
     // constructor
-    YukawaGreensFnBall(float lambda_): GreensFnBall<DIM>() {
+    YukawaGreensFnBall(float lambda_, const typename ImportanceSampler<DIM>::SamplerFactoryFn samplerFactory = {}): GreensFnBall<DIM>(samplerFactory) {
         std::cerr << "YukawaGreensFnBall() not implemented for DIM: " << DIM << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -627,8 +690,8 @@ template <>
 class YukawaGreensFnBall<2>: public GreensFnBall<2> {
 public:
     // constructor
-    YukawaGreensFnBall(float lambda_):
-        GreensFnBall<2>(), lambda(lambda_), sqrtLambda(std::sqrt(lambda_)) {}
+    YukawaGreensFnBall(float lambda_, const ImportanceSampler<2>::SamplerFactoryFn samplerFactory = {}):
+        GreensFnBall<2>(samplerFactory), lambda(lambda_), sqrtLambda(std::sqrt(lambda_)) {}
 
     // updates the ball center and radius
     void updateBall(const Vector2& c_, float R_, float rClamp_=1e-4f) {
@@ -644,16 +707,24 @@ public:
     Vector2 sampleVolume(const Vector2& dir, pcg32& sampler, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf r * λ * (K_0(r√λ) * I_0(R√λ) - I_0(r√λ) * K_0(R√λ)) / (I_0(R√λ) - 1)
+
         float bound = R <= lambda ?
                       std::max(std::max(2.2f/R, 2.2f/lambda), std::max(0.6f*std::sqrt(R), 0.6f*sqrtLambda)) :
                       std::max(std::min(2.2f/R, 2.2f/lambda), std::min(0.6f*std::sqrt(R), 0.6f*sqrtLambda));
+
+        if(importanceSampler != nullptr && importanceSampler->canGenerateSamples() && !usingFallbackSampler)
+          return importanceSampler->volumeSampler(sampler, r, pdf, bound);
 
         return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
     }
 
     // samples a point inside the ball
     Vector2 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(SphereSampler<2>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
+        std::function<Vector2(pcg32&)> fallback = [](pcg32& sampler) -> Vector2 {
+          return SphereSampler<2>::sampleUnitSphereUniform(sampler);
+        };
+
+        return sampleVolume(getDirectionSample(sampler, fallback), sampler, r, pdf);
     }
 
     // evaluates the Green's function
@@ -783,8 +854,8 @@ template <>
 class YukawaGreensFnBall<3>: public GreensFnBall<3> {
 public:
     // constructor
-    YukawaGreensFnBall(float lambda_):
-        GreensFnBall<3>(), lambda(lambda_), sqrtLambda(std::sqrt(lambda_)) {}
+    YukawaGreensFnBall(float lambda_, const ImportanceSampler<3>::SamplerFactoryFn samplerFactory = {}):
+        GreensFnBall<3>(samplerFactory), lambda(lambda_), sqrtLambda(std::sqrt(lambda_)) {}
 
     // updates the ball center and radius
     void updateBall(const Vector3& c_, float R_, float rClamp_=1e-4f) {
@@ -806,12 +877,18 @@ public:
                       std::max(std::max(2.0f/R, 2.0f/lambda), std::max(0.5f*std::sqrt(R), 0.5f*sqrtLambda)) :
                       std::max(std::min(2.0f/R, 2.0f/lambda), std::min(0.5f*std::sqrt(R), 0.5f*sqrtLambda));
 
+        if(importanceSampler != nullptr && importanceSampler->canGenerateSamples() && !usingFallbackSampler)
+          return importanceSampler->volumeSampler(sampler, r, pdf, bound);
+
         return GreensFnBall<3>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
     }
 
     // samples a point inside the ball
     Vector3 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(SphereSampler<3>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
+        std::function<Vector3(pcg32&)> fallback = [](pcg32& sampler) -> Vector3 {
+          return SphereSampler<3>::sampleUnitSphereUniform(sampler);
+        };
+        return sampleVolume(getDirectionSample(sampler, fallback), sampler, r, pdf);
     }
 
     // evaluates the Green's function

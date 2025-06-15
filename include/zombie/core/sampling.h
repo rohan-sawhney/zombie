@@ -446,4 +446,139 @@ inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples,
     }
 }
 
+
+template<size_t DIM>
+class ImportanceSampler {
+  public:
+    // Constructor
+    ImportanceSampler() {}
+    // Destructor
+    ~ImportanceSampler() {}
+
+    using SamplerFactoryFn = std::function<std::shared_ptr<ImportanceSampler<DIM>>()>;
+
+    // virtual functions
+
+    // Volume Sampler returns the location where source is located. Runs only when canGenerateSamples is set to true.
+    virtual Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound=-1) = 0; // If bound == -1, no bound passed.
+
+    // Direction sampler returns the direction to the dirac source point from current ball position. Runs only when canGenerateSamples is set to true.
+    virtual Vector<DIM> directionSampler(pcg32& sampler) = 0;
+
+    // updateSamplerState is called everytime the greens's function ball is moved
+    virtual void updateSamplerState(const Vector<DIM>& c_, float R_, float rClamp_) = 0;
+
+    // pdf of the sampled point.
+    virtual float pdf() = 0;
+
+    // termination hook by importance sampler
+    bool terminateWalk() const {
+      return terminateWalk_;
+    }
+
+    // member functions
+    bool canGenerateSamples() {
+      return canGenerateSamples_;
+    }
+    void flipDirection() {
+      direction = -1.0f * direction;
+    }
+
+
+  protected:
+    // Helper function to build sampler factory. Every derived implementation must have a public function:
+    // which invokes the helper as:
+    //  return ImportanceSampler<DIM>::template helpBuildSamplerFactory<Derived>(args, to, constructor)
+
+    template<typename Derived, typename... Args>
+    static ImportanceSampler<DIM>::SamplerFactoryFn helpBuildSamplerFactory(Args&&... args) {
+      return [&]() -> std::shared_ptr<ImportanceSampler<DIM>> {
+        return std::make_shared<Derived>(std::forward<Args>(args)...);
+      };
+    }
+
+    // setter for canGenerateSamples variable. If true, importance sampler samples used, else fallback on rejection sampler
+    void setCanGenerateSamples(const bool value) {
+      canGenerateSamples_ = value;
+    }
+
+    // setter for terminateWalk_ variable. If true, random walk is terminated right after the current step
+    void setWalkTerminationRequest(const bool value) {
+      terminateWalk_ = value;
+    }
+
+
+    Vector<DIM> direction, c;
+    float r_, pdf_;
+
+
+  private:
+    bool canGenerateSamples_ = false;
+    bool terminateWalk_ = false;
+
+
+};
+
+template<size_t DIM>
+class SingleSourceDiracSampler : public ImportanceSampler<DIM> {
+  public:
+    SingleSourceDiracSampler(
+        const Vector<DIM>& location,
+        const bool ignoreAbsorbingBoundary,
+        const bool ignoreSourceContribution
+        ):location(location),
+          ignoreAbsorbingBoundary(ignoreAbsorbingBoundary),
+          ignoreSourceContribution(ignoreSourceContribution) {}
+
+    static typename ImportanceSampler<DIM>::SamplerFactoryFn getSamplerFactory(
+        const Vector<DIM>& location,
+        const bool ignoreAbsorbingBoundary,
+        const bool ignoreSourceContribution) {
+      // sampler factory builder function
+      return ImportanceSampler<DIM>::template helpBuildSamplerFactory<SingleSourceDiracSampler>(
+          location,
+          ignoreAbsorbingBoundary,
+          ignoreSourceContribution);
+    }
+    Vector<DIM> volumeSampler(pcg32& sampler, float& r, float& pdf, const float bound) override {
+      r = this->r_;
+      pdf = this->pdf_;
+      return this->c + (r * this->direction);
+    }
+
+    Vector<DIM> directionSampler(pcg32& sampler) override {
+      return this->direction;
+    }
+
+    float pdf() override {
+      return this->pdf_;
+    }
+
+    void updateSamplerState(const Vector<DIM>& c_, float R_, float rClamp_) override {
+      this->c = c_;
+
+      Vector<DIM> xy = location - c_;
+
+      if(std::max(xy.norm(), rClamp_) > R_ || this->ignoreSourceContribution) {
+        this->setCanGenerateSamples(false);
+        this->setWalkTerminationRequest(false);
+      }
+      else {
+        this->setCanGenerateSamples(true);
+        this->direction = xy.normalized();
+        this->r_ = xy.norm();
+        this->pdf_ = 1.0;
+        if(this->ignoreAbsorbingBoundary)
+          this->setWalkTerminationRequest(true);
+      }
+    }
+
+
+  private:
+    const Vector<DIM>& location;
+    bool ignoreAbsorbingBoundary, ignoreSourceContribution;
+
+};
+
+
 } // zombie
