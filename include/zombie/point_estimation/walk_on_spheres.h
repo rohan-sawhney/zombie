@@ -158,7 +158,7 @@ inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& 
                                                              pcg32& sampler, WalkState<T, DIM>& state) const
 {
     if (!walkSettings.ignoreSourceContribution) {
-        // compute the source contribution inside sphere
+        // compute source contribution inside the sphere
         float sourceRadius, sourcePdf;
         Vector<DIM> sourcePt = state.greensFn->sampleVolume(sampler, sourceRadius, sourcePdf);
         T sourceContribution = state.greensFn->norm()*pde.source(sourcePt);
@@ -238,7 +238,8 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
             return WalkCompletionCode::EscapedDomain;
         }
 
-        // update the walk throughput and apply a weight window to decide whether to split or terminate the walk
+        // update the walk throughput and apply a weight window to decide whether
+        // to split or terminate the walk
         state.throughput *= state.greensFn->directionSampledPoissonKernel(state.currentPt);
         bool terminateWalk = applyWeightWindow(walkSettings, sampler, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
@@ -254,7 +255,8 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // check whether to start applying Tikhonov regularization
-        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
+        if (pde.absorptionCoeff > 0.0f &&
+            walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
             state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
         }
 
@@ -410,8 +412,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
         // initialize temporary variables for antithetic sampling
         float sourceRadius, sourcePdf, boundaryPdf;
         Vector<DIM> sourcePt, boundaryPt;
-        auto now = std::chrono::high_resolution_clock::now();
-        uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+        uint64_t seed = 0;
 
         // compute control variates for the gradient estimate
         T boundaryGradientControlVariate(0.0f);
@@ -487,7 +488,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
             Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient(boundaryPt)/(boundaryPdf*state.throughput);
 
             // reseed the sampler for antithetic sampling
-            samplePt.sampler.seed(seed);
+            if (antitheticIter == 0) seed = samplePt.sampler.state;
+            else samplePt.sampler.seed(seed);
 
             // add the state to the queue
             stateQueue.emplace(state);

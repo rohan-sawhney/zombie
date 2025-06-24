@@ -175,13 +175,16 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                                                                        float starRadius, bool flipNormalOrientation,
                                                                        pcg32& sampler, WalkState<T, DIM>& state) const
 {
-    if (!walkSettings.ignoreReflectingBoundaryContribution) {
+    if (queries.hasNonEmptyReflectingBoundary &&
+        !walkSettings.ignoreReflectingBoundaryContribution) {
         // compute the non-zero reflecting boundary contribution inside the star-shaped region
         // (defined to be zero outside this region)
         BoundarySample<DIM> boundarySample;
         Vector<DIM> randNumsForBoundarySampling;
         for (int i = 0; i < DIM; i++) randNumsForBoundarySampling[i] = sampler.nextFloat();
-        if (queries.sampleReflectingBoundary(state.currentPt, starRadius, randNumsForBoundarySampling, boundarySample)) {
+        if (queries.sampleReflectingBoundary(state.currentPt, starRadius,
+                                             randNumsForBoundarySampling,
+                                             boundarySample)) {
             Vector<DIM> directionToSample = boundarySample.pt - state.currentPt;
             float distToSample = directionToSample.norm();
             float alpha = state.onReflectingBoundary ? 2.0f : 1.0f;
@@ -359,12 +362,14 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
                 // query can result in a smaller than maximal star-shaped region: should ideally
                 // use the distance to the closest visible point on the absorbing boundary
                 starRadius = queries.computeStarRadiusForReflectingBoundary(
-                    state.currentPt, walkSettings.epsilonShellForReflectingBoundary, distToAbsorbingBoundary,
-                    walkSettings.silhouettePrecision, flipNormalOrientation);
+                    state.currentPt, walkSettings.epsilonShellForReflectingBoundary,
+                    distToAbsorbingBoundary, walkSettings.silhouettePrecision,
+                    flipNormalOrientation);
 
                 // shrink the radius slightly for numerical robustness---using a conservative
                 // distance does not impact correctness
-                if (walkSettings.epsilonShellForReflectingBoundary <= distToAbsorbingBoundary) {
+                if (queries.hasNonEmptyReflectingBoundary &&
+                    walkSettings.epsilonShellForReflectingBoundary <= distToAbsorbingBoundary) {
                     starRadius = std::max(RADIUS_SHRINK_PERCENTAGE*starRadius,
                                           walkSettings.epsilonShellForReflectingBoundary);
                 }
@@ -409,10 +414,12 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // compute the contribution from the reflecting boundary
-        computeReflectingBoundaryContribution(pde, walkSettings, starRadius, flipNormalOrientation, sampler, state);
+        computeReflectingBoundaryContribution(pde, walkSettings, starRadius,
+                                              flipNormalOrientation, sampler, state);
 
         // compute the source contribution
-        computeSourceContribution(pde, walkSettings, direction, intersectionPt.dist, sampler, state);
+        computeSourceContribution(pde, walkSettings, direction,
+                                  intersectionPt.dist, sampler, state);
 
         // update walk position
         state.prevDistance = intersectionPt.dist;
@@ -431,7 +438,8 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
             return WalkCompletionCode::EscapedDomain;
         }
 
-        // update the walk throughput and apply a weight window to decide whether to split or terminate the walk
+        // update the walk throughput and apply a weight window to decide whether
+        // to split or terminate the walk
         state.throughput *= computeWalkStepThroughput(pde, walkSettings, state);
         bool terminateWalk = applyWeightWindow(walkSettings, sampler, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
@@ -447,7 +455,8 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // check whether to start applying Tikhonov regularization
-        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
+        if (pde.absorptionCoeff > 0.0f &&
+            walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
             state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
         }
 
@@ -539,7 +548,8 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             walkSettings.stepsBeforeUsingMaximalSpheres == 0) {
             samplePt.firstSphereRadius = samplePt.distToAbsorbingBoundary;
 
-        } else if (samplePt.type == SampleType::OnReflectingBoundary && pde.hasNonZeroRobinCoeff(samplePt.pt)) {
+        } else if (samplePt.type == SampleType::OnReflectingBoundary &&
+                   pde.hasNonZeroRobinCoeff(samplePt.pt)) {
             // NOTE: reflectance, and hence sphere radius, is zero exactly on the boundary,
             // therefore we use a small epsilon for the sphere radius to ensure the walk continues
             samplePt.firstSphereRadius = walkSettings.epsilonShellForReflectingBoundary;
@@ -549,12 +559,14 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             // query can result in a smaller than maximal star-shaped region: should ideally
             // use the distance to the closest visible point on the absorbing boundary
             float starRadius = queries.computeStarRadiusForReflectingBoundary(
-                samplePt.pt, walkSettings.epsilonShellForReflectingBoundary, samplePt.distToAbsorbingBoundary,
-                walkSettings.silhouettePrecision, flipNormalOrientation);
+                samplePt.pt, walkSettings.epsilonShellForReflectingBoundary,
+                samplePt.distToAbsorbingBoundary, walkSettings.silhouettePrecision,
+                flipNormalOrientation);
 
             // shrink the radius slightly for numerical robustness---using a conservative
             // distance does not impact correctness
-            if (walkSettings.epsilonShellForReflectingBoundary <= samplePt.distToAbsorbingBoundary) {
+            if (queries.hasNonEmptyReflectingBoundary &&
+                walkSettings.epsilonShellForReflectingBoundary <= samplePt.distToAbsorbingBoundary) {
                 starRadius = std::max(RADIUS_SHRINK_PERCENTAGE*starRadius,
                                       walkSettings.epsilonShellForReflectingBoundary);
             }
@@ -655,8 +667,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
         // initialize temporary variables for antithetic sampling
         float sourceRadius, sourcePdf, boundaryPdf;
         Vector<DIM> sourcePt, boundaryPt;
-        auto now = std::chrono::high_resolution_clock::now();
-        uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+        uint64_t seed = 0;
 
         // compute control variates for the gradient estimate
         T boundaryGradientControlVariate(0.0f);
@@ -690,7 +701,8 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                 if (antitheticIter == 0) {
                     float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
                     Vector<DIM> sourceDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
-                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.sampler, sourceRadius, sourcePdf);
+                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.sampler,
+                                                      sourceRadius, sourcePdf);
 
                 } else {
                     Vector<DIM> sourceDirection = sourcePt - state.currentPt;
@@ -734,7 +746,8 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
             Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient(boundaryPt)/(boundaryPdf*state.throughput);
 
             // reseed the sampler for antithetic sampling
-            samplePt.sampler.seed(seed);
+            if (antitheticIter == 0) seed = samplePt.sampler.state;
+            else samplePt.sampler.seed(seed);
 
             // add the state to the queue
             stateQueue.emplace(state);
