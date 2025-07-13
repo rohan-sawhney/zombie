@@ -37,7 +37,7 @@ public:
         std::cerr << "SphereSampler::sampleUnitSphereUniform not implemented for DIM: " << DIM << std::endl;
         return Vector<DIM>::Zero();
     }
-    static Vector<DIM> sampleUnitSphereUniform(pcg32& sampler) {
+    static Vector<DIM> sampleUnitSphereUniform(pcg32& rng) {
         std::cerr << "SphereSampler::sampleUnitSphereUniform not implemented for DIM: " << DIM << std::endl;
         return Vector<DIM>::Zero();
     }
@@ -47,7 +47,7 @@ public:
         std::cerr << "SphereSampler::sampleUnitBallUniform not implemented for DIM: " << DIM << std::endl;
         return Vector<DIM>::Zero();
     }
-    static Vector<DIM> sampleUnitBallUniform(pcg32& sampler) {
+    static Vector<DIM> sampleUnitBallUniform(pcg32& rng) {
         std::cerr << "SphereSampler::sampleUnitBallUniform not implemented for DIM: " << DIM << std::endl;
         return Vector<DIM>::Zero();
     }
@@ -57,7 +57,7 @@ public:
         std::cerr << "SphereSampler::sampleUnitHemisphereCosine not implemented for DIM: " << DIM << std::endl;
         return Vector<DIM>::Zero();
     }
-    static Vector<DIM> sampleUnitHemisphereCosine(pcg32& sampler) {
+    static Vector<DIM> sampleUnitHemisphereCosine(pcg32& rng) {
         std::cerr << "SphereSampler::sampleUnitHemisphereCosine not implemented for DIM: " << DIM << std::endl;
         return Vector<DIM>::Zero();
     }
@@ -94,8 +94,8 @@ public:
         float phi = 2.0f*M_PI*u[0];
         return Vector2(std::cos(phi), std::sin(phi));
     }
-    static Vector2 sampleUnitSphereUniform(pcg32& sampler) {
-        float u[1] = { sampler.nextFloat() };
+    static Vector2 sampleUnitSphereUniform(pcg32& rng) {
+        float u[1] = { rng.nextFloat() };
         return sampleUnitSphereUniform(u);
     }
 
@@ -104,8 +104,8 @@ public:
         float r = std::sqrt(u[1]);
         return r*sampleUnitSphereUniform(u);
     }
-    static Vector2 sampleUnitBallUniform(pcg32& sampler) {
-        float u[2] = { sampler.nextFloat(), sampler.nextFloat() };
+    static Vector2 sampleUnitBallUniform(pcg32& rng) {
+        float u[2] = { rng.nextFloat(), rng.nextFloat() };
         return sampleUnitBallUniform(u);
     }
 
@@ -116,8 +116,8 @@ public:
 
         return Vector2(u1, z);
     }
-    static Vector2 sampleUnitHemisphereCosine(pcg32& sampler) {
-        float u[1] = { sampler.nextFloat() };
+    static Vector2 sampleUnitHemisphereCosine(pcg32& rng) {
+        float u[1] = { rng.nextFloat() };
         return sampleUnitHemisphereCosine(u);
     }
 
@@ -157,8 +157,8 @@ public:
 
         return Vector3(r*std::cos(phi), r*std::sin(phi), z);
     }
-    static Vector3 sampleUnitSphereUniform(pcg32& sampler) {
-        float u[2] = { sampler.nextFloat(), sampler.nextFloat() };
+    static Vector3 sampleUnitSphereUniform(pcg32& rng) {
+        float u[2] = { rng.nextFloat(), rng.nextFloat() };
         return sampleUnitSphereUniform(u);
     }
 
@@ -167,8 +167,8 @@ public:
         float r = std::cbrt(u[2]);
         return r*sampleUnitSphereUniform(u);
     }
-    static Vector3 sampleUnitBallUniform(pcg32& sampler) {
-        float u[3] = { sampler.nextFloat(), sampler.nextFloat(), sampler.nextFloat() };
+    static Vector3 sampleUnitBallUniform(pcg32& rng) {
+        float u[3] = { rng.nextFloat(), rng.nextFloat(), rng.nextFloat() };
         return sampleUnitBallUniform(u);
     }
 
@@ -203,8 +203,8 @@ public:
 
         return Vector3(d(0), d(1), z);
     }
-    static Vector3 sampleUnitHemisphereCosine(pcg32& sampler) {
-        float u[2] = { sampler.nextFloat(), sampler.nextFloat() };
+    static Vector3 sampleUnitHemisphereCosine(pcg32& rng) {
+        float u[2] = { rng.nextFloat(), rng.nextFloat() };
         return sampleUnitHemisphereCosine(u);
     }
 
@@ -422,7 +422,7 @@ protected:
 // source: https://pbr-book.org/3ed-2018/Sampling_and_Reconstruction/Stratified_Sampling#LatinHypercube
 // NOTE: sample quality reduces with increasing dimension
 template <size_t DIM>
-inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples, pcg32& sampler)
+inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples, pcg32& rng)
 {
     const float epsilon = std::numeric_limits<float>::epsilon();
     const float oneMinusEpsilon = 1.0f - epsilon;
@@ -432,7 +432,7 @@ inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples,
     // generate LHS samples along diagonal
     for (int i = 0; i < nSamples; ++i) {
         for (int j = 0; j < DIM; ++j) {
-            float sj = (i + sampler.nextFloat())*invNSamples;
+            float sj = (i + rng.nextFloat())*invNSamples;
             samples[DIM*i + j] = std::min(sj, oneMinusEpsilon);
         }
     }
@@ -440,7 +440,7 @@ inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples,
     // generate LHS samples in each dimension
     for (int i = 0; i < DIM; ++i) {
         for (int j = 0; j < nSamples; ++j) {
-            int other = j + sampler.nextUInt(nSamples - j);
+            int other = j + rng.nextUInt(nSamples - j);
             std::swap(samples[DIM*j + i], samples[DIM*other + i]);
         }
     }

@@ -53,7 +53,7 @@ protected:
 
     // applies a weight window to a walk based on the current state
     bool applyWeightWindow(const WalkSettings& walkSettings,
-                           pcg32& sampler, WalkState<T, DIM>& state,
+                           pcg32& rng, WalkState<T, DIM>& state,
                            std::queue<WalkState<T, DIM>>& stateQueue) const;
 
     // performs a single reflecting random walk starting at the input point
@@ -61,7 +61,7 @@ protected:
                             const WalkSettings& walkSettings,
                             const SamplePoint<T, DIM>& samplePt,
                             float distToAbsorbingBoundary,
-                            pcg32& sampler, WalkState<T, DIM>& state,
+                            pcg32& rng, WalkState<T, DIM>& state,
                             std::queue<WalkState<T, DIM>>& stateQueue) const;
 
     // members
@@ -153,7 +153,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
             // perform the walk with the dequeued state
             WalkCompletionCode code = walk(pde, walkSettings, samplePt, distToAbsorbingBoundary,
-                                           samplePt.sampler, state, stateQueue);
+                                           samplePt.rng, state, stateQueue);
         }
     }
 }
@@ -222,7 +222,7 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
 
 template <typename T, size_t DIM>
 inline bool ReverseWalkOnStars<T, DIM>::applyWeightWindow(const WalkSettings& walkSettings,
-                                                          pcg32& sampler, WalkState<T, DIM>& state,
+                                                          pcg32& rng, WalkState<T, DIM>& state,
                                                           std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     if (state.throughput > walkSettings.splittingThreshold) {
@@ -238,14 +238,14 @@ inline bool ReverseWalkOnStars<T, DIM>::applyWeightWindow(const WalkSettings& wa
             stateQueue.emplace(splitState);
         }
 
-        if (sampler.nextFloat() < throughputLeft/walkSettings.splittingThreshold) {
+        if (rng.nextFloat() < throughputLeft/walkSettings.splittingThreshold) {
             stateQueue.emplace(splitState);
         }
 
     } else if (state.throughput < walkSettings.russianRouletteThreshold) {
         // terminate the walk using russian roulette
         float survivalProb = state.throughput/walkSettings.russianRouletteThreshold;
-        if (survivalProb < sampler.nextFloat()) {
+        if (survivalProb < rng.nextFloat()) {
             state.throughput = 0.0f;
             return true;
         }
@@ -261,7 +261,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
                                                            const WalkSettings& walkSettings,
                                                            const SamplePoint<T, DIM>& samplePt,
                                                            float distToAbsorbingBoundary,
-                                                           pcg32& sampler, WalkState<T, DIM>& state,
+                                                           pcg32& rng, WalkState<T, DIM>& state,
                                                            std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     // recursively perform a random walk till it reaches the absorbing boundary
@@ -309,7 +309,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
         splatContribution(state, samplePt);
 
         // sample a direction uniformly
-        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(sampler);
+        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(rng);
 
         // perform hemispherical sampling if on the reflecting boundary, which cancels
         // the alpha term in our integral expression
@@ -356,7 +356,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
 
         // update the walk throughput and apply a weight window to decide whether to split or terminate the walk
         state.throughput *= computeWalkStepThroughput(pde, walkSettings, state);
-        bool terminateWalk = applyWeightWindow(walkSettings, sampler, state, stateQueue);
+        bool terminateWalk = applyWeightWindow(walkSettings, rng, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
 
         // update the walk length and break if the max walk length is exceeded

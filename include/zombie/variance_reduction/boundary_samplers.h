@@ -80,7 +80,7 @@ private:
                          std::vector<SamplePoint<T, 2>>& samplePts);
 
     // members
-    pcg32 sampler;
+    pcg32 rng;
     const std::vector<Vector2>& positions;
     const std::vector<Vector2i>& indices;
     std::function<bool(const Vector2&)> insideSolveRegion;
@@ -144,7 +144,7 @@ private:
                          std::vector<SamplePoint<T, 3>>& samplePts);
 
     // members
-    pcg32 sampler;
+    pcg32 rng;
     const std::vector<Vector3>& positions;
     const std::vector<Vector3i>& indices;
     std::function<bool(const Vector3&)> insideSolveRegion;
@@ -177,7 +177,7 @@ inline UniformLineSegmentBoundarySampler<T>::UniformLineSegmentBoundarySampler(c
 {
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    sampler = pcg32(seed);
+    rng = pcg32(seed);
     computeNormals(computeWeightedNormals);
 }
 
@@ -259,7 +259,7 @@ inline void UniformLineSegmentBoundarySampler<T>::generateSamples(int nSamples, 
     if (area > 0.0f) {
         // generate stratified samples for CDF table sampling
         std::vector<float> stratifiedSamples;
-        generateStratifiedSamples<1>(stratifiedSamples, nSamples, sampler);
+        generateStratifiedSamples<1>(stratifiedSamples, nSamples, rng);
 
         // count the number of times a mesh face is sampled from the CDF table
         std::unordered_map<int, int> indexCount;
@@ -281,10 +281,10 @@ inline void UniformLineSegmentBoundarySampler<T>::generateSamples(int nSamples, 
             std::vector<float> indexSamples;
             const Vector2i& index = indices[kv.first];
             if (kv.second == 1) {
-                indexSamples.emplace_back(sampler.nextFloat());
+                indexSamples.emplace_back(rng.nextFloat());
 
             } else {
-                generateStratifiedSamples<1>(indexSamples, kv.second, sampler);
+                generateStratifiedSamples<1>(indexSamples, kv.second, rng);
             }
 
             for (int i = 0; i < kv.second; i++) {
@@ -352,7 +352,7 @@ inline UniformTriangleBoundarySampler<T>::UniformTriangleBoundarySampler(const s
 {
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    sampler = pcg32(seed);
+    rng = pcg32(seed);
     computeNormals(computeWeightedNormals);
 }
 
@@ -443,7 +443,7 @@ inline void UniformTriangleBoundarySampler<T>::generateSamples(int nSamples, Sam
     if (area > 0.0f) {
         // generate stratified samples for CDF table sampling
         std::vector<float> stratifiedSamples;
-        generateStratifiedSamples<1>(stratifiedSamples, nSamples, sampler);
+        generateStratifiedSamples<1>(stratifiedSamples, nSamples, rng);
 
         // count the number of times a mesh face is sampled from the CDF table
         std::unordered_map<int, int> indexCount;
@@ -465,11 +465,11 @@ inline void UniformTriangleBoundarySampler<T>::generateSamples(int nSamples, Sam
             std::vector<float> indexSamples;
             const Vector3i& index = indices[kv.first];
             if (kv.second == 1) {
-                indexSamples.emplace_back(sampler.nextFloat());
-                indexSamples.emplace_back(sampler.nextFloat());
+                indexSamples.emplace_back(rng.nextFloat());
+                indexSamples.emplace_back(rng.nextFloat());
 
             } else {
-                generateStratifiedSamples<2>(indexSamples, kv.second, sampler);
+                generateStratifiedSamples<2>(indexSamples, kv.second, rng);
             }
 
             for (int i = 0; i < kv.second; i++) {

@@ -1020,7 +1020,12 @@ void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<D
             Vector<DIM> queryPt = x;
             fcpw::Interaction<DIM> interaction;
             fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
-            absorbingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
+            bool found = absorbingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
+            if (!found) {
+                normal = Vector<DIM>::Zero();
+                distance = fcpw::maxFloat;
+                return false;
+            }
 
             x = interaction.p;
             normal = interaction.n;
@@ -1096,7 +1101,12 @@ void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggre
             Vector<DIM> queryPt = x;
             fcpw::Interaction<DIM> interaction;
             fcpw::BoundingSphere<DIM> sphere(queryPt, fcpw::maxFloat);
-            reflectingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
+            bool found = reflectingBoundaryAggregate->findClosestPoint(sphere, interaction, computeSignedDistance);
+            if (!found) {
+                normal = Vector<DIM>::Zero();
+                distance = fcpw::maxFloat;
+                return false;
+            }
 
             x = interaction.p;
             normal = interaction.n;

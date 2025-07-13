@@ -37,7 +37,7 @@ public:
 
 protected:
     // members
-    pcg32 sampler;
+    pcg32 rng;
     std::function<bool(const Vector<DIM>&)> insideSolveRegion;
     Vector<DIM> solveRegionMin;
     Vector<DIM> solveRegionMax;
@@ -69,7 +69,7 @@ inline UniformDomainSampler<T, DIM>::UniformDomainSampler(std::function<bool(con
 {
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    sampler = pcg32(seed);
+    rng = pcg32(seed);
 }
 
 template <typename T, size_t DIM>
@@ -85,7 +85,7 @@ inline void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, const Ge
     std::vector<float> stratifiedSamples;
     int nStratifiedSamples = nSamples;
     if (solveRegionVolume > 0.0f) nStratifiedSamples *= regionExtent.prod()*pdf;
-    generateStratifiedSamples<DIM>(stratifiedSamples, nStratifiedSamples, sampler);
+    generateStratifiedSamples<DIM>(stratifiedSamples, nStratifiedSamples, rng);
 
     // generate sample points inside the solve region
     for (int i = 0; i < nStratifiedSamples; i++) {

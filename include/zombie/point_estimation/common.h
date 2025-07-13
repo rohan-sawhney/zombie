@@ -314,7 +314,7 @@ struct SamplePoint {
     void reset() {
         auto now = std::chrono::high_resolution_clock::now();
         uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-        sampler = pcg32(seed);
+        rng = pcg32(seed);
         statistics.reset();
         firstSphereRadius = 0.0f;
         robinCoeff = 0.0f;
@@ -324,7 +324,7 @@ struct SamplePoint {
     }
 
     // members
-    pcg32 sampler;
+    pcg32 rng;
     SampleStatistics<T, DIM> statistics;         // populated by WoSt
     Vector<DIM> pt;
     Vector<DIM> normal;

@@ -48,13 +48,13 @@ protected:
     void computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                const WalkSettings& walkSettings,
                                                float starRadius, bool flipNormalOrientation,
-                                               pcg32& sampler, WalkState<T, DIM>& state) const;
+                                               pcg32& rng, WalkState<T, DIM>& state) const;
 
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
                                    const WalkSettings& walkSettings,
                                    const Vector<DIM>& direction,
-                                   float intersectionDist, pcg32& sampler,
+                                   float intersectionDist, pcg32& rng,
                                    WalkState<T, DIM>& state) const;
 
     // computes the throughput of a single walk step
@@ -64,7 +64,7 @@ protected:
 
     // applies a weight window to a walk based on the current state
     bool applyWeightWindow(const WalkSettings& walkSettings,
-                           pcg32& sampler, WalkState<T, DIM>& state,
+                           pcg32& rng, WalkState<T, DIM>& state,
                            std::queue<WalkState<T, DIM>>& stateQueue) const;
 
     // performs a single reflecting random walk starting at the input point
@@ -73,7 +73,7 @@ protected:
                             float distToAbsorbingBoundary,
                             float firstSphereRadius,
                             bool flipNormalOrientation,
-                            pcg32& sampler, WalkState<T, DIM>& state,
+                            pcg32& rng, WalkState<T, DIM>& state,
                             std::queue<WalkState<T, DIM>>& stateQueue) const;
 
     // returns the terminal contribution from the end of the walk
@@ -173,7 +173,7 @@ template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                                        const WalkSettings& walkSettings,
                                                                        float starRadius, bool flipNormalOrientation,
-                                                                       pcg32& sampler, WalkState<T, DIM>& state) const
+                                                                       pcg32& rng, WalkState<T, DIM>& state) const
 {
     if (queries.hasNonEmptyReflectingBoundary &&
         !walkSettings.ignoreReflectingBoundaryContribution) {
@@ -181,7 +181,7 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
         // (defined to be zero outside this region)
         BoundarySample<DIM> boundarySample;
         Vector<DIM> randNumsForBoundarySampling;
-        for (int i = 0; i < DIM; i++) randNumsForBoundarySampling[i] = sampler.nextFloat();
+        for (int i = 0; i < DIM; i++) randNumsForBoundarySampling[i] = rng.nextFloat();
         if (queries.sampleReflectingBoundary(state.currentPt, starRadius,
                                              randNumsForBoundarySampling,
                                              boundarySample)) {
@@ -220,7 +220,8 @@ inline void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE
                 !queries.intersectsWithReflectingBoundary(state.currentPt, boundarySample.pt,
                                                           state.currentNormal, boundarySampleNormal,
                                                           state.onReflectingBoundary, true)) {
-                float G = state.greensFn->evaluate(state.currentPt, boundarySample.pt);
+                float r = std::max(state.greensFn->rClamp, (boundarySample.pt - state.currentPt).norm());
+                float G = state.greensFn->evaluate(r);
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         estimateBoundaryNormalAligned;
                 T h = pde.robin(boundarySample.pt, boundarySample.normal, returnBoundaryNormalAlignedValue);
@@ -234,14 +235,14 @@ template <typename T, size_t DIM>
 inline void WalkOnStars<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pde,
                                                            const WalkSettings& walkSettings,
                                                            const Vector<DIM>& direction,
-                                                           float intersectionDist, pcg32& sampler,
+                                                           float intersectionDist, pcg32& rng,
                                                            WalkState<T, DIM>& state) const
 {
     if (!walkSettings.ignoreSourceContribution) {
         // compute the source contribution inside the star-shaped region;
         // define the source value to be zero outside this region
         float sourceRadius, sourcePdf;
-        Vector<DIM> sourcePt = state.greensFn->sampleVolume(direction, sampler, sourceRadius, sourcePdf);
+        Vector<DIM> sourcePt = state.greensFn->sampleVolume(direction, rng, sourceRadius, sourcePdf);
         if (sourceRadius <= intersectionDist) {
             // NOTE: hemispherical sampling causes the alpha term to be cancelled out when
             // currentPt is on the reflecting boundary; in this case, the green's function
@@ -287,7 +288,7 @@ inline float WalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& p
 
 template <typename T, size_t DIM>
 inline bool WalkOnStars<T, DIM>::applyWeightWindow(const WalkSettings& walkSettings,
-                                                   pcg32& sampler, WalkState<T, DIM>& state,
+                                                   pcg32& rng, WalkState<T, DIM>& state,
                                                    std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     if (state.throughput > walkSettings.splittingThreshold) {
@@ -303,14 +304,14 @@ inline bool WalkOnStars<T, DIM>::applyWeightWindow(const WalkSettings& walkSetti
             stateQueue.emplace(splitState);
         }
 
-        if (sampler.nextFloat() < throughputLeft/walkSettings.splittingThreshold) {
+        if (rng.nextFloat() < throughputLeft/walkSettings.splittingThreshold) {
             stateQueue.emplace(splitState);
         }
 
     } else if (state.throughput < walkSettings.russianRouletteThreshold) {
         // terminate the walk using russian roulette
         float survivalProb = state.throughput/walkSettings.russianRouletteThreshold;
-        if (survivalProb < sampler.nextFloat()) {
+        if (survivalProb < rng.nextFloat()) {
             state.throughput = 0.0f;
             return true;
         }
@@ -327,7 +328,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
                                                     float distToAbsorbingBoundary,
                                                     float firstSphereRadius,
                                                     bool flipNormalOrientation,
-                                                    pcg32& sampler, WalkState<T, DIM>& state,
+                                                    pcg32& rng, WalkState<T, DIM>& state,
                                                     std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     // recursively perform a random walk till it reaches the absorbing boundary
@@ -385,7 +386,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // sample a direction uniformly
-        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(sampler);
+        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(rng);
 
         // perform hemispherical sampling if on the reflecting boundary, which cancels
         // the alpha term in our integral expression
@@ -415,11 +416,11 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
 
         // compute the contribution from the reflecting boundary
         computeReflectingBoundaryContribution(pde, walkSettings, starRadius,
-                                              flipNormalOrientation, sampler, state);
+                                              flipNormalOrientation, rng, state);
 
         // compute the source contribution
         computeSourceContribution(pde, walkSettings, direction,
-                                  intersectionPt.dist, sampler, state);
+                                  intersectionPt.dist, rng, state);
 
         // update walk position
         state.prevDistance = intersectionPt.dist;
@@ -441,7 +442,7 @@ inline WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
         // update the walk throughput and apply a weight window to decide whether
         // to split or terminate the walk
         state.throughput *= computeWalkStepThroughput(pde, walkSettings, state);
-        bool terminateWalk = applyWeightWindow(walkSettings, sampler, state, stateQueue);
+        bool terminateWalk = applyWeightWindow(walkSettings, rng, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
 
         // update the walk length and break if the max walk length is exceeded
@@ -490,7 +491,7 @@ inline T WalkOnStars<T, DIM>::getTerminalContribution(WalkCompletionCode code,
     }
 
     // return 0 terminal contribution if ignoring absorbing boundary values,
-    // or if walk exceeds max walk length or is terminated with russian roulette
+    // or if walk is terminated with russian roulette or exceeds max walk length
     return T(0.0f);
 }
 
@@ -613,7 +614,7 @@ inline void WalkOnStars<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             // perform the walk with the dequeued state
             WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary,
                                            firstSphereRadius, flipNormalOrientation,
-                                           samplePt.sampler, state, stateQueue);
+                                           samplePt.rng, state, stateQueue);
 
             if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                 code == WalkCompletionCode::TerminatedWithRussianRoulette ||
@@ -659,7 +660,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
 
     // generate stratified samples
     std::vector<float> stratifiedSamples;
-    generateStratifiedSamples<DIM - 1>(stratifiedSamples, 2*nWalks, samplePt.sampler);
+    generateStratifiedSamples<DIM - 1>(stratifiedSamples, 2*nWalks, samplePt.rng);
 
     // perform random walks
     std::queue<WalkState<T, DIM>> stateQueue;
@@ -701,7 +702,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                 if (antitheticIter == 0) {
                     float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
                     Vector<DIM> sourceDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
-                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.sampler,
+                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.rng,
                                                       sourceRadius, sourcePdf);
 
                 } else {
@@ -723,7 +724,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
                 Vector<DIM> boundaryDirection;
                 if (walkSettings.useCosineSamplingForDerivatives) {
                     boundaryDirection = SphereSampler<DIM>::sampleUnitHemisphereCosine(u);
-                    if (samplePt.sampler.nextFloat() < 0.5f) boundaryDirection[DIM - 1] *= -1.0f;
+                    if (samplePt.rng.nextFloat() < 0.5f) boundaryDirection[DIM - 1] *= -1.0f;
                     boundaryPdf = 0.5f*SphereSampler<DIM>::pdfSampleUnitHemisphereCosine(std::fabs(boundaryDirection[DIM - 1]));
                     SphereSampler<DIM>::transformCoordinates(samplePt.directionForDerivative, boundaryDirection);
 
@@ -745,9 +746,9 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
             state.throughput *= greensFn->poissonKernel()/boundaryPdf;
             Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient(boundaryPt)/(boundaryPdf*state.throughput);
 
-            // reseed the sampler for antithetic sampling
-            if (antitheticIter == 0) seed = samplePt.sampler.state;
-            else samplePt.sampler.seed(seed);
+            // reseed the rng for antithetic sampling
+            if (antitheticIter == 0) seed = samplePt.rng.state;
+            else samplePt.rng.seed(seed);
 
             // add the state to the queue
             stateQueue.emplace(state);
@@ -775,7 +776,7 @@ inline void WalkOnStars<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& 
 
                 // perform the walk with the dequeued state
                 WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary, 0.0f,
-                                               false, samplePt.sampler, state, stateQueue);
+                                               false, samplePt.rng, state, stateQueue);
 
                 if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                     code == WalkCompletionCode::TerminatedWithRussianRoulette ||

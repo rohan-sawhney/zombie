@@ -45,18 +45,18 @@ protected:
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
                                    const WalkSettings& walkSettings,
-                                   pcg32& sampler, WalkState<T, DIM>& state) const;
+                                   pcg32& rng, WalkState<T, DIM>& state) const;
 
     // applies a weight window to a walk based on the current state
     bool applyWeightWindow(const WalkSettings& walkSettings,
-                           pcg32& sampler, WalkState<T, DIM>& state,
+                           pcg32& rng, WalkState<T, DIM>& state,
                            std::queue<WalkState<T, DIM>>& stateQueue) const;
 
     // performs a single random walk starting at the input point
     WalkCompletionCode walk(const PDE<T, DIM>& pde,
                             const WalkSettings& walkSettings,
                             float distToAbsorbingBoundary,
-                            pcg32& sampler, WalkState<T, DIM>& state,
+                            pcg32& rng, WalkState<T, DIM>& state,
                             std::queue<WalkState<T, DIM>>& stateQueue) const;
 
     // returns the terminal contribution from the end of the walk
@@ -155,12 +155,12 @@ inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pde,
                                                              const WalkSettings& walkSettings,
-                                                             pcg32& sampler, WalkState<T, DIM>& state) const
+                                                             pcg32& rng, WalkState<T, DIM>& state) const
 {
     if (!walkSettings.ignoreSourceContribution) {
         // compute source contribution inside the sphere
         float sourceRadius, sourcePdf;
-        Vector<DIM> sourcePt = state.greensFn->sampleVolume(sampler, sourceRadius, sourcePdf);
+        Vector<DIM> sourcePt = state.greensFn->sampleVolume(rng, sourceRadius, sourcePdf);
         T sourceContribution = state.greensFn->norm()*pde.source(sourcePt);
         state.totalSourceContribution += state.throughput*sourceContribution;
     }
@@ -168,7 +168,7 @@ inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& 
 
 template <typename T, size_t DIM>
 inline bool WalkOnSpheres<T, DIM>::applyWeightWindow(const WalkSettings& walkSettings,
-                                                     pcg32& sampler, WalkState<T, DIM>& state,
+                                                     pcg32& rng, WalkState<T, DIM>& state,
                                                      std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     if (state.throughput > walkSettings.splittingThreshold) {
@@ -184,14 +184,14 @@ inline bool WalkOnSpheres<T, DIM>::applyWeightWindow(const WalkSettings& walkSet
             stateQueue.emplace(splitState);
         }
 
-        if (sampler.nextFloat() < throughputLeft/walkSettings.splittingThreshold) {
+        if (rng.nextFloat() < throughputLeft/walkSettings.splittingThreshold) {
             stateQueue.emplace(splitState);
         }
 
     } else if (state.throughput < walkSettings.russianRouletteThreshold) {
         // terminate the walk using russian roulette
         float survivalProb = state.throughput/walkSettings.russianRouletteThreshold;
-        if (survivalProb < sampler.nextFloat()) {
+        if (survivalProb < rng.nextFloat()) {
             state.throughput = 0.0f;
             return true;
         }
@@ -206,7 +206,7 @@ template <typename T, size_t DIM>
 inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
                                                       const WalkSettings& walkSettings,
                                                       float distToAbsorbingBoundary,
-                                                      pcg32& sampler, WalkState<T, DIM>& state,
+                                                      pcg32& rng, WalkState<T, DIM>& state,
                                                       std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     // recursively perform a random walk till it reaches the absorbing boundary
@@ -220,10 +220,10 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // compute the source contribution
-        computeSourceContribution(pde, walkSettings, sampler, state);
+        computeSourceContribution(pde, walkSettings, rng, state);
 
         // sample a direction uniformly
-        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(sampler);
+        Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(rng);
 
         // update walk position
         state.currentPt += distToAbsorbingBoundary*direction;
@@ -241,7 +241,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         // update the walk throughput and apply a weight window to decide whether
         // to split or terminate the walk
         state.throughput *= state.greensFn->directionSampledPoissonKernel(state.currentPt);
-        bool terminateWalk = applyWeightWindow(walkSettings, sampler, state, stateQueue);
+        bool terminateWalk = applyWeightWindow(walkSettings, rng, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
 
         // update the walk length and break if the max walk length is exceeded
@@ -273,7 +273,8 @@ inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
                                                         const WalkSettings& walkSettings,
                                                         WalkState<T, DIM>& state) const
 {
-    if (code == WalkCompletionCode::ReachedAbsorbingBoundary &&
+    if ((code == WalkCompletionCode::ReachedAbsorbingBoundary ||
+         code == WalkCompletionCode::ExceededMaxWalkLength) &&
         !walkSettings.ignoreAbsorbingBoundaryContribution) {
         // project the walk position to the absorbing boundary and grab the known boundary value
         float signedDistance;
@@ -289,7 +290,7 @@ inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
     }
 
     // return 0 terminal contribution if ignoring absorbing boundary values,
-    // or if walk exceeds max walk length or is terminated with russian roulette
+    // or if walk is terminated with russian roulette
     return T(0.0f);
 }
 
@@ -363,7 +364,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
             // perform the walk with the dequeued state
             WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary,
-                                           samplePt.sampler, state, stateQueue);
+                                           samplePt.rng, state, stateQueue);
 
             if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                 code == WalkCompletionCode::TerminatedWithRussianRoulette ||
@@ -404,7 +405,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
 
     // generate stratified samples
     std::vector<float> stratifiedSamples;
-    generateStratifiedSamples<DIM - 1>(stratifiedSamples, 2*nWalks, samplePt.sampler);
+    generateStratifiedSamples<DIM - 1>(stratifiedSamples, 2*nWalks, samplePt.rng);
 
     // perform random walks
     std::queue<WalkState<T, DIM>> stateQueue;
@@ -446,7 +447,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 if (antitheticIter == 0) {
                     float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
                     Vector<DIM> sourceDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
-                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.sampler, sourceRadius, sourcePdf);
+                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.rng, sourceRadius, sourcePdf);
 
                 } else {
                     Vector<DIM> sourceDirection = sourcePt - state.currentPt;
@@ -467,7 +468,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 Vector<DIM> boundaryDirection;
                 if (walkSettings.useCosineSamplingForDerivatives) {
                     boundaryDirection = SphereSampler<DIM>::sampleUnitHemisphereCosine(u);
-                    if (samplePt.sampler.nextFloat() < 0.5f) boundaryDirection[DIM - 1] *= -1.0f;
+                    if (samplePt.rng.nextFloat() < 0.5f) boundaryDirection[DIM - 1] *= -1.0f;
                     boundaryPdf = 0.5f*SphereSampler<DIM>::pdfSampleUnitHemisphereCosine(std::fabs(boundaryDirection[DIM - 1]));
                     SphereSampler<DIM>::transformCoordinates(samplePt.directionForDerivative, boundaryDirection);
 
@@ -487,9 +488,9 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
             state.throughput *= greensFn->poissonKernel()/boundaryPdf;
             Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient(boundaryPt)/(boundaryPdf*state.throughput);
 
-            // reseed the sampler for antithetic sampling
-            if (antitheticIter == 0) seed = samplePt.sampler.state;
-            else samplePt.sampler.seed(seed);
+            // reseed the rng for antithetic sampling
+            if (antitheticIter == 0) seed = samplePt.rng.state;
+            else samplePt.rng.seed(seed);
 
             // add the state to the queue
             stateQueue.emplace(state);
@@ -517,7 +518,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
 
                 // perform the walk with the dequeued state
                 WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary,
-                                               samplePt.sampler, state, stateQueue);
+                                               samplePt.rng, state, stateQueue);
 
                 if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                     code == WalkCompletionCode::TerminatedWithRussianRoulette ||

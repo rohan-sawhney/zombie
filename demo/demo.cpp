@@ -192,12 +192,12 @@ void runBoundaryValueCaching(const json& solverConfig,
     const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
 
     // initialize boundary samplers
-    std::shared_ptr<zombie::BoundarySampler<T, DIM>> absorbingBoundarySampler = createBoundarySampler<T>(
-        absorbingBoundaryPositions, absorbingBoundaryIndices, queries);
+    std::shared_ptr<zombie::BoundarySampler<T, DIM>> absorbingBoundarySampler =
+        createBoundarySampler<T>(absorbingBoundaryPositions, absorbingBoundaryIndices, queries);
     absorbingBoundarySampler->initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
 
-    std::shared_ptr<zombie::BoundarySampler<T, DIM>> reflectingBoundarySampler = createBoundarySampler<T>(
-        reflectingBoundaryPositions, reflectingBoundaryIndices, queries);
+    std::shared_ptr<zombie::BoundarySampler<T, DIM>> reflectingBoundarySampler =
+        createBoundarySampler<T>(reflectingBoundaryPositions, reflectingBoundaryIndices, queries);
     reflectingBoundarySampler->initialize(normalOffsetForReflectingBoundary, solveDoubleSided);
 
     // initialize domain sampler
@@ -245,9 +245,12 @@ void runBoundaryValueCaching(const json& solverConfig,
                                       ignoreAbsorbingBoundaryContribution,
                                       ignoreReflectingBoundaryContribution,
                                       ignoreSourceContribution, printLogs);
-    boundaryValueCaching.computeSampleEstimates(pde, walkSettings, nWalksForCachedSolutionEstimates,
-                                                nWalksForCachedGradientEstimates, robinCoeffCutoffForNormalDerivative,
-                                                useFiniteDifferencesForBoundaryDerivatives, runSingleThreaded, reportProgress);
+    boundaryValueCaching.computeSampleEstimates(pde, walkSettings,
+                                                nWalksForCachedSolutionEstimates,
+                                                nWalksForCachedGradientEstimates,
+                                                robinCoeffCutoffForNormalDerivative,
+                                                useFiniteDifferencesForBoundaryDerivatives,
+                                                runSingleThreaded, reportProgress);
 
     // splat boundary sample estimates and domain data to evaluation points
     boundaryValueCaching.splat(pde, radiusClampForKernels, regularizationForKernels,
@@ -255,8 +258,10 @@ void runBoundaryValueCaching(const json& solverConfig,
                                normalOffsetForReflectingBoundary, evalPts, reportProgress);
 
     // estimate solution near boundary
-    boundaryValueCaching.estimateSolutionNearBoundary(pde, walkSettings, normalOffsetForAbsorbingBoundary,
-                                                      normalOffsetForReflectingBoundary, nWalksForCachedSolutionEstimates,
+    boundaryValueCaching.estimateSolutionNearBoundary(pde, walkSettings,
+                                                      normalOffsetForAbsorbingBoundary,
+                                                      normalOffsetForReflectingBoundary,
+                                                      nWalksForCachedSolutionEstimates,
                                                       evalPts, runSingleThreaded);
     pb.finish();
 }
@@ -329,13 +334,13 @@ void runReverseWalkOnStars(const json& solverConfig,
     const float regularizationForKernels = getOptional<float>(solverConfig, "regularizationForKernels", 0.0f);
 
     // initialize boundary samplers
-    std::shared_ptr<zombie::BoundarySampler<T, DIM>> absorbingBoundarySampler = createBoundarySampler<T>(
-        absorbingBoundaryPositions, absorbingBoundaryIndices, queries);
+    std::shared_ptr<zombie::BoundarySampler<T, DIM>> absorbingBoundarySampler =
+        createBoundarySampler<T>(absorbingBoundaryPositions, absorbingBoundaryIndices, queries);
     absorbingBoundarySampler->initialize(normalOffsetForAbsorbingBoundary, solveDoubleSided);
     if (ignoreAbsorbingBoundaryContribution) absorbingBoundarySampleCount = 0;
 
-    std::shared_ptr<zombie::BoundarySampler<T, DIM>> reflectingBoundarySampler = createBoundarySampler<T>(
-        reflectingBoundaryPositions, reflectingBoundaryIndices, queries);
+    std::shared_ptr<zombie::BoundarySampler<T, DIM>> reflectingBoundarySampler =
+        createBoundarySampler<T>(reflectingBoundaryPositions, reflectingBoundaryIndices, queries);
     reflectingBoundarySampler->initialize(0.0f, solveDoubleSided);
     if (ignoreReflectingBoundaryContribution) reflectingBoundarySampleCount = 0;
 
@@ -363,7 +368,7 @@ void runReverseWalkOnStars(const json& solverConfig,
     std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
 
     zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>> reverseWalkOnStars(
-                                        queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
+                                    queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
 
     // generate boundary and domain samples
     reverseWalkOnStars.generateSamples(absorbingBoundarySampleCount, reflectingBoundarySampleCount,

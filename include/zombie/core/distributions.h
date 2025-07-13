@@ -293,12 +293,12 @@ public:
     }
 
     // samples a point inside the ball given the direction along which to sample the point
-    virtual Vector<DIM> sampleVolume(const Vector<DIM>& dir, pcg32& sampler, float& r, float& pdf) {
+    virtual Vector<DIM> sampleVolume(const Vector<DIM>& dir, pcg32& rng, float& r, float& pdf) {
         return Vector<DIM>::Zero();
     }
 
     // samples a point inside the ball
-    virtual Vector<DIM> sampleVolume(pcg32& sampler, float& r, float& pdf) {
+    virtual Vector<DIM> sampleVolume(pcg32& rng, float& r, float& pdf) {
         return Vector<DIM>::Zero();
     }
 
@@ -328,7 +328,7 @@ public:
     }
 
     // samples a point on the surface of the ball
-    virtual Vector<DIM> sampleSurface(pcg32& sampler, float& pdf) {
+    virtual Vector<DIM> sampleSurface(pcg32& rng, float& pdf) {
         return Vector<DIM>::Zero();
     }
 
@@ -371,11 +371,11 @@ public:
 protected:
     // samples a point inside the ball
     virtual Vector<DIM> rejectionSampleGreensFn(const Vector<DIM>& dir, float bound,
-                                                pcg32& sampler, float& r, float& pdf) {
+                                                pcg32& rng, float& r, float& pdf) {
         int iter = 0;
         do {
-            float u = sampler.nextFloat();
-            r = sampler.nextFloat()*R;
+            float u = rng.nextFloat();
+            r = rng.nextFloat()*R;
             pdf = evaluate(r)/norm();
             float pdfRadius = pdf/SphereSampler<DIM>::pdfSampleSphereUniform(r);
             iter++;
@@ -410,17 +410,17 @@ public:
     HarmonicGreensFnBall(): GreensFnBall<2>() {}
 
     // samples a point inside the ball given the direction along which to sample the point
-    Vector2 sampleVolume(const Vector2& dir, pcg32& sampler, float& r, float& pdf) {
+    Vector2 sampleVolume(const Vector2& dir, pcg32& rng, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf 4.0 * r * ln(R / r) / R^2
         float bound = 1.5f/R;
 
-        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
+        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, rng, r, pdf);
     }
 
     // samples a point inside the ball
-    Vector2 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(SphereSampler<2>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
+    Vector2 sampleVolume(pcg32& rng, float& r, float& pdf) {
+        return sampleVolume(SphereSampler<2>::sampleUnitSphereUniform(rng), rng, r, pdf);
     }
 
     // evaluates the Green's function
@@ -452,8 +452,8 @@ public:
     }
 
     // samples a point on the surface of the ball
-    Vector2 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector2 y = c + SphereSampler<2>::sampleUnitSphereUniform(sampler)*R;
+    Vector2 sampleSurface(pcg32& rng, float& pdf) {
+        Vector2 y = c + SphereSampler<2>::sampleUnitSphereUniform(rng)*R;
         pdf = 1.0f/(2.0f*M_PI);
 
         return y;
@@ -511,10 +511,10 @@ public:
     HarmonicGreensFnBall(): GreensFnBall<3>() {}
 
     // samples a point inside the ball given the direction along which to sample the point
-    Vector3 sampleVolume(const Vector3& dir, pcg32& sampler, float& r, float& pdf) {
+    Vector3 sampleVolume(const Vector3& dir, pcg32& rng, float& r, float& pdf) {
         // sample radius r from pdf 6.0f * r * (R - r) / R^3 using Ulrich's polar method
-        float u1 = sampler.nextFloat();
-        float u2 = sampler.nextFloat();
+        float u1 = rng.nextFloat();
+        float u2 = rng.nextFloat();
         float phi = 2.0f*M_PI*u2;
 
         r = (1.0f + std::sqrt(1.0f - std::cbrt(u1*u1))*std::cos(phi))*R/2.0f;
@@ -526,8 +526,8 @@ public:
     }
 
     // samples a point inside the ball
-    Vector3 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(SphereSampler<3>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
+    Vector3 sampleVolume(pcg32& rng, float& r, float& pdf) {
+        return sampleVolume(SphereSampler<3>::sampleUnitSphereUniform(rng), rng, r, pdf);
     }
 
     // evaluates the Green's function
@@ -559,8 +559,8 @@ public:
     }
 
     // samples a point on the surface of the ball
-    Vector3 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector3 y = c + SphereSampler<3>::sampleUnitSphereUniform(sampler)*R;
+    Vector3 sampleSurface(pcg32& rng, float& pdf) {
+        Vector3 y = c + SphereSampler<3>::sampleUnitSphereUniform(rng)*R;
         pdf = 1.0f/(4.0f*M_PI);
 
         return y;
@@ -641,19 +641,19 @@ public:
     }
 
     // samples a point inside the ball given the direction along which to sample the point
-    Vector2 sampleVolume(const Vector2& dir, pcg32& sampler, float& r, float& pdf) {
+    Vector2 sampleVolume(const Vector2& dir, pcg32& rng, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf r * λ * (K_0(r√λ) * I_0(R√λ) - I_0(r√λ) * K_0(R√λ)) / (I_0(R√λ) - 1)
         float bound = R <= lambda ?
                       std::max(std::max(2.2f/R, 2.2f/lambda), std::max(0.6f*std::sqrt(R), 0.6f*sqrtLambda)) :
                       std::max(std::min(2.2f/R, 2.2f/lambda), std::min(0.6f*std::sqrt(R), 0.6f*sqrtLambda));
 
-        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
+        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, rng, r, pdf);
     }
 
     // samples a point inside the ball
-    Vector2 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(SphereSampler<2>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
+    Vector2 sampleVolume(pcg32& rng, float& r, float& pdf) {
+        return sampleVolume(SphereSampler<2>::sampleUnitSphereUniform(rng), rng, r, pdf);
     }
 
     // evaluates the Green's function
@@ -705,8 +705,8 @@ public:
     }
 
     // samples a point on the surface of the ball
-    Vector2 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector2 y = c + SphereSampler<2>::sampleUnitSphereUniform(sampler)*R;
+    Vector2 sampleSurface(pcg32& rng, float& pdf) {
+        Vector2 y = c + SphereSampler<2>::sampleUnitSphereUniform(rng)*R;
         pdf = 1.0f/(2.0f*M_PI);
 
         return y;
@@ -799,19 +799,19 @@ public:
     }
 
     // samples a point inside the ball given the direction along which to sample the point
-    Vector3 sampleVolume(const Vector3& dir, pcg32& sampler, float& r, float& pdf) {
+    Vector3 sampleVolume(const Vector3& dir, pcg32& rng, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf r * λ * sinh((R - r)√λ) / (sinh(R√λ) - R√λ)
         float bound = R <= lambda ?
                       std::max(std::max(2.0f/R, 2.0f/lambda), std::max(0.5f*std::sqrt(R), 0.5f*sqrtLambda)) :
                       std::max(std::min(2.0f/R, 2.0f/lambda), std::min(0.5f*std::sqrt(R), 0.5f*sqrtLambda));
 
-        return GreensFnBall<3>::rejectionSampleGreensFn(dir, bound, sampler, r, pdf);
+        return GreensFnBall<3>::rejectionSampleGreensFn(dir, bound, rng, r, pdf);
     }
 
     // samples a point inside the ball
-    Vector3 sampleVolume(pcg32& sampler, float& r, float& pdf) {
-        return sampleVolume(SphereSampler<3>::sampleUnitSphereUniform(sampler), sampler, r, pdf);
+    Vector3 sampleVolume(pcg32& rng, float& r, float& pdf) {
+        return sampleVolume(SphereSampler<3>::sampleUnitSphereUniform(rng), rng, r, pdf);
     }
 
     // evaluates the Green's function
@@ -868,8 +868,8 @@ public:
     }
 
     // samples a point on the surface of the ball
-    Vector3 sampleSurface(pcg32& sampler, float& pdf) {
-        Vector3 y = c + SphereSampler<3>::sampleUnitSphereUniform(sampler)*R;
+    Vector3 sampleSurface(pcg32& rng, float& pdf) {
+        Vector3 y = c + SphereSampler<3>::sampleUnitSphereUniform(rng)*R;
         pdf = 1.0f/(4.0f*M_PI);
 
         return y;
