@@ -10,13 +10,14 @@ using json = nlohmann::json;
 template <size_t DIM>
 void computeDistanceInfo(const std::vector<zombie::Vector<DIM>>& solveLocations,
                          const zombie::GeometricQueries<DIM>& queries,
-                         bool solveDoubleSided,
+                         bool solveDoubleSided, bool solveExterior,
                          std::vector<DistanceInfo>& distanceInfo)
 {
     distanceInfo.resize(solveLocations.size());
     for (int i = 0; i < (int)solveLocations.size(); i++) {
         zombie::Vector<DIM> pt = solveLocations[i];
         bool insideDomain = queries.insideDomain(pt);
+        if (solveExterior) insideDomain = !insideDomain;
         distanceInfo[i].inValidSolveRegion = insideDomain || solveDoubleSided;
         distanceInfo[i].distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
         distanceInfo[i].distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
@@ -51,7 +52,8 @@ void runWalkOnStars(const json& solverConfig,
                     const zombie::GeometricQueries<DIM>& queries,
                     const zombie::PDE<T, DIM>& pde,
                     bool solveDoubleSided,
-                    std::vector<zombie::SamplePoint<T, DIM>>& samplePts)
+                    std::vector<zombie::SamplePoint<T, DIM>>& samplePts,
+                    std::vector<zombie::SampleStatistics<T, DIM>>& sampleStatistics)
 {
     // load config settings
     const float epsilonShellForAbsorbingBoundary = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
@@ -93,17 +95,18 @@ void runWalkOnStars(const json& solverConfig,
                                       ignoreSourceContribution, printLogs);
     std::vector<int> nWalksVector(samplePts.size(), nWalks);
     zombie::WalkOnStars<T, DIM> walkOnStars(queries);
-    walkOnStars.solve(pde, walkSettings, nWalksVector, samplePts, runSingleThreaded, reportProgress);
+    walkOnStars.solve(pde, walkSettings, nWalksVector, samplePts, sampleStatistics,
+                      runSingleThreaded, reportProgress);
     pb.finish();
 }
 
 template <typename T, size_t DIM>
-void getSolution(const std::vector<zombie::SamplePoint<T, DIM>>& samplePts,
+void getSolution(const std::vector<zombie::SampleStatistics<T, DIM>>& sampleStatistics,
                  std::vector<T>& solution)
 {
-    solution.resize(samplePts.size(), T(0.0f));
-    for (int i = 0; i < (int)samplePts.size(); i++) {
-        solution[i] = samplePts[i].statistics.getEstimatedSolution();
+    solution.resize(sampleStatistics.size(), T(0.0f));
+    for (int i = 0; i < (int)sampleStatistics.size(); i++) {
+        solution[i] = sampleStatistics[i].getEstimatedSolution();
     }
 }
 
@@ -438,10 +441,11 @@ void runSolver(const std::string& solverType, const json& config,
         createSamplePoints<T, DIM>(solveLocations, distanceInfo, samplePts);
 
         // run walk on stars
-        runWalkOnStars<T, DIM>(config, queries, pde, solveDoubleSided, samplePts);
+        std::vector<zombie::SampleStatistics<T, DIM>> sampleStatistics;
+        runWalkOnStars<T, DIM>(config, queries, pde, solveDoubleSided, samplePts, sampleStatistics);
 
         // extract solution from sample points
-        getSolution<T, DIM>(samplePts, solution);
+        getSolution<T, DIM>(sampleStatistics, solution);
 
     } else if (solverType == "bvc") {
         // create evaluation points to estimate solution at
@@ -501,24 +505,60 @@ int main(int argc, const char *argv[])
     ModelProblem modelProblem(modelProblemConfig, zombieDirectoryPath);
     const std::vector<Vector2i>& absorbingBoundaryIndices = modelProblem.absorbingBoundaryIndices;
     const std::vector<Vector2i>& reflectingBoundaryIndices = modelProblem.reflectingBoundaryIndices;
-    const std::vector<Vector2>& absorbingBoundaryPositions = modelProblem.absorbingBoundaryPositions;
-    const std::vector<Vector2>& reflectingBoundaryPositions = modelProblem.reflectingBoundaryPositions;
     const std::pair<Vector2, Vector2>& boundingBox = modelProblem.boundingBox;
     const zombie::GeometricQueries<2>& queries = modelProblem.queries;
-    const zombie::PDE<float, 2>& pde = modelProblem.pde;
     bool solveDoubleSided = modelProblem.solveDoubleSided;
+    bool solveExterior = modelProblem.solveExterior;
 
     // create solve locations on a grid for this demo
     std::vector<Vector2> solveLocations;
     std::vector<DistanceInfo> distanceInfo;
     createGridPoints(outputConfig, boundingBox, solveLocations);
-    computeDistanceInfo<2>(solveLocations, queries, solveDoubleSided, distanceInfo);
+    computeDistanceInfo<2>(solveLocations, queries, solveDoubleSided, solveExterior, distanceInfo);
 
     // solve the model problem
     std::vector<float> solution;
-    runSolver<float, 2>(solverType, solverConfig, absorbingBoundaryPositions, absorbingBoundaryIndices,
-                        reflectingBoundaryPositions, reflectingBoundaryIndices, queries, pde,
-                        solveDoubleSided, solveLocations, distanceInfo, solution);
+    if (solveExterior) {
+        const zombie::KelvinTransform<float, 2>& kelvinTransform = modelProblem.kelvinTransform;
+        const std::vector<Vector2>& invertedAbsorbingBoundaryPositions = modelProblem.invertedAbsorbingBoundaryPositions;
+        const std::vector<Vector2>& invertedReflectingBoundaryPositions = modelProblem.invertedReflectingBoundaryPositions;
+        const zombie::PDE<float, 2>& pdeInvertedDomain = modelProblem.pdeInvertedDomain;
+        const zombie::GeometricQueries<2>& queriesInvertedDomain = modelProblem.queriesInvertedDomain;
+
+        // invert the solve locations and update the distance info
+        int nSolveLocations = (int)solveLocations.size();
+        std::vector<Vector2> invertedSolveLocations(nSolveLocations, Vector2::Zero());
+        for (int i = 0; i < nSolveLocations; i++) {
+            invertedSolveLocations[i] = kelvinTransform.transformPoint(solveLocations[i]);
+        }
+        std::vector<DistanceInfo> distanceInfoInvertedDomain;
+        computeDistanceInfo<2>(invertedSolveLocations, queriesInvertedDomain,
+                               solveDoubleSided, false, distanceInfoInvertedDomain);
+
+        // run the solver on the inverted domain
+        runSolver<float, 2>(solverType, solverConfig,
+                            invertedAbsorbingBoundaryPositions, absorbingBoundaryIndices,
+                            invertedReflectingBoundaryPositions, reflectingBoundaryIndices,
+                            queriesInvertedDomain, pdeInvertedDomain, solveDoubleSided,
+                            invertedSolveLocations, distanceInfoInvertedDomain, solution);
+
+        // map the solution values back to the exterior domain
+        for (int i = 0; i < nSolveLocations; i++) {
+            solution[i] = kelvinTransform.transformSolutionEstimate(solution[i], invertedSolveLocations[i]);
+        }
+
+    } else {
+        const std::vector<Vector2>& absorbingBoundaryPositions = modelProblem.absorbingBoundaryPositions;
+        const std::vector<Vector2>& reflectingBoundaryPositions = modelProblem.reflectingBoundaryPositions;
+        const zombie::PDE<float, 2>& pde = modelProblem.pde;
+
+        // run the solver on the input domain
+        runSolver<float, 2>(solverType, solverConfig,
+                            absorbingBoundaryPositions, absorbingBoundaryIndices,
+                            reflectingBoundaryPositions, reflectingBoundaryIndices,
+                            queries, pde, solveDoubleSided, solveLocations,
+                            distanceInfo, solution);
+    }
 
     // save the solution to disk
     saveGridValues(outputConfig, zombieDirectoryPath, distanceInfo, solution);

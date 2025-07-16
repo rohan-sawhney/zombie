@@ -149,7 +149,8 @@ protected:
                                   const WalkSettings& walkSettings,
                                   float robinCoeffCutoffForNormalDerivative,
                                   bool useFiniteDifferences,
-                                  std::vector<SamplePoint<T, DIM>>& samplePts) const;
+                                  std::vector<SamplePoint<T, DIM>>& samplePts,
+                                  std::vector<SampleStatistics<T, DIM>>& sampleStatistics) const;
 
     // splats boundary sample data
     void splatBoundaryData(const SamplePoint<T, DIM>& samplePt,
@@ -330,11 +331,13 @@ inline void BoundaryValueCaching<T, DIM>::computeBoundaryEstimates(const PDE<T, 
                       useFiniteDifferences, nWalks, samplePts);
 
     // compute estimates
-    walkOnStars.solve(pde, walkSettings, nWalks, samplePts, runSingleThreaded, reportProgress);
+    std::vector<SampleStatistics<T, DIM>> sampleStatistics(samplePts.size());
+    walkOnStars.solve(pde, walkSettings, nWalks, samplePts, sampleStatistics,
+                      runSingleThreaded, reportProgress);
 
     // set estimated boundary data
     setEstimatedBoundaryData(pde, walkSettings, robinCoeffCutoffForNormalDerivative,
-                             useFiniteDifferences, samplePts);
+                             useFiniteDifferences, samplePts, sampleStatistics);
 }
 
 template <typename T, size_t DIM>
@@ -512,11 +515,12 @@ inline void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE
                                      EstimationQuantity::Solution, 1.0f,
                                      evalPt.distToAbsorbingBoundary,
                                      evalPt.distToReflectingBoundary);
-        walkOnStars.solve(pde, walkSettings, nWalks, samplePt);
+        SampleStatistics<T, DIM> statistics;
+        walkOnStars.solve(pde, walkSettings, nWalks, samplePt, statistics);
 
         // update statistics
         evalPt.reset();
-        T solutionEstimate = samplePt.statistics.getEstimatedSolution();
+        T solutionEstimate = statistics.getEstimatedSolution();
         if (evalPt.type == SampleType::OnAbsorbingBoundary) {
             evalPt.absorbingBoundaryStatistics.addSolutionEstimate(solutionEstimate);
 
@@ -621,11 +625,13 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
                                                                    const WalkSettings& walkSettings,
                                                                    float robinCoeffCutoffForNormalDerivative,
                                                                    bool useFiniteDifferences,
-                                                                   std::vector<SamplePoint<T, DIM>>& samplePts) const
+                                                                   std::vector<SamplePoint<T, DIM>>& samplePts,
+                                                                   std::vector<SampleStatistics<T, DIM>>& sampleStatistics) const
 {
     for (int i = 0; i < (int)samplePts.size(); i++) {
         SamplePoint<T, DIM>& samplePt = samplePts[i];
-        samplePt.solution = samplePt.statistics.getEstimatedSolution();
+        const SampleStatistics<T, DIM>& statistics = sampleStatistics[i];
+        samplePt.solution = statistics.getEstimatedSolution();
 
         if (samplePt.type == SampleType::OnReflectingBoundary) {
             if (!walkSettings.ignoreReflectingBoundaryContribution) {
@@ -639,7 +645,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
                     samplePt.contribution = pde.robin(samplePt.pt, samplePt.normal,
                                                       returnBoundaryNormalAlignedValue);
                     if (std::fabs(samplePt.robinCoeff) > robinCoeffCutoffForNormalDerivative) {
-                        samplePt.normalDerivative = samplePt.statistics.getEstimatedDerivative();
+                        samplePt.normalDerivative = statistics.getEstimatedDerivative();
                     }
                 }
             }
@@ -661,7 +667,7 @@ inline void BoundaryValueCaching<T, DIM>::setEstimatedBoundaryData(const PDE<T, 
 
             } else {
                 // use unbiased gradient estimates
-                samplePt.normalDerivative = samplePt.statistics.getEstimatedDerivative();
+                samplePt.normalDerivative = statistics.getEstimatedDerivative();
             }
         }
     }

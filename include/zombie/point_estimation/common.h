@@ -85,8 +85,7 @@ struct WalkSettings {
 template <typename T, size_t DIM>
 struct WalkState {
     // constructors
-    WalkState(): greensFn(nullptr),
-                 totalReflectingBoundaryContribution(0.0f),
+    WalkState(): totalReflectingBoundaryContribution(0.0f),
                  totalSourceContribution(0.0f),
                  currentPt(Vector<DIM>::Zero()),
                  currentNormal(Vector<DIM>::Zero()),
@@ -96,7 +95,6 @@ struct WalkState {
     WalkState(const Vector<DIM>& currentPt_, const Vector<DIM>& currentNormal_,
               const Vector<DIM>& prevDirection_, float prevDistance_,
               float throughput_, int walkLength_, bool onReflectingBoundary_):
-              greensFn(nullptr),
               totalReflectingBoundaryContribution(0.0f),
               totalSourceContribution(0.0f),
               currentPt(currentPt_),
@@ -108,7 +106,6 @@ struct WalkState {
               onReflectingBoundary(onReflectingBoundary_) {}
 
     // members
-    std::shared_ptr<GreensFnBall<DIM>> greensFn;
     T totalReflectingBoundaryContribution;
     T totalSourceContribution;
     Vector<DIM> currentPt;
@@ -196,6 +193,49 @@ public:
 	void addSplits(int nSplits) {
 		totalSplits += nSplits;
 	}
+
+    // merges two statistics
+    void merge(const SampleStatistics<T, DIM>& other) {
+        if (other.nSolutionEstimates > 0) {
+            int N1 = nSolutionEstimates;
+            int N2 = other.nSolutionEstimates;
+            int N = N1 + N2;
+
+            if (N1 == 0) {
+                solutionMean = other.solutionMean;
+                solutionM2 = other.solutionM2;
+
+            } else {
+                T delta = other.solutionMean - solutionMean;
+                solutionMean = solutionMean + delta*((float)N2/N);
+                solutionM2 = solutionM2 + other.solutionM2 + delta*delta*((float)(N1*N2)/N);
+            }
+            nSolutionEstimates = N;
+        }
+
+        if (other.nGradientEstimates > 0) {
+            int N1 = nGradientEstimates;
+            int N2 = other.nGradientEstimates;
+            int N = N1 + N2;
+            for (int i = 0; i < DIM; i++) {
+                if (N1 == 0) {
+                    gradientMean[i] = other.gradientMean[i];
+                    gradientM2[i] = other.gradientM2[i];
+
+                } else {
+                    T delta = other.gradientMean[i] - gradientMean[i];
+                    gradientMean[i] = gradientMean[i] + delta*((float)N2/N);
+                    gradientM2[i] = gradientM2[i] + other.gradientM2[i] + delta*delta*((float)(N1*N2)/N);
+                }
+            }
+            nGradientEstimates = N;
+        }
+
+        totalFirstSourceContribution = totalFirstSourceContribution + other.totalFirstSourceContribution;
+        totalDerivativeContribution = totalDerivativeContribution + other.totalDerivativeContribution;
+        totalWalkLength += other.totalWalkLength;
+        totalSplits += other.totalSplits;
+    }
 
     // returns estimated solution
     T getEstimatedSolution() const {
@@ -315,7 +355,6 @@ struct SamplePoint {
         auto now = std::chrono::high_resolution_clock::now();
         uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
         rng = pcg32(seed);
-        statistics.reset();
         firstSphereRadius = 0.0f;
         robinCoeff = 0.0f;
         solution = T(0.0f);
@@ -325,7 +364,6 @@ struct SamplePoint {
 
     // members
     pcg32 rng;
-    SampleStatistics<T, DIM> statistics;         // populated by WoSt
     Vector<DIM> pt;
     Vector<DIM> normal;
     Vector<DIM> directionForDerivative;          // needed only for computing directional derivatives

@@ -85,6 +85,7 @@ NB_MODULE(py, m) {
     bindSamplers<float, 2>(m, "_float_2d");
     bindBoundaryValueCachingSolver<float, 2>(m, "_float_2d");
     bindReverseWalkOnStarsSolver<float, 2>(m, "_float_2d");
+    bindKelvinTransform<float, 2>(m, "_float_2d");
 
     bindRandomWalkStructures<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
     bindWalkOnSpheresSolver<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
@@ -92,6 +93,7 @@ NB_MODULE(py, m) {
     bindSamplers<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
     bindBoundaryValueCachingSolver<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
     bindReverseWalkOnStarsSolver<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
+    bindKelvinTransform<zombie::Array<float, 4>, 2>(m, "_rgba_2d");
 
     bindRandomWalkStructures<float, 3>(m, "_float_3d");
     bindWalkOnSpheresSolver<float, 3>(m, "_float_3d");
@@ -99,6 +101,7 @@ NB_MODULE(py, m) {
     bindSamplers<float, 3>(m, "_float_3d");
     bindBoundaryValueCachingSolver<float, 3>(m, "_float_3d");
     bindReverseWalkOnStarsSolver<float, 3>(m, "_float_3d");
+    bindKelvinTransform<float, 3>(m, "_float_3d");
 
     bindRandomWalkStructures<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
     bindWalkOnSpheresSolver<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
@@ -106,4 +109,5 @@ NB_MODULE(py, m) {
     bindSamplers<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
     bindBoundaryValueCachingSolver<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
     bindReverseWalkOnStarsSolver<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
+    bindKelvinTransform<zombie::Array<float, 4>, 3>(m, "_rgba_3d");
 }

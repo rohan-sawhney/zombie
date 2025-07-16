@@ -217,6 +217,7 @@ inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::generateSam
 
 template <typename T, size_t DIM, typename NearestNeighborFinder>
 void splatContribution(const WalkState<T, DIM>& state,
+                       const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                        const SamplePoint<T, DIM>& samplePt,
                        const PDE<T, DIM>& pde,
                        const GeometricQueries<DIM>& queries,
@@ -228,7 +229,7 @@ void splatContribution(const WalkState<T, DIM>& state,
     // perform nearest neighbor queries to determine evaluation points that lie
     // within the sphere centered at the current random walk position
     std::vector<uint32_t> nnIndices;
-    size_t nnCount = nearestNeighborFinder.radiusSearch(state.currentPt, state.greensFn->R, nnIndices);
+    size_t nnCount = nearestNeighborFinder.radiusSearch(state.currentPt, greensFn->R, nnIndices);
     bool useSelfNormalization = queries.domainIsWatertight && pde.absorptionCoeff == 0.0f;
     if (queries.hasNonEmptyReflectingBoundary && useSelfNormalization) useSelfNormalization = pde.areRobinConditionsPureNeumann;
 
@@ -244,10 +245,9 @@ void splatContribution(const WalkState<T, DIM>& state,
                 state.onReflectingBoundary, evalPt.type == SampleType::OnReflectingBoundary)) {
             // compute greens function weighting
             float samplePtAlpha = state.onReflectingBoundary ? 2.0f : 1.0f;
-            state.greensFn->rClamp = radiusClamp;
-            float G = state.greensFn->evaluate(state.currentPt, evalPt.pt);
+            float r = std::max(radiusClamp, (state.currentPt - evalPt.pt).norm());
+            float G = greensFn->evaluate(r);
             if (kernelRegularization > 0.0f) {
-                float r = std::max(radiusClamp, (state.currentPt - evalPt.pt).norm());
                 r /= kernelRegularization;
                 G *= KernelRegularization<DIM>::regularizationForGreensFn(r);
             }
@@ -305,11 +305,10 @@ inline void ReverseWalkOnStarsSolver<T, DIM, NearestNeighborFinder>::solve(const
     // bind splat contribution callback and initialize solver
     SplatContributionCallback<T, DIM> splatContributionCallback = std::bind(&splatContribution<T, DIM, NearestNeighborFinder>,
                                                                             std::placeholders::_1, std::placeholders::_2,
-                                                                            std::cref(pde), std::cref(queries),
-                                                                            std::cref(nearestNeighborFinder),
-                                                                            normalOffsetForAbsorbingBoundary,
-                                                                            radiusClamp, kernelRegularization,
-                                                                            std::ref(evalPts));
+                                                                            std::placeholders::_3, std::cref(pde),
+                                                                            std::cref(queries), std::cref(nearestNeighborFinder),
+                                                                            normalOffsetForAbsorbingBoundary, radiusClamp,
+                                                                            kernelRegularization, std::ref(evalPts));
     ReverseWalkOnStars<T, DIM> reverseWalkOnStars(queries, splatContributionCallback);
 
     // solve the PDE by splatting contributions from walks starting at the input sample points

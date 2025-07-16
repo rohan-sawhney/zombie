@@ -19,6 +19,7 @@
         "sourceValue": "demo/model_problems/engine/data/source_value.pfm",
         "robinCoeff": 0.0,
         "absorptionCoeff": 0.0,
+        "solveExterior": false,
         "useSdfForAbsorbingBoundary": false
     },
     "output": {

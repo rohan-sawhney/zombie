@@ -30,7 +30,8 @@ public:
     // lie on the boundary when estimating the gradient
     void solve(const PDE<T, DIM>& pde,
                const WalkSettings& walkSettings,
-               int nWalks, SamplePoint<T, DIM>& samplePt) const;
+               int nWalks, SamplePoint<T, DIM>& samplePt,
+               SampleStatistics<T, DIM>& statistics) const;
 
     // solves the given PDE at the input points (in parallel by default);
     // NOTE: assumes points do not lie on the boundary when estimating gradients
@@ -38,6 +39,7 @@ public:
                const WalkSettings& walkSettings,
                const std::vector<int>& nWalks,
                std::vector<SamplePoint<T, DIM>>& samplePts,
+               std::vector<SampleStatistics<T, DIM>>& statistics,
                bool runSingleThreaded=false,
                std::function<void(int, int)> reportProgress={}) const;
 
@@ -45,6 +47,7 @@ protected:
     // computes the source contribution at a particular point in the walk
     void computeSourceContribution(const PDE<T, DIM>& pde,
                                    const WalkSettings& walkSettings,
+                                   const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                    pcg32& rng, WalkState<T, DIM>& state) const;
 
     // applies a weight window to a walk based on the current state
@@ -56,6 +59,7 @@ protected:
     WalkCompletionCode walk(const PDE<T, DIM>& pde,
                             const WalkSettings& walkSettings,
                             float distToAbsorbingBoundary,
+                            std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                             pcg32& rng, WalkState<T, DIM>& state,
                             std::queue<WalkState<T, DIM>>& stateQueue) const;
 
@@ -68,14 +72,16 @@ protected:
     // estimates only the solution of the given PDE at the input point
     void estimateSolution(const PDE<T, DIM>& pde,
                           const WalkSettings& walkSettings,
-                          int nWalks, SamplePoint<T, DIM>& samplePt) const;
+                          int nWalks, SamplePoint<T, DIM>& samplePt,
+                          SampleStatistics<T, DIM>& statistics) const;
 
     // estimates the solution and gradient of the given PDE at the input point;
     // NOTE: assumes the point does not lie on the boundary; the directional derivative
-    // can be accessed through samplePt.statistics.getEstimatedDerivative()
+    // can be accessed through statistics.getEstimatedDerivative()
     void estimateSolutionAndGradient(const PDE<T, DIM>& pde,
                                      const WalkSettings& walkSettings,
-                                     int nWalks, SamplePoint<T, DIM>& samplePt) const;
+                                     int nWalks, SamplePoint<T, DIM>& samplePt,
+                                     SampleStatistics<T, DIM>& statistics) const;
 
     // members
     const GeometricQueries<DIM>& queries;
@@ -107,14 +113,15 @@ inline WalkOnSpheres<T, DIM>::WalkOnSpheres(const GeometricQueries<DIM>& queries
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
                                          const WalkSettings& walkSettings,
-                                         int nWalks, SamplePoint<T, DIM>& samplePt) const
+                                         int nWalks, SamplePoint<T, DIM>& samplePt,
+                                         SampleStatistics<T, DIM>& statistics) const
 {
     if (samplePt.estimationQuantity != EstimationQuantity::None) {
         if (samplePt.estimationQuantity == EstimationQuantity::SolutionAndGradient) {
-            estimateSolutionAndGradient(pde, walkSettings, nWalks, samplePt);
+            estimateSolutionAndGradient(pde, walkSettings, nWalks, samplePt, statistics);
 
         } else {
-            estimateSolution(pde, walkSettings, nWalks, samplePt);
+            estimateSolution(pde, walkSettings, nWalks, samplePt, statistics);
         }
     }
 }
@@ -124,21 +131,27 @@ inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
                                          const WalkSettings& walkSettings,
                                          const std::vector<int>& nWalks,
                                          std::vector<SamplePoint<T, DIM>>& samplePts,
+                                         std::vector<SampleStatistics<T, DIM>>& statistics,
                                          bool runSingleThreaded,
                                          std::function<void(int, int)> reportProgress) const
 {
     // solve the PDE at each point independently
     int nPoints = (int)samplePts.size();
+    if (nPoints != (int)statistics.size()) {
+        statistics.clear();
+        statistics.resize(nPoints);
+    }
+
     if (runSingleThreaded || walkSettings.printLogs) {
         for (int i = 0; i < nPoints; i++) {
-            solve(pde, walkSettings, nWalks[i], samplePts[i]);
+            solve(pde, walkSettings, nWalks[i], samplePts[i], statistics[i]);
             if (reportProgress) reportProgress(1, 0);
         }
 
     } else {
         auto run = [&](const tbb::blocked_range<int>& range) {
             for (int i = range.begin(); i < range.end(); ++i) {
-                solve(pde, walkSettings, nWalks[i], samplePts[i]);
+                solve(pde, walkSettings, nWalks[i], samplePts[i], statistics[i]);
             }
 
             if (reportProgress) {
@@ -155,13 +168,14 @@ inline void WalkOnSpheres<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& pde,
                                                              const WalkSettings& walkSettings,
+                                                             const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                              pcg32& rng, WalkState<T, DIM>& state) const
 {
     if (!walkSettings.ignoreSourceContribution) {
         // compute source contribution inside the sphere
         float sourceRadius, sourcePdf;
-        Vector<DIM> sourcePt = state.greensFn->sampleVolume(rng, sourceRadius, sourcePdf);
-        T sourceContribution = state.greensFn->norm()*pde.source(sourcePt);
+        Vector<DIM> sourcePt = greensFn->sampleVolume(rng, sourceRadius, sourcePdf);
+        T sourceContribution = greensFn->norm()*pde.source(sourcePt);
         state.totalSourceContribution += state.throughput*sourceContribution;
     }
 }
@@ -206,13 +220,14 @@ template <typename T, size_t DIM>
 inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
                                                       const WalkSettings& walkSettings,
                                                       float distToAbsorbingBoundary,
+                                                      std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                       pcg32& rng, WalkState<T, DIM>& state,
                                                       std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     // recursively perform a random walk till it reaches the absorbing boundary
     while (distToAbsorbingBoundary > walkSettings.epsilonShellForAbsorbingBoundary) {
         // update the ball center and radius
-        state.greensFn->updateBall(state.currentPt, distToAbsorbingBoundary);
+        greensFn->updateBall(state.currentPt, distToAbsorbingBoundary);
 
         // callback for the current walk state
         if (walkStateCallback) {
@@ -220,7 +235,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         }
 
         // compute the source contribution
-        computeSourceContribution(pde, walkSettings, rng, state);
+        computeSourceContribution(pde, walkSettings, greensFn, rng, state);
 
         // sample a direction uniformly
         Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(rng);
@@ -240,7 +255,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
 
         // update the walk throughput and apply a weight window to decide whether
         // to split or terminate the walk
-        state.throughput *= state.greensFn->directionSampledPoissonKernel(state.currentPt);
+        state.throughput *= greensFn->directionSampledPoissonKernel(state.currentPt);
         bool terminateWalk = applyWeightWindow(walkSettings, rng, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
 
@@ -257,7 +272,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         // check whether to start applying Tikhonov regularization
         if (pde.absorptionCoeff > 0.0f &&
             walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
-            state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+            greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
         }
 
         // compute the distance to the absorbing boundary
@@ -297,10 +312,11 @@ inline T WalkOnSpheres<T, DIM>::getTerminalContribution(WalkCompletionCode code,
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
                                                     const WalkSettings& walkSettings,
-                                                    int nWalks, SamplePoint<T, DIM>& samplePt) const
+                                                    int nWalks, SamplePoint<T, DIM>& samplePt,
+                                                    SampleStatistics<T, DIM>& statistics) const
 {
     // check if there are no previous estimates
-    bool hasPrevEstimates = samplePt.statistics.getSolutionEstimateCount() > 0;
+    bool hasPrevEstimates = statistics.getSolutionEstimateCount() > 0;
 
     // check if the sample pt is on the absorbing boundary
     if (samplePt.type == SampleType::OnAbsorbingBoundary) {
@@ -314,7 +330,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             }
 
             // update statistics and set the first sphere radius to 0
-            samplePt.statistics.addSolutionEstimate(totalContribution);
+            statistics.addSolutionEstimate(totalContribution);
             samplePt.firstSphereRadius = 0.0f;
         }
 
@@ -350,11 +366,12 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
             splitsPerformed++;
 
             // initialize the greens function
+            std::unique_ptr<GreensFnBall<DIM>> greensFn = nullptr;
             if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
 
             } else {
-                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+                greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
             }
 
             // recompute the distance to the absorbing boundary if a split has been performed
@@ -364,7 +381,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 
             // perform the walk with the dequeued state
             WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary,
-                                           samplePt.rng, state, stateQueue);
+                                           greensFn, samplePt.rng, state, stateQueue);
 
             if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                 code == WalkCompletionCode::TerminatedWithRussianRoulette ||
@@ -375,15 +392,15 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
                                      state.totalSourceContribution;
 
                 // record the walk length
-                samplePt.statistics.addWalkLength(state.walkLength);
+                statistics.addWalkLength(state.walkLength);
                 success = true;
             }
         }
 
         if (success) {
             // update statistics
-            samplePt.statistics.addSolutionEstimate(totalContribution);
-            samplePt.statistics.addSplits(splitsPerformed);
+            statistics.addSolutionEstimate(totalContribution);
+            statistics.addSplits(splitsPerformed);
         }
     }
 }
@@ -391,7 +408,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolution(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& pde,
                                                                const WalkSettings& walkSettings,
-                                                               int nWalks, SamplePoint<T, DIM>& samplePt) const
+                                                               int nWalks, SamplePoint<T, DIM>& samplePt,
+                                                               SampleStatistics<T, DIM>& statistics) const
 {
     // reduce nWalks by 2 if using antithetic sampling
     int nAntitheticIters = 1;
@@ -419,8 +437,8 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
         T boundaryGradientControlVariate(0.0f);
         T sourceGradientControlVariate(0.0f);
         if (walkSettings.useGradientControlVariates) {
-            boundaryGradientControlVariate = samplePt.statistics.getEstimatedSolution();
-            sourceGradientControlVariate = samplePt.statistics.getMeanFirstSourceContribution();
+            boundaryGradientControlVariate = statistics.getEstimatedSolution();
+            sourceGradientControlVariate = statistics.getMeanFirstSourceContribution();
         }
 
         for (int antitheticIter = 0; antitheticIter < nAntitheticIters; antitheticIter++) {
@@ -429,15 +447,15 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                                     0.0f, 1.0f, 0, false);
 
             // initialize the greens function
+            std::unique_ptr<GreensFnBall<DIM>> greensFn = nullptr;
             if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
 
             } else {
-                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+                greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
             }
 
             // update the ball center and radius
-            GreensFnBall<DIM> *greensFn = state.greensFn.get();
             greensFn->updateBall(state.currentPt, samplePt.firstSphereRadius);
 
             // compute the source contribution inside the ball
@@ -506,10 +524,10 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 // initialize the greens function
                 if (splitsPerformed > 0) {
                     if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                        state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                        greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
 
                     } else {
-                        state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+                        greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
                     }
                 }
 
@@ -518,7 +536,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
 
                 // perform the walk with the dequeued state
                 WalkCompletionCode code = walk(pde, walkSettings, distToAbsorbingBoundary,
-                                               samplePt.rng, state, stateQueue);
+                                               greensFn, samplePt.rng, state, stateQueue);
 
                 if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
                     code == WalkCompletionCode::TerminatedWithRussianRoulette ||
@@ -529,7 +547,7 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                                          state.totalSourceContribution;
 
                     // record the walk length
-                    samplePt.statistics.addWalkLength(state.walkLength);
+                    statistics.addWalkLength(state.walkLength);
                     success = true;
                 }
             }
@@ -549,11 +567,11 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
                 }
 
                 // update statistics
-                samplePt.statistics.addSolutionEstimate(totalContribution);
-                samplePt.statistics.addFirstSourceContribution(firstSourceContribution);
-                samplePt.statistics.addGradientEstimate(boundaryGradientEstimate, sourceGradientEstimate);
-                samplePt.statistics.addDerivativeContribution(directionalDerivative);
-                samplePt.statistics.addSplits(splitsPerformed);
+                statistics.addSolutionEstimate(totalContribution);
+                statistics.addFirstSourceContribution(firstSourceContribution);
+                statistics.addGradientEstimate(boundaryGradientEstimate, sourceGradientEstimate);
+                statistics.addDerivativeContribution(directionalDerivative);
+                statistics.addSplits(splitsPerformed);
             }
         }
     }

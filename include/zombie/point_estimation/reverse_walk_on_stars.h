@@ -22,6 +22,7 @@ namespace zombie {
 
 template <typename T, size_t DIM>
 using SplatContributionCallback = std::function<void(const WalkState<T, DIM>&,
+                                                     const std::unique_ptr<GreensFnBall<DIM>>&,
                                                      const SamplePoint<T, DIM>&)>;
 
 template <typename T, size_t DIM>
@@ -49,6 +50,7 @@ protected:
     // computes the throughput of a single walk step
     float computeWalkStepThroughput(const PDE<T, DIM>& pde,
                                     const WalkSettings& walkSettings,
+                                    const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                     const WalkState<T, DIM>& state) const;
 
     // applies a weight window to a walk based on the current state
@@ -61,6 +63,7 @@ protected:
                             const WalkSettings& walkSettings,
                             const SamplePoint<T, DIM>& samplePt,
                             float distToAbsorbingBoundary,
+                            std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                             pcg32& rng, WalkState<T, DIM>& state,
                             std::queue<WalkState<T, DIM>>& stateQueue) const;
 
@@ -139,11 +142,12 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
             splitsPerformed++;
 
             // initialize the greens function
+            std::unique_ptr<GreensFnBall<DIM>> greensFn = nullptr;
             if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0) {
-                state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
 
             } else {
-                state.greensFn = std::make_shared<HarmonicGreensFnBall<DIM>>();
+                greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
             }
 
             // recompute the distance to the absorbing boundary if a split has been performed
@@ -153,7 +157,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 
             // perform the walk with the dequeued state
             WalkCompletionCode code = walk(pde, walkSettings, samplePt, distToAbsorbingBoundary,
-                                           samplePt.rng, state, stateQueue);
+                                           greensFn, samplePt.rng, state, stateQueue);
         }
     }
 }
@@ -192,6 +196,7 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 template <typename T, size_t DIM>
 inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& pde,
                                                                    const WalkSettings& walkSettings,
+                                                                   const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                                    const WalkState<T, DIM>& state) const
 {
     if (state.onReflectingBoundary && state.prevDistance > std::numeric_limits<float>::epsilon()) {
@@ -211,13 +216,13 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
                                         returnBoundaryNormalAlignedValue);
         }
 
-        float reflectance = state.greensFn->reflectance(state.prevDistance, state.prevDirection,
-                                                        normal, robinCoeff);
+        float reflectance = greensFn->reflectance(state.prevDistance, state.prevDirection,
+                                                  normal, robinCoeff);
         float maxReflectance = pde.areRobinCoeffsNonnegative ? 1.0f : 2.0f;
         return std::clamp(reflectance, 0.0f, maxReflectance);
     }
 
-    return state.greensFn->directionSampledPoissonKernel(state.currentPt);
+    return greensFn->directionSampledPoissonKernel(state.currentPt);
 }
 
 template <typename T, size_t DIM>
@@ -261,6 +266,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
                                                            const WalkSettings& walkSettings,
                                                            const SamplePoint<T, DIM>& samplePt,
                                                            float distToAbsorbingBoundary,
+                                                           std::unique_ptr<GreensFnBall<DIM>>& greensFn,
                                                            pcg32& rng, WalkState<T, DIM>& state,
                                                            std::queue<WalkState<T, DIM>>& stateQueue) const
 {
@@ -303,10 +309,10 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
         }
 
         // update the ball center and radius
-        state.greensFn->updateBall(state.currentPt, starRadius);
+        greensFn->updateBall(state.currentPt, starRadius);
 
         // splat sample contribution within the current star-shaped region
-        splatContribution(state, samplePt);
+        splatContribution(state, greensFn, samplePt);
 
         // sample a direction uniformly
         Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(rng);
@@ -355,7 +361,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
         }
 
         // update the walk throughput and apply a weight window to decide whether to split or terminate the walk
-        state.throughput *= computeWalkStepThroughput(pde, walkSettings, state);
+        state.throughput *= computeWalkStepThroughput(pde, walkSettings, greensFn, state);
         bool terminateWalk = applyWeightWindow(walkSettings, rng, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
 
@@ -371,7 +377,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
 
         // check whether to start applying Tikhonov regularization
         if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
-            state.greensFn = std::make_shared<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+            greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
         }
 
         // compute the distance to the absorbing boundary

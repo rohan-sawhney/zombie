@@ -136,6 +136,8 @@ def setup_pde(model_problem_config, bounding_box):
         if "robinCoeff" in model_problem_config else 0.0
     absorption_coeff = model_problem_config["absorptionCoeff"]\
         if "absorptionCoeff" in model_problem_config else 0.0
+    solve_exterior = model_problem_config["solveExterior"]\
+        if "solveExterior" in model_problem_config else False
     domain_min = bounding_box[0]
     domain_max = bounding_box[1]
 
@@ -147,8 +149,12 @@ def setup_pde(model_problem_config, bounding_box):
         absorbing_boundary_value_buffer, absorbing_boundary_value_shape, domain_min, domain_max)
     pde.robin = zombie.utils.get_dense_grid_robin_callback_float_2d(
         reflecting_boundary_value_buffer, reflecting_boundary_value_shape, domain_min, domain_max)
-    pde.has_reflecting_boundary_conditions = zombie.utils.get_dense_grid_indicator_callback_2d(
-        is_reflecting_boundary_buffer, is_reflecting_boundary_shape, domain_min, domain_max)
+    if solve_exterior:
+        pde.has_reflecting_boundary_conditions = zombie.utils.get_dense_grid_indicator_callback_2d(
+            reflecting_boundary_value_buffer, reflecting_boundary_value_shape, domain_min, domain_max)
+    else:
+        pde.has_reflecting_boundary_conditions = zombie.utils.get_dense_grid_indicator_callback_2d(
+            is_reflecting_boundary_buffer, is_reflecting_boundary_shape, domain_min, domain_max)
     pde.robin_coeff = zombie.core.get_constant_robin_coefficient_callback_2d(robin_coeff)
     pde.absorption_coeff = absorption_coeff
     pde.are_robin_conditions_pure_neumann = robin_coeff == 0.0
@@ -238,12 +244,14 @@ def populate_geometric_queries(model_problem_config, bounding_box,
         return geometric_queries, sdf_grid_for_dirichlet_boundary,\
                dirichlet_boundary_handler, robin_boundary_handler
 
-def compute_distance_info(solve_locations, geometric_queries, solve_double_sided):
+def compute_distance_info(solve_locations, geometric_queries, solve_double_sided, solve_exterior):
     distance_info = [None]*len(solve_locations)
 
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
         inside_domain = geometric_queries.inside_domain(pt)
+        if solve_exterior:
+            inside_domain = not inside_domain
         in_valid_solve_region = inside_domain or solve_double_sided
         dist_to_absorbing_boundary = geometric_queries.compute_dist_to_absorbing_boundary(pt, False)
         dist_to_reflecting_boundary = geometric_queries.compute_dist_to_reflecting_boundary(pt, False)
@@ -253,11 +261,65 @@ def compute_distance_info(solve_locations, geometric_queries, solve_double_sided
     return distance_info
 
 ##############################################################################################
+# Exterior problem utilities - uses a Kelvin transform to convert an exterior problem
+# into an equivalent interior problem with a modified PDE on the inverted domain
+
+def invert_exterior_problem(kelvin_transform, positions, absorbing_boundary_positions,
+                            reflecting_boundary_positions, reflecting_boundary_indices,
+                            pde, robin_coeff):
+    # invert the domain
+    inverted_positions = zombie.float2_list()
+    inverted_absorbing_boundary_positions = zombie.float2_list()
+    inverted_reflecting_boundary_positions = zombie.float2_list()
+    kelvin_transform.transform_points(positions, inverted_positions)
+    kelvin_transform.transform_points(absorbing_boundary_positions, inverted_absorbing_boundary_positions)
+    kelvin_transform.transform_points(reflecting_boundary_positions, inverted_reflecting_boundary_positions)
+
+    # compute the bounding box for the inverted domain
+    inverted_bounding_box = zombie.utils.compute_bounding_box_2d(inverted_positions, True, 1.0)
+
+    # setup the modified PDE on the inverted domain
+    pde_inverted_domain = zombie.core.pde_float_2d()
+    kelvin_transform.transform_pde(pde, pde_inverted_domain)
+
+    # compute the modified Robin coefficients on the inverted domain
+    min_robin_coeff_values_inverted_domain = zombie.float_list()
+    max_robin_coeff_values_inverted_domain = zombie.float_list()
+    if not pde_inverted_domain.are_robin_conditions_pure_neumann:
+        min_robin_coeff_values = zombie.float_list([robin_coeff]*len(reflecting_boundary_indices))
+        max_robin_coeff_values = zombie.float_list([robin_coeff]*len(reflecting_boundary_indices))
+        kelvin_transform.compute_robin_coefficients(inverted_reflecting_boundary_positions,
+                                                    reflecting_boundary_indices,
+                                                    min_robin_coeff_values, max_robin_coeff_values,
+                                                    min_robin_coeff_values_inverted_domain,
+                                                    max_robin_coeff_values_inverted_domain)
+
+    return inverted_bounding_box, inverted_positions, inverted_absorbing_boundary_positions,\
+           inverted_reflecting_boundary_positions, pde_inverted_domain,\
+           min_robin_coeff_values_inverted_domain, max_robin_coeff_values_inverted_domain
+
+def invert_solve_locations(kelvin_transform, solve_locations):
+    inverted_solve_locations = np.zeros((len(solve_locations), 2))
+    for i in range(len(solve_locations)):
+        inverted_solve_locations[i] = kelvin_transform.transform_point(solve_locations[i])
+
+    return inverted_solve_locations
+
+def compute_exterior_solution(kelvin_transform, interior_solution, inverted_solve_locations):
+    exterior_solution = np.zeros(len(interior_solution))
+    for i in range(len(interior_solution)):
+        exterior_solution[i] = kelvin_transform.transform_solution_estimate(interior_solution[i],
+                                                                            inverted_solve_locations[i])
+
+    return exterior_solution
+
+##############################################################################################
 # Walk on Stars solver - note that this solver is a strict generalization of Walk on Spheres,
 # and reduces to it when the PDE only has Dirichlet boundary conditions
 
 def create_sample_points(solve_locations, distance_info):
     sample_points = [None]*len(solve_locations)
+    sample_statistics = [None]*len(solve_locations)
 
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
@@ -274,10 +336,13 @@ def create_sample_points(solve_locations, distance_info):
                                                                 estimation_quantity, pdf,
                                                                 dist_to_absorbing_boundary,
                                                                 dist_to_reflecting_boundary)
+        sample_statistics[i] = zombie.solvers.sample_statistics_float_2d()
 
-    return zombie.solvers.sample_point_float_2d_list(sample_points)
+    return zombie.solvers.sample_point_float_2d_list(sample_points),\
+           zombie.solvers.sample_statistics_float_2d_list(sample_statistics)
 
-def run_walk_on_stars(solver_config, sample_pts, geometric_queries, pde, solve_double_sided):
+def run_walk_on_stars(solver_config, sample_pts, sample_statistics,
+                      geometric_queries, pde, solve_double_sided):
     # load config settings
     epsilon_shell_for_absorbing_boundary = solver_config["epsilonShellForAbsorbingBoundary"]\
         if "epsilonShellForAbsorbingBoundary" in solver_config else 1e-3
@@ -335,14 +400,15 @@ def run_walk_on_stars(solver_config, sample_pts, geometric_queries, pde, solve_d
                                                  ignore_source_contribution, print_logs)
     n_walks_list = zombie.int_list([n_walks]*len(sample_pts))
     walk_on_stars = zombie.solvers.walk_on_stars_float_2d(geometric_queries)
-    walk_on_stars.solve(pde, walk_settings, n_walks_list, sample_pts, run_single_threaded, report_progress)
+    walk_on_stars.solve(pde, walk_settings, n_walks_list, sample_pts, sample_statistics,
+                        run_single_threaded, report_progress)
     progress_bar.finish()
 
-def get_solution_from_sample_points(sample_pts):
-    solution = np.zeros(len(sample_pts))
+def get_solution_from_sample_points(sample_statistics):
+    solution = np.zeros(len(sample_statistics))
 
-    for i in range(len(sample_pts)):
-        solution[i] = sample_pts[i].statistics.get_estimated_solution()
+    for i in range(len(sample_statistics)):
+        solution[i] = sample_statistics[i].get_estimated_solution()
 
     return solution
 
@@ -679,13 +745,14 @@ def run_solver(solver_type, solver_config, solve_double_sided,
                geometric_queries, pde, solve_locations, distance_info):
     if solver_type == "wost":
         # create sample points to estimate solution at
-        sample_pts = create_sample_points(solve_locations, distance_info)
+        sample_pts, sample_statistics = create_sample_points(solve_locations, distance_info)
 
         # run walk on stars
-        run_walk_on_stars(solver_config, sample_pts, geometric_queries, pde, solve_double_sided)
+        run_walk_on_stars(solver_config, sample_pts, sample_statistics,
+                          geometric_queries, pde, solve_double_sided)
 
         # extract solution from sample points
-        return get_solution_from_sample_points(sample_pts)
+        return get_solution_from_sample_points(sample_statistics)
 
     elif solver_type == "bvc":
         # create evaluation points to estimate solution at
@@ -715,6 +782,48 @@ def run_solver(solver_type, solver_config, solve_double_sided,
 
     else:
         raise ValueError("Invalid solver type")
+
+def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_double_sided,
+                        positions, absorbing_boundary_positions, absorbing_boundary_indices,
+                        reflecting_boundary_positions, reflecting_boundary_indices,
+                        pde, robin_coeff, solve_locations):
+    # initialize a Kelvin transform: ensure origin lies inside the default domain
+    # used for the demo, which is a requirement for solving exterior problems
+    origin = np.array([0.0, 0.125])
+    kelvin_transform = zombie.solvers.kelvin_transform_float_2d(origin)
+
+    # invert the exterior problem into an equivalent interior problem
+    inverted_bounding_box, inverted_positions, inverted_absorbing_boundary_positions,\
+        inverted_reflecting_boundary_positions, pde_inverted_domain,\
+            min_robin_coeff_values_inverted_domain, max_robin_coeff_values_inverted_domain =\
+                invert_exterior_problem(kelvin_transform, positions, absorbing_boundary_positions,
+                                        reflecting_boundary_positions, reflecting_boundary_indices,
+                                        pde, robin_coeff)
+
+    # populate the geometric queries for the inverted absorbing and reflecting boundary
+    geometric_queries_inverted_domain, sdf_grid_for_inverted_absorbing_boundary,\
+        inverted_absorbing_boundary_handler, inverted_reflecting_boundary_handler =\
+            populate_geometric_queries(model_problem_config, inverted_bounding_box,
+                                       inverted_absorbing_boundary_positions, absorbing_boundary_indices,
+                                       inverted_reflecting_boundary_positions, reflecting_boundary_indices,
+                                       min_robin_coeff_values_inverted_domain, max_robin_coeff_values_inverted_domain,
+                                       pde_inverted_domain.are_robin_conditions_pure_neumann, solve_double_sided)
+
+    # invert the solve locations and update the distance info
+    inverted_solve_locations = invert_solve_locations(kelvin_transform, solve_locations)
+    distance_info_inverted_domain = compute_distance_info(inverted_solve_locations,
+                                                          geometric_queries_inverted_domain,
+                                                          solve_double_sided, False)
+
+    # run the solver
+    solution = run_solver(solver_type, solver_config, solve_double_sided,
+                          inverted_absorbing_boundary_positions, absorbing_boundary_indices,
+                          inverted_reflecting_boundary_positions, reflecting_boundary_indices,
+                          geometric_queries_inverted_domain, pde_inverted_domain,
+                          inverted_solve_locations, distance_info_inverted_domain)
+
+    # map the solution values back to the exterior domain
+    return compute_exterior_solution(kelvin_transform, solution, inverted_solve_locations)
 
 if __name__ == "__main__":
     # parse arguments
@@ -759,16 +868,26 @@ if __name__ == "__main__":
 
         # create solve locations on a grid for this demo
         output_config = config["output"]
+        solve_exterior = model_problem_config["solveExterior"]\
+            if "solveExterior" in model_problem_config else False
         solve_locations = create_grid_points(output_config, bounding_box)
-        distance_info = compute_distance_info(solve_locations, geometric_queries, solve_double_sided)
+        distance_info = compute_distance_info(solve_locations, geometric_queries, solve_double_sided, solve_exterior)
 
         # run the solver
         solver_type = config["solverType"]
         solver_config = config["solver"]
-        solution = run_solver(solver_type, solver_config, solve_double_sided,
-                              absorbing_boundary_positions, absorbing_boundary_indices,
-                              reflecting_boundary_positions, reflecting_boundary_indices,
-                              geometric_queries, pde, solve_locations, distance_info)
+        solution = None
+        if solve_exterior:
+            solution = run_solver_exterior(solver_type, solver_config, model_problem_config, solve_double_sided,
+                                           positions, absorbing_boundary_positions, absorbing_boundary_indices,
+                                           reflecting_boundary_positions, reflecting_boundary_indices,
+                                           pde, robin_coeff, solve_locations)
+
+        else:
+            solution = run_solver(solver_type, solver_config, solve_double_sided,
+                                  absorbing_boundary_positions, absorbing_boundary_indices,
+                                  reflecting_boundary_positions, reflecting_boundary_indices,
+                                  geometric_queries, pde, solve_locations, distance_info)
 
         # save the solution to disk
         grid_values = create_grid_values(output_config, distance_info, solution)

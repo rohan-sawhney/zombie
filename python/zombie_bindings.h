@@ -34,6 +34,8 @@ using FloatNList = std::vector<zombie::Vector<DIM>>;
 template <typename T, size_t DIM>
 using SamplePointList = std::vector<zombie::SamplePoint<T, DIM>>;
 template <typename T, size_t DIM>
+using SampleStatisticsList = std::vector<zombie::SampleStatistics<T, DIM>>;
+template <typename T, size_t DIM>
 using BVCEvaluationPointList = std::vector<zombie::bvc::EvaluationPoint<T, DIM>>;
 template <typename T, size_t DIM>
 using RWSEvaluationPointList = std::vector<zombie::rws::EvaluationPoint<T, DIM>>;
@@ -1122,7 +1124,6 @@ void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
             "dist_to_absorbing_boundary"_a, "dist_to_reflecting_boundary"_a)
         .def("reset", &zombie::SamplePoint<T, DIM>::reset,
             "Resets the solution data.")
-        .def_rw("statistics", &zombie::SamplePoint<T, DIM>::statistics)
         .def_rw("pt", &zombie::SamplePoint<T, DIM>::pt)
         .def_rw("normal", &zombie::SamplePoint<T, DIM>::normal)
         .def_rw("direction_for_derivative", &zombie::SamplePoint<T, DIM>::directionForDerivative)
@@ -1135,6 +1136,7 @@ void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
         .def_rw("estimate_boundary_normal_aligned", &zombie::SamplePoint<T, DIM>::estimateBoundaryNormalAligned);
 
     nb::bind_vector<SamplePointList<T, DIM>>(solvers_m, ("sample_point" + typeStr + "_list").c_str());
+    nb::bind_vector<SampleStatisticsList<T, DIM>>(solvers_m, ("sample_statistics" + typeStr + "_list").c_str());
 
     solvers_m.def(("get_empty_walk_state_callback" + typeStr).c_str(),
                  []() -> WalkStateToVoidFunc<T, DIM> { return {}; },
@@ -1155,15 +1157,16 @@ void bindWalkOnSpheresSolver(nb::module_ m, std::string typeStr)
             "geometric_queries"_a)
         .def(nb::init<const zombie::GeometricQueries<DIM>&, WalkStateToVoidFunc<T, DIM>, WalkCodeStateToTypeFunc<T, DIM>>(),
             "geometric_queries"_a, "walk_state_callback"_a, "terminal_contribution_callback"_a)
-        .def("solve", nb::overload_cast<const zombie::PDE<T, DIM>&, const zombie::WalkSettings&, int, zombie::SamplePoint<T, DIM>&>(
+        .def("solve", nb::overload_cast<const zombie::PDE<T, DIM>&, const zombie::WalkSettings&, int,
+                                        zombie::SamplePoint<T, DIM>&, zombie::SampleStatistics<T, DIM>&>(
             &zombie::WalkOnSpheres<T, DIM>::solve, nb::const_),
             "Solves the given PDE at the input point.\nAssumes the point does not lie on the boundary when estimating the gradient.",
-            "pde"_a, "walk_settings"_a, "n_walks"_a, "sample_pt"_a)
+            "pde"_a, "walk_settings"_a, "n_walks"_a, "sample_pt"_a, "statistics"_a)
         .def("solve", nb::overload_cast<const zombie::PDE<T, DIM>&, const zombie::WalkSettings&, const IntList&,
-                                        SamplePointList<T, DIM>&, bool, IntIntToVoidFunc>(
+                                        SamplePointList<T, DIM>&, SampleStatisticsList<T, DIM>&, bool, IntIntToVoidFunc>(
             &zombie::WalkOnSpheres<T, DIM>::solve, nb::const_),
             "Solves the given PDE at the input points.\nAssumes points do not lie on the boundary when estimating gradients.",
-            "pde"_a, "walk_settings"_a, "n_walks"_a, "sample_pts"_a,
+            "pde"_a, "walk_settings"_a, "n_walks"_a, "sample_pts"_a, "statistics"_a,
             "run_single_threaded"_a=false, "report_progress"_a.none());
 }
 
@@ -1177,15 +1180,16 @@ void bindWalkOnStarsSolver(nb::module_ m, std::string typeStr)
             "geometric_queries"_a)
         .def(nb::init<const zombie::GeometricQueries<DIM>&, WalkStateToVoidFunc<T, DIM>, WalkCodeStateToTypeFunc<T, DIM>>(),
             "geometric_queries"_a, "walk_state_callback"_a, "terminal_contribution_callback"_a)
-        .def("solve", nb::overload_cast<const zombie::PDE<T, DIM>&, const zombie::WalkSettings&, int, zombie::SamplePoint<T, DIM>&>(
+        .def("solve", nb::overload_cast<const zombie::PDE<T, DIM>&, const zombie::WalkSettings&, int,
+                                        zombie::SamplePoint<T, DIM>&, zombie::SampleStatistics<T, DIM>&>(
             &zombie::WalkOnStars<T, DIM>::solve, nb::const_),
             "Solves the given PDE at the input point.\nAssumes the point does not lie on the boundary when estimating the gradient.",
-            "pde"_a, "walk_settings"_a, "n_walks"_a, "sample_pt"_a)
+            "pde"_a, "walk_settings"_a, "n_walks"_a, "sample_pt"_a, "statistics"_a)
         .def("solve", nb::overload_cast<const zombie::PDE<T, DIM>&, const zombie::WalkSettings&, const IntList&,
-                                        SamplePointList<T, DIM>&, bool, IntIntToVoidFunc>(
+                                        SamplePointList<T, DIM>&, SampleStatisticsList<T, DIM>&, bool, IntIntToVoidFunc>(
             &zombie::WalkOnStars<T, DIM>::solve, nb::const_),
             "Solves the given PDE at the input points.\nAssumes points do not lie on the boundary when estimating gradients.",
-            "pde"_a, "walk_settings"_a, "n_walks"_a, "sample_pts"_a,
+            "pde"_a, "walk_settings"_a, "n_walks"_a, "sample_pts"_a, "statistics"_a,
             "run_single_threaded"_a=false, "report_progress"_a.none());
 }
 
@@ -1337,4 +1341,35 @@ void bindReverseWalkOnStarsSolver(nb::module_ m, std::string typeStr)
         .def("get_domain_sample_count",
             &zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>>::getDomainSampleCount,
             "Returns the number of domain sample points.");
+}
+
+template <typename T, size_t DIM>
+void bindKelvinTransform(nb::module_ m, std::string typeStr)
+{
+    nb::module_ solvers_m = m.def_submodule("solvers", "Solvers module");
+
+    nb::class_<zombie::KelvinTransform<T, DIM>>(solvers_m, ("kelvin_transform" + typeStr).c_str())
+        .def(nb::init<const zombie::Vector<DIM>&>(),
+            "origin"_a=zombie::Vector<DIM>::Zero())
+        .def("set_origin", &zombie::KelvinTransform<T, DIM>::setOrigin,
+            "Sets the origin of the Kelvin transform.",
+            "origin"_a)
+        .def("get_origin", &zombie::KelvinTransform<T, DIM>::getOrigin,
+            "Returns the origin of the Kelvin transform.")
+        .def("transform_point", &zombie::KelvinTransform<T, DIM>::transformPoint,
+            "Applies the Kelvin transform to a point in the exterior domain.",
+            "x"_a)
+        .def("transform_pde", &zombie::KelvinTransform<T, DIM>::transformPde,
+            "Sets up the PDE for the inverted domain given the PDE for the exterior domain.",
+            "pde_exterior_domain"_a, "pde_inverted_domain"_a)
+        .def("transform_solution_estimate", &zombie::KelvinTransform<T, DIM>::transformSolutionEstimate,
+            "Returns the estimated solution in the exterior domain, given the solution estimate at a transformed point.",
+            "V"_a, "y"_a)
+        .def("transform_points", &zombie::KelvinTransform<T, DIM>::transformPoints,
+            "Applies the Kelvin transform to a set of points in the exterior domain.",
+            "points"_a, "transformed_points"_a)
+        .def("compute_robin_coefficients", &zombie::KelvinTransform<T, DIM>::computeRobinCoefficients,
+            "Computes the modified Robin coefficients for the transformed reflecting boundary represented by line segments in 2D and triangles in 3D:\na boundary with Neumann conditions typically has non-zero Robin coefficients on the inverted domain in 3D, but it continues to have\nNeumann conditions in 2D.",
+            "transformed_points"_a, "indices"_a, "min_robin_coeff_values"_a, "max_robin_coeff_values"_a,
+            "transformed_min_robin_coeff_values"_a, "transformed_max_robin_coeff_values"_a);
 }

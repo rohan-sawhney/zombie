@@ -5,6 +5,7 @@
 #include <zombie/variance_reduction/boundary_samplers.h>
 #include <zombie/variance_reduction/domain_samplers.h>
 #include <zombie/variance_reduction/boundary_value_caching.h>
+#include <zombie/variance_reduction/kelvin_transform.h>
 #include <zombie/variance_reduction/reverse_walk_solver.h>
 #include <zombie/utils/fcpw_geometric_queries.h>
 #include <zombie/utils/sdf_grid_geometric_queries.h>
