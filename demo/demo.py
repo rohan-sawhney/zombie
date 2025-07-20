@@ -250,7 +250,7 @@ def compute_distance_info(solve_locations, geometric_queries, solve_double_sided
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
         inside_domain = geometric_queries.inside_domain(pt)
-        if solve_exterior:
+        if geometric_queries.domain_is_watertight and solve_exterior:
             inside_domain = not inside_domain
         in_valid_solve_region = inside_domain or solve_double_sided
         dist_to_absorbing_boundary = geometric_queries.compute_dist_to_absorbing_boundary(pt, False)

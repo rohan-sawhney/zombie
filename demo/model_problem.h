@@ -20,28 +20,28 @@ public:
     // constructor
     ModelProblem(const json& config, std::string directoryPath);
 
-    // members
-    bool solveDoubleSided;
-    bool solveExterior;
-    std::vector<Vector2i> indices;
-    std::vector<Vector2i> absorbingBoundaryIndices;
-    std::vector<Vector2i> reflectingBoundaryIndices;
+    // getters
+    bool solveDoubleSided() { return mSolveDoubleSided; }
+    bool solveExterior() { return mSolveExterior; }
+    const std::vector<Vector2i>& getBoundaryIndices() { return mIndices; }
+    const std::vector<Vector2i>& getAbsorbingBoundaryIndices() { return mAbsorbingBoundaryIndices; }
+    const std::vector<Vector2i>& getReflectingBoundaryIndices() { return mReflectingBoundaryIndices; }
 
-    // members for input domain
-    std::vector<Vector2> positions;
-    std::vector<Vector2> absorbingBoundaryPositions;
-    std::vector<Vector2> reflectingBoundaryPositions;
-    std::pair<Vector2, Vector2> boundingBox;
-    zombie::PDE<float, 2> pde;
-    zombie::GeometricQueries<2> queries;
+    // getters for input domain
+    const std::vector<Vector2>& getBoundaryPositions() { return mPositions; }
+    const std::vector<Vector2>& getAbsorbingBoundaryPositions() { return mAbsorbingBoundaryPositions; }
+    const std::vector<Vector2>& getReflectingBoundaryPositions() { return mReflectingBoundaryPositions; }
+    const std::pair<Vector2, Vector2>& getBoundingBox() { return mBoundingBox; }
+    const zombie::PDE<float, 2>& getPDE() { return mPde; }
+    const zombie::GeometricQueries<2>& getGeometricQueries() { return mQueries; }
 
-    // members for inverted domain (needed for solving exterior problems)
-    zombie::KelvinTransform<float, 2> kelvinTransform;
-    std::vector<Vector2> invertedAbsorbingBoundaryPositions;
-    std::vector<Vector2> invertedReflectingBoundaryPositions;
-    std::pair<Vector2, Vector2> invertedBoundingBox;
-    zombie::PDE<float, 2> pdeInvertedDomain;
-    zombie::GeometricQueries<2> queriesInvertedDomain;
+    // getters for inverted domain (needed for solving exterior problems)
+    const zombie::KelvinTransform<float, 2>& getKelvinTransform() { return mKelvinTransform; }
+    const std::vector<Vector2>& getInvertedAbsorbingBoundaryPositions() { return mInvertedAbsorbingBoundaryPositions; }
+    const std::vector<Vector2>& getInvertedReflectingBoundaryPositions() { return mInvertedReflectingBoundaryPositions; }
+    const std::pair<Vector2, Vector2>& getInvertedBoundingBox() { return mInvertedBoundingBox; }
+    const zombie::PDE<float, 2>& getPDEInvertedDomain() { return mPdeInvertedDomain; }
+    const zombie::GeometricQueries<2>& getGeometricQueriesInvertedDomain() { return mQueriesInvertedDomain; }
 
 protected:
     // loads a boundary mesh from an OBJ file
@@ -71,53 +71,72 @@ protected:
     void invertExteriorProblem();
 
     // members
-    Image<1> isReflectingBoundary;
-    Image<1> absorbingBoundaryValue;
-    Image<1> reflectingBoundaryValue;
-    Image<1> sourceValue;
-    bool domainIsWatertight;
-    bool useSdfForAbsorbingBoundary;
-    int sdfGridResolution;
-    float robinCoeff, absorptionCoeff;
+    Image<1> mIsReflectingBoundary;
+    Image<1> mAbsorbingBoundaryValue;
+    Image<1> mReflectingBoundaryValue;
+    Image<1> mSourceValue;
+    bool mSolveDoubleSided;
+    bool mSolveExterior;
+    bool mDomainIsWatertight;
+    bool mUseSdfForAbsorbingBoundary;
+    int mSdfGridResolution;
+    float mRobinCoeff;
+    float mAbsorptionCoeff;
 
-    std::vector<float> minRobinCoeffValues;
-    std::vector<float> maxRobinCoeffValues;
-    std::unique_ptr<zombie::SdfGrid<2>> sdfGridForAbsorbingBoundary;
-    zombie::FcpwDirichletBoundaryHandler<2> absorbingBoundaryHandler;
-    zombie::FcpwNeumannBoundaryHandler<2> reflectingNeumannBoundaryHandler;
-    zombie::FcpwRobinBoundaryHandler<2> reflectingRobinBoundaryHandler;
+    std::vector<Vector2i> mIndices;
+    std::vector<Vector2i> mAbsorbingBoundaryIndices;
+    std::vector<Vector2i> mReflectingBoundaryIndices;
 
-    std::vector<float> minRobinCoeffValuesInvertedDomain;
-    std::vector<float> maxRobinCoeffValuesInvertedDomain;
-    std::unique_ptr<zombie::SdfGrid<2>> sdfGridForInvertedAbsorbingBoundary;
-    zombie::FcpwDirichletBoundaryHandler<2> invertedAbsorbingBoundaryHandler;
-    zombie::FcpwNeumannBoundaryHandler<2> invertedReflectingNeumannBoundaryHandler;
-    zombie::FcpwRobinBoundaryHandler<2> invertedReflectingRobinBoundaryHandler;
+    std::vector<Vector2> mPositions;
+    std::vector<Vector2> mAbsorbingBoundaryPositions;
+    std::vector<Vector2> mReflectingBoundaryPositions;
+    std::pair<Vector2, Vector2> mBoundingBox;
+    zombie::PDE<float, 2> mPde;
+    std::vector<float> mMinRobinCoeffValues;
+    std::vector<float> mMaxRobinCoeffValues;
+    std::unique_ptr<zombie::SdfGrid<2>> mSdfGridForAbsorbingBoundary;
+    zombie::FcpwDirichletBoundaryHandler<2> mAbsorbingBoundaryHandler;
+    zombie::FcpwNeumannBoundaryHandler<2> mReflectingNeumannBoundaryHandler;
+    zombie::FcpwRobinBoundaryHandler<2> mReflectingRobinBoundaryHandler;
+    zombie::GeometricQueries<2> mQueries;
+
+    zombie::KelvinTransform<float, 2> mKelvinTransform;
+    std::vector<Vector2> mInvertedAbsorbingBoundaryPositions;
+    std::vector<Vector2> mInvertedReflectingBoundaryPositions;
+    std::pair<Vector2, Vector2> mInvertedBoundingBox;
+    zombie::PDE<float, 2> mPdeInvertedDomain;
+    std::vector<float> mMinRobinCoeffValuesInvertedDomain;
+    std::vector<float> mMaxRobinCoeffValuesInvertedDomain;
+    std::unique_ptr<zombie::SdfGrid<2>> mSdfGridForInvertedAbsorbingBoundary;
+    zombie::FcpwDirichletBoundaryHandler<2> mInvertedAbsorbingBoundaryHandler;
+    zombie::FcpwNeumannBoundaryHandler<2> mInvertedReflectingNeumannBoundaryHandler;
+    zombie::FcpwRobinBoundaryHandler<2> mInvertedReflectingRobinBoundaryHandler;
+    zombie::GeometricQueries<2> mQueriesInvertedDomain;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
 ModelProblem::ModelProblem(const json& config, std::string directoryPath):
-kelvinTransform(Vector2(0.0f, 0.125f)), // ensure origin lies inside default domain for demo, a requirement for exterior problems
-sdfGridForAbsorbingBoundary(nullptr),
-sdfGridForInvertedAbsorbingBoundary(nullptr)
+mKelvinTransform(Vector2(0.0f, 0.125f)), // ensure origin lies inside default domain for demo, a requirement for exterior problems
+mSdfGridForAbsorbingBoundary(nullptr),
+mSdfGridForInvertedAbsorbingBoundary(nullptr)
 {
     // load config settings
     std::string geometryFile = directoryPath + getRequired<std::string>(config, "geometry");
     bool normalize = getOptional<bool>(config, "normalizeDomain", true);
     bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
-    isReflectingBoundary = Image<1>(directoryPath + getRequired<std::string>(config, "isReflectingBoundary"));
-    absorbingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryValue"));
-    reflectingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryValue"));
-    sourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
-    solveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
-    solveExterior = getOptional<bool>(config, "solveExterior", false);
-    domainIsWatertight = getOptional<bool>(config, "domainIsWatertight", true);
-    useSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);
-    sdfGridResolution = getOptional<int>(config, "sdfGridResolution", 128);
-    robinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
-    absorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
+    mIsReflectingBoundary = Image<1>(directoryPath + getRequired<std::string>(config, "isReflectingBoundary"));
+    mAbsorbingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryValue"));
+    mReflectingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryValue"));
+    mSourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
+    mSolveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
+    mSolveExterior = getOptional<bool>(config, "solveExterior", false);
+    mDomainIsWatertight = getOptional<bool>(config, "domainIsWatertight", true);
+    mUseSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);
+    mSdfGridResolution = getOptional<int>(config, "sdfGridResolution", 128);
+    mRobinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
+    mAbsorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
 
     // load a boundary mesh from an OBJ file
     loadOBJ(geometryFile, normalize, flipOrientation);
@@ -130,66 +149,72 @@ sdfGridForInvertedAbsorbingBoundary(nullptr)
 
     // specify the minimum and maximum Robin coefficient values for each reflecting boundary element:
     // we use a constant value for all elements in this demo, but Zombie supports variable coefficients
-    minRobinCoeffValues.resize(reflectingBoundaryIndices.size(), std::fabs(robinCoeff));
-    maxRobinCoeffValues.resize(reflectingBoundaryIndices.size(), std::fabs(robinCoeff));
+    mMinRobinCoeffValues.resize(mReflectingBoundaryIndices.size(), std::fabs(mRobinCoeff));
+    mMaxRobinCoeffValues.resize(mReflectingBoundaryIndices.size(), std::fabs(mRobinCoeff));
 
     // populate the geometric queries for the absorbing and reflecting boundary
-    populateGeometricQueries(absorbingBoundaryPositions, reflectingBoundaryPositions,
-                             boundingBox, minRobinCoeffValues, maxRobinCoeffValues,
-                             pde.areRobinConditionsPureNeumann, sdfGridForAbsorbingBoundary,
-                             absorbingBoundaryHandler, reflectingNeumannBoundaryHandler,
-                             reflectingRobinBoundaryHandler, queries);
+    populateGeometricQueries(mAbsorbingBoundaryPositions, mReflectingBoundaryPositions,
+                             mBoundingBox, mMinRobinCoeffValues, mMaxRobinCoeffValues,
+                             mPde.areRobinConditionsPureNeumann, mSdfGridForAbsorbingBoundary,
+                             mAbsorbingBoundaryHandler, mReflectingNeumannBoundaryHandler,
+                             mReflectingRobinBoundaryHandler, mQueries);
 
-    if (solveExterior) {
+    if (mSolveExterior) {
         // invert the exterior problem into an equivalent interior problem
         invertExteriorProblem();
 
         // populate the geometric queries for the inverted absorbing and reflecting boundary
-        populateGeometricQueries(invertedAbsorbingBoundaryPositions, invertedReflectingBoundaryPositions,
-                                 invertedBoundingBox, minRobinCoeffValuesInvertedDomain, maxRobinCoeffValuesInvertedDomain,
-                                 pdeInvertedDomain.areRobinConditionsPureNeumann, sdfGridForInvertedAbsorbingBoundary,
-                                 invertedAbsorbingBoundaryHandler, invertedReflectingNeumannBoundaryHandler,
-                                 invertedReflectingRobinBoundaryHandler, queriesInvertedDomain);
+        populateGeometricQueries(mInvertedAbsorbingBoundaryPositions,
+                                 mInvertedReflectingBoundaryPositions,
+                                 mInvertedBoundingBox,
+                                 mMinRobinCoeffValuesInvertedDomain,
+                                 mMaxRobinCoeffValuesInvertedDomain,
+                                 mPdeInvertedDomain.areRobinConditionsPureNeumann,
+                                 mSdfGridForInvertedAbsorbingBoundary,
+                                 mInvertedAbsorbingBoundaryHandler,
+                                 mInvertedReflectingNeumannBoundaryHandler,
+                                 mInvertedReflectingRobinBoundaryHandler,
+                                 mQueriesInvertedDomain);
     }
 }
 
 void ModelProblem::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation)
 {
-    zombie::loadBoundaryMesh<2>(filename, positions, indices);
-    if (normalize) zombie::normalize<2>(positions);
-    if (flipOrientation) zombie::flipOrientation<2>(indices);
-    boundingBox = zombie::computeBoundingBox<2>(positions, true, 1.0);
+    zombie::loadBoundaryMesh<2>(filename, mPositions, mIndices);
+    if (normalize) zombie::normalize<2>(mPositions);
+    if (flipOrientation) zombie::flipOrientation<2>(mIndices);
+    mBoundingBox = zombie::computeBoundingBox<2>(mPositions, true, 1.0);
 }
 
 void ModelProblem::setupPDE()
 {
-    Vector2 bMin = boundingBox.first;
-    Vector2 bMax = boundingBox.second;
+    Vector2 bMin = mBoundingBox.first;
+    Vector2 bMax = mBoundingBox.second;
     float maxLength = (bMax - bMin).maxCoeff();
 
-    pde.source = [this, bMin, maxLength](const Vector2& x) -> float {
+    mPde.source = [this, bMin, maxLength](const Vector2& x) -> float {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->sourceValue.get(uv)[0];
+        return this->mSourceValue.get(uv)[0];
     };
-    pde.dirichlet = [this, bMin, maxLength](const Vector2& x, bool _) -> float {
+    mPde.dirichlet = [this, bMin, maxLength](const Vector2& x, bool _) -> float {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->absorbingBoundaryValue.get(uv)[0];
+        return this->mAbsorbingBoundaryValue.get(uv)[0];
     };
-    pde.robin = [this, bMin, maxLength](const Vector2& x, const Vector2& n, bool _) -> float {
+    mPde.robin = [this, bMin, maxLength](const Vector2& x, const Vector2& n, bool _) -> float {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->reflectingBoundaryValue.get(uv)[0];
+        return this->mReflectingBoundaryValue.get(uv)[0];
     };
-    pde.robinCoeff = [this](const Vector2& x, const Vector2& n, bool _) -> float {
-        return this->robinCoeff;
+    mPde.robinCoeff = [this](const Vector2& x, const Vector2& n, bool _) -> float {
+        return this->mRobinCoeff;
     };
-    pde.hasReflectingBoundaryConditions = [this, bMin, maxLength](const Vector2& x) -> bool {
+    mPde.hasReflectingBoundaryConditions = [this, bMin, maxLength](const Vector2& x) -> bool {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->solveExterior ? this->reflectingBoundaryValue.get(uv)[0] > 0 :
-                                     this->isReflectingBoundary.get(uv)[0] > 0;
+        return this->mSolveExterior ? this->mReflectingBoundaryValue.get(uv)[0] > 0 :
+                                      this->mIsReflectingBoundary.get(uv)[0] > 0;
     };
-    pde.areRobinConditionsPureNeumann = robinCoeff == 0.0f;
-    pde.areRobinCoeffsNonnegative = robinCoeff >= 0.0f;
-    pde.absorptionCoeff = absorptionCoeff;
+    mPde.areRobinConditionsPureNeumann = mRobinCoeff == 0.0f;
+    mPde.areRobinCoeffsNonnegative = mRobinCoeff >= 0.0f;
+    mPde.absorptionCoeff = mAbsorptionCoeff;
 }
 
 void ModelProblem::partitionBoundaryMesh()
@@ -197,9 +222,9 @@ void ModelProblem::partitionBoundaryMesh()
     // use Zombie's default partitioning function, which assumes the boundary discretization
     // is perfectly adapted to the boundary conditions; this isn't always a correct assumption
     // and the user might want to override this function for their specific problem
-    zombie::partitionBoundaryMesh<2>(pde.hasReflectingBoundaryConditions, positions, indices,
-                                     absorbingBoundaryPositions, absorbingBoundaryIndices,
-                                     reflectingBoundaryPositions, reflectingBoundaryIndices);
+    zombie::partitionBoundaryMesh<2>(mPde.hasReflectingBoundaryConditions, mPositions, mIndices,
+                                     mAbsorbingBoundaryPositions, mAbsorbingBoundaryIndices,
+                                     mReflectingBoundaryPositions, mReflectingBoundaryIndices);
 }
 
 void ModelProblem::populateGeometricQueries(const std::vector<Vector2>& absorbingBoundaryPositions,
@@ -215,36 +240,37 @@ void ModelProblem::populateGeometricQueries(const std::vector<Vector2>& absorbin
                                             zombie::GeometricQueries<2>& queries)
 {
     // set the domain extent for geometric queries
-    queries.domainIsWatertight = domainIsWatertight;
+    queries.domainIsWatertight = mDomainIsWatertight;
     queries.domainMin = boundingBox.first;
     queries.domainMax = boundingBox.second;
 
     // use an absorbing boundary handler to populate geometric queries for the absorbing boundary
-    absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryPositions, absorbingBoundaryIndices);
+    absorbingBoundaryHandler.buildAccelerationStructure(absorbingBoundaryPositions, mAbsorbingBoundaryIndices);
     zombie::populateGeometricQueriesForDirichletBoundary<2>(absorbingBoundaryHandler, queries);
 
-    if (!solveDoubleSided && useSdfForAbsorbingBoundary) {
+    if (!mSolveDoubleSided && mUseSdfForAbsorbingBoundary) {
         // override distance queries to use an SDF grid. The user can also use Zombie to build
         // an SDF hierarchy for double-sided problems (ommited here for simplicity)
         sdfGridForAbsorbingBoundary = std::make_unique<zombie::SdfGrid<2>>(queries.domainMin, queries.domainMax);
-        zombie::Vector2i sdfGridShape = zombie::Vector2i::Constant(sdfGridResolution);
+        Vector2i sdfGridShape = Vector2i::Constant(mSdfGridResolution);
         zombie::populateSdfGrid<2>(absorbingBoundaryHandler, *sdfGridForAbsorbingBoundary, sdfGridShape);
         zombie::populateGeometricQueriesForDirichletBoundary<zombie::SdfGrid<2>, 2>(*sdfGridForAbsorbingBoundary, queries);
     }
 
     // use a reflecting boundary handler to populate geometric queries for the reflecting boundary
-    std::function<bool(float, int)> ignoreCandidateSilhouette = zombie::getIgnoreCandidateSilhouetteCallback(solveDoubleSided);
+    std::function<bool(float, int)> ignoreCandidateSilhouette =
+        zombie::getIgnoreCandidateSilhouetteCallback(mSolveDoubleSided);
     std::function<float(float)> branchTraversalWeight = zombie::getBranchTraversalWeightCallback();
 
     if (areRobinConditionsPureNeumann) {
         reflectingNeumannBoundaryHandler.buildAccelerationStructure(
-            reflectingBoundaryPositions, reflectingBoundaryIndices, ignoreCandidateSilhouette);
+            reflectingBoundaryPositions, mReflectingBoundaryIndices, ignoreCandidateSilhouette);
         zombie::populateGeometricQueriesForNeumannBoundary<2>(
             reflectingNeumannBoundaryHandler, branchTraversalWeight, queries);
 
     } else {
         reflectingRobinBoundaryHandler.buildAccelerationStructure(
-            reflectingBoundaryPositions, reflectingBoundaryIndices, ignoreCandidateSilhouette,
+            reflectingBoundaryPositions, mReflectingBoundaryIndices, ignoreCandidateSilhouette,
             minRobinCoeffValues, maxRobinCoeffValues);
         zombie::populateGeometricQueriesForRobinBoundary<2>(
             reflectingRobinBoundaryHandler, branchTraversalWeight, queries);
@@ -255,24 +281,24 @@ void ModelProblem::invertExteriorProblem()
 {
     // invert the domain
     std::vector<Vector2> invertedPositions;
-    kelvinTransform.transformPoints(positions, invertedPositions);
-    kelvinTransform.transformPoints(absorbingBoundaryPositions, invertedAbsorbingBoundaryPositions);
-    kelvinTransform.transformPoints(reflectingBoundaryPositions, invertedReflectingBoundaryPositions);
+    mKelvinTransform.transformPoints(mPositions, invertedPositions);
+    mKelvinTransform.transformPoints(mAbsorbingBoundaryPositions, mInvertedAbsorbingBoundaryPositions);
+    mKelvinTransform.transformPoints(mReflectingBoundaryPositions, mInvertedReflectingBoundaryPositions);
 
     // compute the bounding box for the inverted domain
-    invertedBoundingBox = zombie::computeBoundingBox<2>(invertedPositions, true, 1.0);
+    mInvertedBoundingBox = zombie::computeBoundingBox<2>(invertedPositions, true, 1.0);
 
     // setup a modified PDE on the inverted domain
-    kelvinTransform.transformPde(pde, pdeInvertedDomain);
+    mKelvinTransform.transformPde(mPde, mPdeInvertedDomain);
 
-    if(!pdeInvertedDomain.areRobinConditionsPureNeumann) {
+    if(!mPdeInvertedDomain.areRobinConditionsPureNeumann) {
         // compute the modified Robin coefficients on the inverted domain
-        std::vector<float> minRobinCoeffValues(reflectingBoundaryIndices.size(), robinCoeff);
-        std::vector<float> maxRobinCoeffValues(reflectingBoundaryIndices.size(), robinCoeff);
-        kelvinTransform.computeRobinCoefficients(invertedReflectingBoundaryPositions,
-                                                 reflectingBoundaryIndices,
-                                                 minRobinCoeffValues, maxRobinCoeffValues,
-                                                 minRobinCoeffValuesInvertedDomain,
-                                                 maxRobinCoeffValuesInvertedDomain);
+        std::vector<float> minRobinCoeffValues(mReflectingBoundaryIndices.size(), mRobinCoeff);
+        std::vector<float> maxRobinCoeffValues(mReflectingBoundaryIndices.size(), mRobinCoeff);
+        mKelvinTransform.computeRobinCoefficients(mInvertedReflectingBoundaryPositions,
+                                                  mReflectingBoundaryIndices,
+                                                  minRobinCoeffValues, maxRobinCoeffValues,
+                                                  mMinRobinCoeffValuesInvertedDomain,
+                                                  mMaxRobinCoeffValuesInvertedDomain);
     }
 }

@@ -17,7 +17,7 @@ void computeDistanceInfo(const std::vector<zombie::Vector<DIM>>& solveLocations,
     for (int i = 0; i < (int)solveLocations.size(); i++) {
         zombie::Vector<DIM> pt = solveLocations[i];
         bool insideDomain = queries.insideDomain(pt);
-        if (solveExterior) insideDomain = !insideDomain;
+        if (queries.domainIsWatertight && solveExterior) insideDomain = !insideDomain;
         distanceInfo[i].inValidSolveRegion = insideDomain || solveDoubleSided;
         distanceInfo[i].distToAbsorbingBoundary = queries.computeDistToAbsorbingBoundary(pt, false);
         distanceInfo[i].distToReflectingBoundary = queries.computeDistToReflectingBoundary(pt, false);
@@ -506,12 +506,12 @@ int main(int argc, const char *argv[])
 
     // initialize the model problem
     ModelProblem modelProblem(modelProblemConfig, zombieDirectoryPath);
-    const std::vector<Vector2i>& absorbingBoundaryIndices = modelProblem.absorbingBoundaryIndices;
-    const std::vector<Vector2i>& reflectingBoundaryIndices = modelProblem.reflectingBoundaryIndices;
-    const std::pair<Vector2, Vector2>& boundingBox = modelProblem.boundingBox;
-    const zombie::GeometricQueries<2>& queries = modelProblem.queries;
-    bool solveDoubleSided = modelProblem.solveDoubleSided;
-    bool solveExterior = modelProblem.solveExterior;
+    const std::vector<Vector2i>& absorbingBoundaryIndices = modelProblem.getAbsorbingBoundaryIndices();
+    const std::vector<Vector2i>& reflectingBoundaryIndices = modelProblem.getReflectingBoundaryIndices();
+    const std::pair<Vector2, Vector2>& boundingBox = modelProblem.getBoundingBox();
+    const zombie::GeometricQueries<2>& queries = modelProblem.getGeometricQueries();
+    bool solveDoubleSided = modelProblem.solveDoubleSided();
+    bool solveExterior = modelProblem.solveExterior();
 
     // create solve locations on a grid for this demo
     std::vector<Vector2> solveLocations;
@@ -522,11 +522,11 @@ int main(int argc, const char *argv[])
     // solve the model problem
     std::vector<float> solution;
     if (solveExterior) {
-        const zombie::KelvinTransform<float, 2>& kelvinTransform = modelProblem.kelvinTransform;
-        const std::vector<Vector2>& invertedAbsorbingBoundaryPositions = modelProblem.invertedAbsorbingBoundaryPositions;
-        const std::vector<Vector2>& invertedReflectingBoundaryPositions = modelProblem.invertedReflectingBoundaryPositions;
-        const zombie::PDE<float, 2>& pdeInvertedDomain = modelProblem.pdeInvertedDomain;
-        const zombie::GeometricQueries<2>& queriesInvertedDomain = modelProblem.queriesInvertedDomain;
+        const zombie::KelvinTransform<float, 2>& kelvinTransform = modelProblem.getKelvinTransform();
+        const std::vector<Vector2>& invertedAbsorbingBoundaryPositions = modelProblem.getInvertedAbsorbingBoundaryPositions();
+        const std::vector<Vector2>& invertedReflectingBoundaryPositions = modelProblem.getInvertedReflectingBoundaryPositions();
+        const zombie::PDE<float, 2>& pdeInvertedDomain = modelProblem.getPDEInvertedDomain();
+        const zombie::GeometricQueries<2>& queriesInvertedDomain = modelProblem.getGeometricQueriesInvertedDomain();
 
         // invert the solve locations and update the distance info
         int nSolveLocations = (int)solveLocations.size();
@@ -551,9 +551,9 @@ int main(int argc, const char *argv[])
         }
 
     } else {
-        const std::vector<Vector2>& absorbingBoundaryPositions = modelProblem.absorbingBoundaryPositions;
-        const std::vector<Vector2>& reflectingBoundaryPositions = modelProblem.reflectingBoundaryPositions;
-        const zombie::PDE<float, 2>& pde = modelProblem.pde;
+        const std::vector<Vector2>& absorbingBoundaryPositions = modelProblem.getAbsorbingBoundaryPositions();
+        const std::vector<Vector2>& reflectingBoundaryPositions = modelProblem.getReflectingBoundaryPositions();
+        const zombie::PDE<float, 2>& pde = modelProblem.getPDE();
 
         // run the solver on the input domain
         runSolver<float, 2>(solverType, solverConfig,
@@ -565,4 +565,5 @@ int main(int argc, const char *argv[])
 
     // save the solution to disk
     saveGridValues(outputConfig, zombieDirectoryPath, distanceInfo, solution);
+    return 0;
 }
