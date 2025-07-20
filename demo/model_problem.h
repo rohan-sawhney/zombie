@@ -136,7 +136,7 @@ mSdfGridForInvertedAbsorbingBoundary(nullptr)
     mUseSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);
     mSdfGridResolution = getOptional<int>(config, "sdfGridResolution", 128);
     mRobinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);
-    mAbsorptionCoeff = getOptional<float>(config, "absorptionCoeff", 0.0f);
+    mAbsorptionCoeff = mSolveExterior ? 0.0f : getOptional<float>(config, "absorptionCoeff", 0.0f); // kelvin transform requires absorption coefficient to be 0
 
     // load a boundary mesh from an OBJ file
     loadOBJ(geometryFile, normalize, flipOrientation);

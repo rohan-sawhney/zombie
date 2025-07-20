@@ -138,6 +138,8 @@ def setup_pde(model_problem_config, bounding_box):
         if "absorptionCoeff" in model_problem_config else 0.0
     solve_exterior = model_problem_config["solveExterior"]\
         if "solveExterior" in model_problem_config else False
+    if solve_exterior:
+        absorption_coeff = 0.0 # kelvin transform requires absorption coefficient to be 0
     domain_min = bounding_box[0]
     domain_max = bounding_box[1]
 
