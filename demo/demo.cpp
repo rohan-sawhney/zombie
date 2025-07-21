@@ -30,20 +30,20 @@ void createSamplePoints(const std::vector<zombie::Vector<DIM>>& solveLocations,
                         std::vector<zombie::SamplePoint<T, DIM>>& samplePts)
 {
     for (int i = 0; i < (int)solveLocations.size(); i++) {
-        zombie::Vector<DIM> pt = solveLocations[i];
-        zombie::Vector<DIM> normal = zombie::Vector<DIM>::Zero();
-        zombie::SampleType sampleType = zombie::SampleType::InDomain;
-        zombie::EstimationQuantity estimationQuantity = distanceInfo[i].inValidSolveRegion ?
-                                                        zombie::EstimationQuantity::Solution:
-                                                        zombie::EstimationQuantity::None;
-        float pdf = 1.0f;
-        float distToAbsorbingBoundary = distanceInfo[i].distToAbsorbingBoundary;
-        float distToReflectingBoundary = distanceInfo[i].distToReflectingBoundary;
+        if (distanceInfo[i].inValidSolveRegion) {
+            zombie::Vector<DIM> pt = solveLocations[i];
+            zombie::Vector<DIM> normal = zombie::Vector<DIM>::Zero();
+            zombie::SampleType sampleType = zombie::SampleType::InDomain;
+            zombie::EstimationQuantity estimationQuantity = zombie::EstimationQuantity::Solution;
+            float pdf = 1.0f;
+            float distToAbsorbingBoundary = distanceInfo[i].distToAbsorbingBoundary;
+            float distToReflectingBoundary = distanceInfo[i].distToReflectingBoundary;
 
-        samplePts.emplace_back(zombie::SamplePoint<T, DIM>(pt, normal, sampleType,
-                                                           estimationQuantity, pdf,
-                                                           distToAbsorbingBoundary,
-                                                           distToReflectingBoundary));
+            samplePts.emplace_back(zombie::SamplePoint<T, DIM>(pt, normal, sampleType,
+                                                               estimationQuantity, pdf,
+                                                               distToAbsorbingBoundary,
+                                                               distToReflectingBoundary));
+        }
     }
 }
 
@@ -102,12 +102,16 @@ void runWalkOnStars(const json& solverConfig,
 }
 
 template <typename T, size_t DIM>
-void getSolution(const std::vector<zombie::SampleStatistics<T, DIM>>& sampleStatistics,
+void getSolution(const std::vector<DistanceInfo>& distanceInfo,
+                 const std::vector<zombie::SampleStatistics<T, DIM>>& sampleStatistics,
                  std::vector<T>& solution)
 {
-    solution.resize(sampleStatistics.size(), T(0.0f));
-    for (int i = 0; i < (int)sampleStatistics.size(); i++) {
-        solution[i] = sampleStatistics[i].getEstimatedSolution();
+    solution.resize(distanceInfo.size(), T(0.0f));
+    int counter = 0;
+    for (int i = 0; i < (int)distanceInfo.size(); i++) {
+        if (distanceInfo[i].inValidSolveRegion) {
+            solution[i] = sampleStatistics[counter++].getEstimatedSolution();
+        }
     }
 }
 
@@ -448,7 +452,7 @@ void runSolver(const std::string& solverType, const json& config,
         runWalkOnStars<T, DIM>(config, queries, pde, solveDoubleSided, samplePts, sampleStatistics);
 
         // extract solution from sample points
-        getSolution<T, DIM>(sampleStatistics, solution);
+        getSolution<T, DIM>(distanceInfo, sampleStatistics, solution);
 
     } else if (solverType == "bvc") {
         // create evaluation points to estimate solution at
