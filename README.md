@@ -66,9 +66,10 @@ year = {2023}
 }
 ```
 
-# Authors
+# Contributors
 
-[Rohan Sawhney](http://www.rohansawhney.io), [Bailey Miller](https://www.bailey-miller.com)
+[Rohan Sawhney](http://www.rohansawhney.io)\
+[Bailey Miller](https://www.bailey-miller.com)
 
 # License
 
