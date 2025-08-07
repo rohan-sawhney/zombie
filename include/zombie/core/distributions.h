@@ -5,7 +5,7 @@
 #pragma once
 
 #include <zombie/core/sampling.h>
-#include "bessel.hpp"
+#include <zombie/core/bessel.h>
 
 namespace zombie {
 

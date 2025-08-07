@@ -1,77 +1,3 @@
-/* bessel.c
-                      Copyright (c) 1998
-                  Kapteyn Institute Groningen
-                     All Rights Reserved.
-*/
-
-/*
-#>            bessel.dc2
-
-Function:     BESSEL
-
-Purpose:      Evaluate Bessel function J, Y, I, K of integer order.
-
-Category:     MATH
-
-File:         bessel.c
-
-Author:       M.G.R. Vogelaar
-
-Use:          See bessj.dc2, bessy.dc2, bessi.dc2 or bessk.dc2
-
-Description:  The differential equation
-
-                       2
-                   2  d w       dw      2   2
-                  x . --- + x . --- + (x - v ).w = 0
-                        2       dx
-                      dx
-
-              has two solutions called Bessel functions of the first kind
-              Jv(x) and Bessel functions of the second kind Yv(x).
-              The routines bessj and bessy return the J and Y for
-              integer v and therefore are called Bessel functions
-              of integer order.
-
-              The differential equation
-
-                       2
-                   2  d w       dw      2   2
-                  x . --- + x . --- - (x + v ).w = 0
-                        2       dx
-                      dx
-
-              has two solutions called modified Bessel functions
-              Iv(x) and Kv(x).
-              The routines bessi and bessk return the I and K for
-              integer v and therefore are called Modified Bessel
-              functions of integer order.
-              (Abramowitz & Stegun, Handbook of mathematical
-              functions, ch. 9, pages 358,- and 374,- )
-
-              The implementation is based on the ideas from
-              Numerical Recipes, Press et. al.
-              This routine is NOT callable in FORTRAN.
-
-Updates:      Jun 29, 1998: VOG, Document created.
-#<
-*/
-
-/*
-#> bessel.h
-#if !defined(_bessel_h_)
-#define _bessel_h_
-extern double bessj( int, double );
-extern double bessy( int, double );
-extern double bessi( int, double );
-extern double bessk( int, double );
-#endif
-#<
-*/
-
-
-
-
 #include     "math.h"
 
 #define ACC 40.0
@@ -110,8 +36,6 @@ inline double bessj0( double x )
    return ans;
 }
 
-
-
 inline double bessj1( double x )
 /*------------------------------------------------------------*/
 /* PURPOSE: Evaluate Bessel function of first kind and order  */
@@ -142,42 +66,6 @@ inline double bessj1( double x )
    }
    return ans;
 }
-
-
-
-/*
-#>            bessj.dc2
-
-Function:     bessj
-
-Purpose:      Evaluate Bessel function of first kind of integer order.
-
-Category:     MATH
-
-File:         bessel.c
-
-Author:       M.G.R. Vogelaar
-
-Use:          #include "bessel.h"
-              double   result;
-              result = bessj( int n,
-                              double x )
-
-
-              bessj    Return the Bessel function of integer order
-                       for input value x.
-              n        Integer order of Bessel function.
-              x        Double at which the function is evaluated.
-
-
-Description:  bessj evaluates at x the Bessel function of the first kind
-              and of integer order n.
-              This routine is NOT callable in FORTRAN.
-
-Updates:      Jun 29, 1998: VOG, Document created.
-#<
-*/
-
 
 inline double bessj( int n, double x )
 /*------------------------------------------------------------*/
@@ -235,9 +123,6 @@ inline double bessj( int n, double x )
    return  x < 0.0 && n%2 == 1 ? -ans : ans;
 }
 
-
-
-
 inline double bessy0( double x )
 /*------------------------------------------------------------*/
 /* PURPOSE: Evaluate Bessel function of second kind and order */
@@ -267,8 +152,6 @@ inline double bessy0( double x )
    }
    return ans;
 }
-
-
 
 inline double bessy1( double x )
 /*------------------------------------------------------------*/
@@ -302,42 +185,6 @@ inline double bessy1( double x )
    return ans;
 }
 
-
-
-/*
-#>            bessy.dc2
-
-Function:     bessy
-
-Purpose:      Evaluate Bessel function second kind and of integer order.
-
-Category:     MATH
-
-File:         bessel.c
-
-Author:       M.G.R. Vogelaar
-
-Use:          #include "bessel.h"
-              double   result;
-              result = bessy( int n,
-                              double x )
-
-
-              bessy    Return the Bessel function of second kind and
-                       of integer order, for input value x.
-              n        Integer order of Bessel function.
-              x        Double at which the function is evaluated.
-
-
-Description:  bessy evaluates at x the Bessel function of the second kind
-              and of integer order n.
-              This routine is NOT callable in FORTRAN.
-
-Updates:      Jun 29, 1998: VOG, Document created.
-#<
-*/
-
-
 inline double bessy( int n, double x )
 /*------------------------------------------------------------*/
 /* PURPOSE: Evaluate Bessel function of second kind and order */
@@ -366,10 +213,6 @@ inline double bessy( int n, double x )
    return by;
 }
 
-
-
-
-
 inline double bessi0( double x )
 /*------------------------------------------------------------*/
 /* PURPOSE: Evaluate modified Bessel function In(x) and n=0.  */
@@ -392,9 +235,6 @@ inline double bessi0( double x )
    }
    return ans;
 }
-
-
-
 
 inline double bessi1( double x)
 /*------------------------------------------------------------*/
@@ -419,44 +259,6 @@ inline double bessi1( double x)
    }
    return x < 0.0 ? -ans : ans;
 }
-
-
-
-
-/*
-#>            bessi.dc2
-
-Function:     bessi
-
-Purpose:      Evaluate Modified Bessel function of integer order.
-
-Category:     MATH
-
-File:         bessel.c
-
-Author:       M.G.R. Vogelaar
-
-Use:          #include "bessel.h"
-              double   result;
-              result = bessi( int n,
-                              double x )
-
-
-              bessi    Return the Modified  Bessel function Iv(x) of
-                       integer order for input value x.
-              n        Integer order of Bessel function.
-              x        Double at which the function is evaluated.
-
-
-Description:  bessy evaluates at x the Modified Bessel function of
-              integer order n.
-              This routine is NOT callable in FORTRAN.
-
-Updates:      Jun 29, 1998: VOG, Document created.
-#<
-*/
-
-
 
 inline double bessi( int n, double x)
 /*------------------------------------------------------------*/
@@ -495,9 +297,6 @@ inline double bessi( int n, double x)
    }
 }
 
-
-
-
 inline double bessk0( double x )
 /*------------------------------------------------------------*/
 /* PURPOSE: Evaluate modified Bessel function Kn(x) and n=0.  */
@@ -519,9 +318,6 @@ inline double bessk0( double x )
    return ans;
 }
 
-
-
-
 inline double bessk1( double x )
 /*------------------------------------------------------------*/
 /* PURPOSE: Evaluate modified Bessel function Kn(x) and n=1.  */
@@ -542,44 +338,6 @@ inline double bessk1( double x )
    }
    return ans;
 }
-
-
-
-
-/*
-#>            bessk.dc2
-
-Function:     bessk
-
-Purpose:      Evaluate Modified Bessel function Kv(x) of integer order.
-
-Category:     MATH
-
-File:         bessel.c
-
-Author:       M.G.R. Vogelaar
-
-Use:          #include "bessel.h"
-              double   result;
-              result = bessk( int n,
-                              double x )
-
-
-              bessk    Return the Modified Bessel function Kv(x) of
-                       integer order for input value x.
-              n        Integer order of Bessel function.
-              x        Double at which the function is evaluated.
-
-
-Description:  bessk evaluates at x the Modified Bessel function Kv(x) of
-              integer order n.
-              This routine is NOT callable in FORTRAN.
-
-Updates:      Jun 29, 1998: VOG, Document created.
-#<
-*/
-
-
 
 inline double bessk( int n, double x )
 /*------------------------------------------------------------*/
