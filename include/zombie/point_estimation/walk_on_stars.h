@@ -45,6 +45,44 @@ public:
                bool runSingleThreaded=false,
                std::function<void(int, int)> reportProgress={}) const;
 
+    // estimates only the solution of the given PDE at the input point
+    void estimateSolution(const PDE<T, DIM>&        pde,
+                          const WalkSettings&       walkSettings,
+                          int                       nWalks,
+                          SamplePoint<T, DIM>&      samplePt,
+                          SampleStatistics<T, DIM>& statistics) const;
+
+    // estimates the solution and gradient of the given PDE at the input point;
+    // NOTE: assumes the point does not lie on the boundary; the directional derivative
+    // can be accessed through statistics.getEstimatedDerivative()
+    void estimateSolutionAndGradient(const PDE<T, DIM>&        pde,
+                                     const WalkSettings&       walkSettings,
+                                     int                       nWalks,
+                                     SamplePoint<T, DIM>&      samplePt,
+                                     SampleStatistics<T, DIM>& statistics) const;
+
+    const GeometricQueries<DIM>& getGeometricQueries() const noexcept
+    {
+        return this->queries;
+    }
+
+    // performs a single reflecting random walk starting at the input point
+    WalkCompletionCode walk(const PDE<T, DIM>&                  pde,
+                            const WalkSettings&                 walkSettings,
+                            float                               distToAbsorbingBoundary,
+                            float                               firstSphereRadius,
+                            bool                                flipNormalOrientation,
+                            std::unique_ptr<GreensFnBall<DIM>>& greensFn,
+                            pcg32&                              rng,
+                            WalkState<T, DIM>&                  state,
+                            std::queue<WalkState<T, DIM>>&      stateQueue) const;
+
+    // returns the terminal contribution from the end of the walk
+    T getTerminalContribution(WalkCompletionCode  code,
+                              const PDE<T, DIM>&  pde,
+                              const WalkSettings& walkSettings,
+                              WalkState<T, DIM>&  state) const;
+
 protected:
     // computes the contribution from the reflecting boundary at a particular point in the walk
     void computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
@@ -72,35 +110,7 @@ protected:
                            pcg32& rng, WalkState<T, DIM>& state,
                            std::queue<WalkState<T, DIM>>& stateQueue) const;
 
-    // performs a single reflecting random walk starting at the input point
-    WalkCompletionCode walk(const PDE<T, DIM>& pde,
-                            const WalkSettings& walkSettings,
-                            float distToAbsorbingBoundary,
-                            float firstSphereRadius,
-                            bool flipNormalOrientation,
-                            std::unique_ptr<GreensFnBall<DIM>>& greensFn,
-                            pcg32& rng, WalkState<T, DIM>& state,
-                            std::queue<WalkState<T, DIM>>& stateQueue) const;
-
-    // returns the terminal contribution from the end of the walk
-    T getTerminalContribution(WalkCompletionCode code,
-                              const PDE<T, DIM>& pde,
-                              const WalkSettings& walkSettings,
-                              WalkState<T, DIM>& state) const;
-
-    // estimates only the solution of the given PDE at the input point
-    void estimateSolution(const PDE<T, DIM>& pde,
-                          const WalkSettings& walkSettings,
-                          int nWalks, SamplePoint<T, DIM>& samplePt,
-                          SampleStatistics<T, DIM>& statistics) const;
-
-    // estimates the solution and gradient of the given PDE at the input point;
-    // NOTE: assumes the point does not lie on the boundary; the directional derivative
-    // can be accessed through statistics.getEstimatedDerivative()
-    void estimateSolutionAndGradient(const PDE<T, DIM>& pde,
-                                     const WalkSettings& walkSettings,
-                                     int nWalks, SamplePoint<T, DIM>& samplePt,
-                                     SampleStatistics<T, DIM>& statistics) const;
+    
 
     // members
     const GeometricQueries<DIM>& queries;

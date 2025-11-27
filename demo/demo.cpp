@@ -101,6 +101,70 @@ void runWalkOnStars(const json& solverConfig,
     pb.finish();
 }
 
+template<typename T, size_t DIM>
+void runHarmonicCaching(const json&                                    solverConfig,
+                        const zombie::GeometricQueries<DIM>&           queries,
+                        const std::pair<Vector2, Vector2>&             bbox,
+                        const zombie::PDE<T, DIM>&                     pde,
+                        bool                                           solveDoubleSided,
+                        std::vector<zombie::SamplePoint<T, DIM>>&      samplePts,
+                        std::vector<zombie::SampleStatistics<T, DIM>>& sampleStatistics)
+{
+    // load config settings
+    const float epsilonShellForAbsorbingBoundary  = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
+    const float epsilonShellForReflectingBoundary = getOptional<float>(solverConfig, "epsilonShellForReflectingBoundary", 1e-3f);
+    const float silhouettePrecision               = getOptional<float>(solverConfig, "silhouettePrecision", 1e-3f);
+    const float russianRouletteThreshold          = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
+    const float splittingThreshold                = getOptional<float>(solverConfig, "splittingThreshold", std::numeric_limits<float>::max());
+
+    const int nWalks                         = getOptional<int>(solverConfig, "nWalks", 128);
+    const int maxWalkLength                  = getOptional<int>(solverConfig, "maxWalkLength", 1024);
+    const int nWalksNearBoundary             = getRequired<int>(solverConfig, "nWalksNearBoundary");
+    const int stepsBeforeApplyingTikhonov    = getOptional<int>(solverConfig, "stepsBeforeApplyingTikhonov", 0);
+    const int stepsBeforeUsingMaximalSpheres = getOptional<int>(solverConfig, "stepsBeforeUsingMaximalSpheres", maxWalkLength);
+
+    int32_t nSamplesForSource      = getRequired<int32_t>(solverConfig, "nSamplesForSource");
+    float minWeightForRecordLookup = getOptional<float>(solverConfig, "wmin", 0);
+    float lambda                   = getRequired<float>(solverConfig, "lambda");
+    int32_t numFourierOrders       = getOptional<int32_t>(solverConfig, "numFourierOrders", 10);
+
+    const bool disableGradientControlVariates             = getOptional<bool>(solverConfig, "disableGradientControlVariates", false);
+    const bool disableGradientAntitheticVariates          = getOptional<bool>(solverConfig, "disableGradientAntitheticVariates", false);
+    const bool useCosineSamplingForDirectionalDerivatives = getOptional<bool>(solverConfig, "useCosineSamplingForDirectionalDerivatives", false);
+    const bool ignoreAbsorbingBoundaryContribution        = getOptional<bool>(solverConfig, "ignoreAbsorbingBoundaryContribution", false);
+    const bool ignoreReflectingBoundaryContribution       = getOptional<bool>(solverConfig, "ignoreReflectingBoundaryContribution", false);
+    const bool ignoreSourceContribution                   = getOptional<bool>(solverConfig, "ignoreSourceContribution", false);
+    const bool printLogs                                  = getOptional<bool>(solverConfig, "printLogs", false);
+    const bool runSingleThreaded                          = getOptional<bool>(solverConfig, "runSingleThreaded", false);
+
+    // initialize solver and estimate solution
+    // we have two passes.
+    ProgressBar                   pb(samplePts.size() * 2);
+    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
+
+    zombie::WalkSettings        walkSettings(epsilonShellForAbsorbingBoundary,
+                                             epsilonShellForReflectingBoundary,
+                                             silhouettePrecision,
+                                             russianRouletteThreshold,
+                                             splittingThreshold, maxWalkLength,
+                                             stepsBeforeApplyingTikhonov,
+                                             stepsBeforeUsingMaximalSpheres,
+                                             solveDoubleSided,
+                                             !disableGradientControlVariates,
+                                             !disableGradientAntitheticVariates,
+                                             useCosineSamplingForDirectionalDerivatives,
+                                             ignoreAbsorbingBoundaryContribution,
+                                             ignoreReflectingBoundaryContribution,
+                                             ignoreSourceContribution, printLogs);
+    std::vector<int>            nWalksVector(samplePts.size(), nWalks);
+    zombie::WalkOnStars<T, DIM> walkOnStars(queries);
+    
+    zombie::hc::HarmonicCaching<T, DIM> hc{walkOnStars, bbox.first, bbox.second, minWeightForRecordLookup, nWalksNearBoundary, nSamplesForSource, lambda};
+    hc.solve(pde, walkSettings, samplePts, sampleStatistics, runSingleThreaded, reportProgress);
+
+    pb.finish();
+}
+
 template <typename T, size_t DIM>
 void getSolution(const std::vector<DistanceInfo>& distanceInfo,
                  const std::vector<zombie::SampleStatistics<T, DIM>>& sampleStatistics,
@@ -431,7 +495,8 @@ void getSolution(const std::vector<zombie::rws::EvaluationPoint<T, DIM>>& evalPt
 }
 
 template <typename T, size_t DIM>
-void runSolver(const std::string& solverType, const json& config,
+void runSolver(const std::string& solverType, const json& config, 
+               const std::pair<Vector2, Vector2>& bbox,
                const std::vector<zombie::Vector<DIM>>& absorbingBoundaryPositions,
                const std::vector<zombie::Vectori<DIM>>& absorbingBoundaryIndices,
                const std::vector<zombie::Vector<DIM>>& reflectingBoundaryPositions,
@@ -454,7 +519,20 @@ void runSolver(const std::string& solverType, const json& config,
         // extract solution from sample points
         getSolution<T, DIM>(distanceInfo, sampleStatistics, solution);
 
-    } else if (solverType == "bvc") {
+    } 
+    else if (solverType == "hc") {
+        // create sample points to estimate solution at
+        std::vector<zombie::SamplePoint<T, DIM>> samplePts;
+        createSamplePoints<T, DIM>(solveLocations, distanceInfo, samplePts);
+
+        // run walk on stars
+        std::vector<zombie::SampleStatistics<T, DIM>> sampleStatistics;
+        runHarmonicCaching<T, DIM>(config, queries, bbox, pde, solveDoubleSided, samplePts, sampleStatistics);
+
+        // extract solution from sample points
+        getSolution<T, DIM>(distanceInfo, sampleStatistics, solution);
+    }
+    else if (solverType == "bvc") {
         // create evaluation points to estimate solution at
         std::vector<zombie::bvc::EvaluationPoint<T, DIM>> evalPts;
         createBvcEvaluationPoints<T, DIM>(solveLocations, distanceInfo, evalPts);
@@ -506,7 +584,7 @@ int main(int argc, const char *argv[])
     const json modelProblemConfig = getRequired<json>(config, "modelProblem");
     const json solverConfig = getRequired<json>(config, "solver");
     const json outputConfig = getRequired<json>(config, "output");
-    const std::string zombieDirectoryPath = "../"; // local path to zombie directory
+    const std::string zombieDirectoryPath = "../../"; // local path to zombie directory
 
     // initialize the model problem
     ModelProblem modelProblem(modelProblemConfig, zombieDirectoryPath);
@@ -543,7 +621,7 @@ int main(int argc, const char *argv[])
                                solveDoubleSided, false, distanceInfoInvertedDomain);
 
         // run the solver on the inverted domain
-        runSolver<float, 2>(solverType, solverConfig,
+        runSolver<float, 2>(solverType, solverConfig, boundingBox,
                             invertedAbsorbingBoundaryPositions, absorbingBoundaryIndices,
                             invertedReflectingBoundaryPositions, reflectingBoundaryIndices,
                             queriesInvertedDomain, pdeInvertedDomain, solveDoubleSided,
@@ -561,6 +639,7 @@ int main(int argc, const char *argv[])
 
         // run the solver on the input domain
         runSolver<float, 2>(solverType, solverConfig,
+                            boundingBox,
                             absorbingBoundaryPositions, absorbingBoundaryIndices,
                             reflectingBoundaryPositions, reflectingBoundaryIndices,
                             queries, pde, solveDoubleSided, solveLocations,

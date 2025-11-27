@@ -32,6 +32,11 @@ using Vector3i = Vectori<3>;
 template <size_t DIM>
 class SphereSampler {
 public:
+    static Vector<DIM> sampleUnitSphereUniform(float* u, float& phi)
+    {
+        std::cerr << "SphereSampler::sampleUnitSphereUniform not implemented for DIM: " << DIM << std::endl;
+        return Vector<DIM>::Zero();
+    }
     // samples a direction on the unit sphere
     static Vector<DIM> sampleUnitSphereUniform(float *u) {
         std::cerr << "SphereSampler::sampleUnitSphereUniform not implemented for DIM: " << DIM << std::endl;
@@ -92,6 +97,10 @@ public:
     // samples a direction on the unit sphere
     static Vector2 sampleUnitSphereUniform(float *u) {
         float phi = 2.0f*M_PI*u[0];
+        return Vector2(std::cos(phi), std::sin(phi));
+    }
+    static Vector2 sampleUnitSphereUniform(float* u, float& phi) {
+        phi = 2.0f * M_PI * u[0];
         return Vector2(std::cos(phi), std::sin(phi));
     }
     static Vector2 sampleUnitSphereUniform(pcg32& rng) {
