@@ -14,7 +14,8 @@
         "nSamplesForSource": 64,
         "ignoreAbsorbingBoundaryContribution": false,
         "ignoreReflectingBoundaryContribution": true,
-        "ignoreSourceContribution": false
+        "ignoreSourceContribution": false,
+        "runSingleThreaded": false
     },
     "modelProblem": {
         "geometry": "demo/model_problems/engine/data/geometry.obj",
