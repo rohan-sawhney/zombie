@@ -584,7 +584,7 @@ int main(int argc, const char *argv[])
     const json modelProblemConfig = getRequired<json>(config, "modelProblem");
     const json solverConfig = getRequired<json>(config, "solver");
     const json outputConfig = getRequired<json>(config, "output");
-    const std::string zombieDirectoryPath = "../../"; // local path to zombie directory
+    const std::string zombieDirectoryPath = "../"; // local path to zombie directory
 
     // initialize the model problem
     ModelProblem modelProblem(modelProblemConfig, zombieDirectoryPath);
