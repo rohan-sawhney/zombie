@@ -1,0 +1,1160 @@
+// This file implements the Harmonic Caching algorithm for reducing variance
+// of the walk-on-spheres and walk-on-stars estimators at a set of user-selected
+// evaluation points via sample caching and reuse.
+//
+// Resources:
+// - Harmonic Caching for Walk on Spheres [2025]
+//
+// Note that this only contains basic (and mostly useful) implementation in the
+// harmonic caching paper, and advanced features such as unbiased caching are not supported.
+
+#pragma once
+
+#include <shared_mutex>
+#include <algorithm>
+#include <cmath>
+
+#include <zombie/point_estimation/walk_on_stars.h>
+#include <zombie/core/sh.h>
+#include <zombie/utils/octree.h>
+
+namespace zombie
+{
+namespace bessel
+{
+/// \brief
+///    Modified spherical bessel function of the first kind. Used for harmonic
+/// series expansion in 3D.
+static inline float modifiedSphericalBesselFirst(float l, float x)
+{
+    /// https://mathworld.wolfram.com/ModifiedSphericalBesselFunctionoftheFirstKind.html.
+    return std::sqrt(M_PI / (2 * x)) * std::cyl_bessel_if(l + 0.5, x);
+}
+} // namespace bessel
+
+namespace hc
+{
+template <typename T, size_t DIM>
+struct HarmonicCoefficients;
+
+template <typename T, size_t DIM>
+struct HarmonicCacheRecord
+{
+public:
+    /// Harmonic coefficients.
+    HarmonicCoefficients<T, DIM> coeffs;
+
+    /// Cache record center.
+    Vector<DIM> p;
+
+    /// Closest distance to the boundary. This is the radius used for coefficients estimation.
+    float rd{0};
+
+public:
+    /// \param truncationOrder This is L in the paper, indicating the series would be
+    ///    truncated at order L. If L=1, this is up to using r*{cos\theta, sin\theta}
+    /// first order series expansion. A good default option is 10.
+    HarmonicCacheRecord(int32_t truncationOrder) :
+        coeffs{truncationOrder}
+    {
+        assert(truncationOrder > 0);
+    }
+};
+
+template <typename T>
+struct HarmonicCoefficients<T, 2>
+{
+    HarmonicCoefficients(int32_t truncationOrder)
+    {
+        this->a0 = T{0};
+        this->an.resize(truncationOrder, T{0});
+        this->bn.resize(truncationOrder, T{0});
+    }
+
+    /// \brief
+    ///    Divide MC estimates of a0, an, bn by numValidSamples.
+    /// TODO: use kahan sum.
+    void performMCDivisionForNumValidSamples(int32_t numValidSamples)
+    {
+        if (numValidSamples == 0)
+            return;
+
+        this->a0 /= static_cast<float>(numValidSamples);
+        for (int i = 0; i < this->an.size(); ++i)
+        {
+            this->an[i] /= static_cast<float>(numValidSamples);
+            this->bn[i] /= static_cast<float>(numValidSamples);
+        }
+    }
+
+    /// \brief
+    ///    Get the harmonic truncation order L.
+    int32_t getTruncationOrder() const noexcept
+    {
+        return this->an.size();
+    }
+
+    /// \brief
+    ///    Reconstruct (boundary only) solution at r=0.
+    T reconstructBoundaryContributionAtCenter() const noexcept
+    {
+        return this->a0;
+    }
+
+public:
+    T              a0;
+    std::vector<T> an; /// starting from a1.So an[0] is actually a1.
+    std::vector<T> bn; /// as above.
+};
+
+template <typename T>
+struct HarmonicCoefficients<T, 3>
+{
+    HarmonicCoefficients(int32_t truncationOrder) :
+        truncationOrder{truncationOrder}
+    {
+        this->alm.resize(sh::SHTerms(truncationOrder), T{0});
+    }
+
+    /// \brief
+    ///    Divide MC estimates of a0, an, bn by numValidSamples.
+    void performMCDivisionForNumValidSamples(int32_t numValidSamples)
+    {
+        if (numValidSamples == 0)
+            return;
+
+        for (int i = 0; i < sh::SHTerms(this->truncationOrder); ++i)
+        {
+            this->alm[i] /= static_cast<float>(numValidSamples);
+        }
+    }
+
+    /// \brief
+    ///    This is SH order.
+    int32_t getTruncationOrder() const noexcept
+    {
+        return this->truncationOrder;
+    }
+
+    /// \brief
+    ///    Reconstruct (boundary only) solution at r=0.
+    /// \remarks
+    ///    Note that in 3D, u(0)=a0/(2*sqrt(pi)) for both screened and non-screened equations.
+    T reconstructBoundaryContributionAtCenter() const noexcept
+    {
+        return this->alm[0] / (2.0f * std::sqrt(M_PI));
+    }
+
+public:
+    /// Maximum order for reconstruction.
+    int32_t truncationOrder{10};
+
+    /// Storage of SH coefficients.
+    std::vector<T> alm;
+};
+
+template <typename T, size_t DIM>
+struct HCReconstructionProcess
+{
+    HCReconstructionProcess(const Vector<DIM>& evaluationPt,
+                            const PDE<T, DIM>& pde,
+                            float              minWeight,
+                            bool               ignoreSourceTermContribution,
+                            int32_t            nSamplesForSourceTermReconstruction,
+                            pcg32&             sampler) :
+        sumOfL{0},
+        sumOfWeight{0.0},
+        pt{evaluationPt},
+        pde{pde},
+        minWeight{minWeight},
+        ignoreSourceTermContribution{ignoreSourceTermContribution},
+        nSamplesForSourceTermReconstruction{nSamplesForSourceTermReconstruction},
+        sampler{sampler}
+    {
+    }
+
+    bool operator()(const HarmonicCacheRecord<T, DIM>* record)
+    {
+        float splatR = (this->pt - record->p).norm();
+
+        /// This condition indicates that for a cache record, it can theoretically splat 
+        /// reconstruction to its largest ball inscribed in the domain, but to reduce
+        /// reconstruction error, we limit its reconstruction ratio to be 90% of the ball.
+        /// So beyond 0.9rd, there is no contribution (neither boundary nor source contribution)
+        /// for this record to the evaluation point. That's it.
+        /// In reconstructSourceContribution(), the radius of the Green's ball is the 100%
+        /// radius of the ball, not 90%!
+        if ( //(pass == additionalRefinementPass && splatR < coeff->rd) || // optional optimization trick
+            (splatR < record->rd * HarmonicCaching<T, DIM>::kRho))
+        {
+            /// Reconstruct boundary part.
+            auto [Li, wi] = HarmonicCaching<T, DIM>::reconstructBoundaryContribution(this->pt, pde.absorptionCoeff, *record);
+            
+            /// Accumulate boundary part contribution.
+            /// Weight reconstruction by kernel. This is in the numerator.
+            this->sumOfL += Li * wi;
+
+            /// Weight only count once! This is in the denominator.
+            this->sumOfWeight += wi;
+
+            if (!this->ignoreSourceTermContribution)
+            {
+                /// Accumulate source part contribution.
+                auto [Li, wi] = HarmonicCaching<T, DIM>::reconstructSourceContribution(
+                    this->pt,
+                    *record,
+                    pde,
+                    this->nSamplesForSourceTermReconstruction,
+                    this->sampler);
+
+                /// Weight reconstruction by kernel. This is in the numerator.
+                /// wi is essentially the same as boundary part.
+                this->sumOfL += Li * wi;
+            }
+        }
+
+        /// Always return true! False will terminate searching process.
+        return true;
+    }
+
+    /// \brief
+    ///    Return if successfully found Green's ball such that total weight > minWeight.
+    /// If minWeight == 0, at least 1 valid Green's ball found.
+    bool successful() const noexcept
+    {
+        /// not equal.
+        return this->sumOfWeight > this->minWeight;
+    }
+
+    /// \brief
+    ///    Get the lookup solution normalized by sum of weights.
+    T getNormalizedSolution() const noexcept
+    {
+        return this->sumOfL / this->sumOfWeight;
+    }
+
+    /// Evaluation point.
+    Vector<DIM> pt;
+
+    /// Config for lookup.
+    const PDE<T, DIM>& pde;
+
+    /// wmin.
+    float minWeight{0};
+
+    /// Ignore source term contribution? Useful optimization for the population pass.
+    bool ignoreSourceTermContribution{false};
+
+    /// M: number of samples for source term.
+    int32_t nSamplesForSourceTermReconstruction{0};
+
+    /// Sampler for reconstructing the source contribution.
+    pcg32& sampler;
+
+    /// Lookup results.
+    T     sumOfL{0};
+    float sumOfWeight{0};
+};
+
+template <typename T, size_t DIM>
+class HarmonicCaching
+{
+public:
+    HarmonicCaching(const WalkOnStars<T, DIM>& wost,
+                    Vector<DIM>                pMin,
+                    Vector<DIM>                pMax,
+                    float                      wmin,
+                    int32_t                    nWalksNearBoundary,
+                    int32_t                    M,
+                    float                      lambda) :
+        m_walkOnStars{wost},
+        m_MinimumWeightForRecordLookup{wmin},
+        m_nWalksNearBoundary{nWalksNearBoundary},
+        nSamplesForSamplingGreensFunction{M},
+        m_lambda{lambda}
+    {
+        fcpw::BoundingBox<DIM> domainBBox{};
+        domainBBox.expandToInclude(pMin);
+        domainBBox.expandToInclude(pMax);
+
+        /// Set depth to 16.
+        this->m_pOctree = std::make_unique<Octree<HarmonicCacheRecord<T, DIM>*, DIM>>(domainBBox, 16);
+    }
+
+    // clang-format off
+    HarmonicCaching            (HarmonicCaching&&)      = delete;
+    HarmonicCaching& operator= (HarmonicCaching&&)      = delete;
+    HarmonicCaching            (const HarmonicCaching&) = delete;
+    HarmonicCaching& operator= (const HarmonicCaching&) = delete;
+    // clang-format on
+
+    ~HarmonicCaching()
+    {
+        /// Release octree data node.
+        for (const auto& coeffPtr : this->m_CachedRecords)
+        {
+            delete coeffPtr;
+        }
+    }
+
+    /// \brief
+    ///    Standard harmonic caching algorithm with refinement pass on.
+    void solve(const PDE<T, DIM>&                     pde,
+               const WalkSettings&                    walkSettings,
+               std::vector<SamplePoint<T, DIM>>&      samplePts,
+               std::vector<SampleStatistics<T, DIM>>& statistics,
+               bool                                   runSingleThreaded = false,
+               std::function<void(int, int)>          reportProgress    = {});
+
+    friend class HCReconstructionProcess<T, DIM>;
+
+protected:
+    enum class HarmonicCachingPass : uint32_t
+    {
+        Unknown,
+        CachePopulation,
+        AdditionalRefinement,
+        FinalReconstruction
+    };
+
+    /// \brief
+    ///    Update harmonic cache using lazy evaluations. Return estimated
+    /// solution at samplePt.
+    T lazyCacheUpdate(const PDE<T, DIM>&   pde,
+                      const WalkSettings&  walkSettings,
+                      SamplePoint<T, DIM>& samplePt,
+                      HarmonicCachingPass  passType);
+
+    /// \brief
+    ///    Try to lookup the harmonic cache and apply series expansion
+    /// to get the solution at an evaluation point.
+    ///    Before calling this function, check if it's within epsilon shell.
+    /// This function itself is not thread safe.
+    ///
+    /// \param pt
+    ///        Evaluation point.
+    ///
+    /// \param ignoreSourceContribution
+    ///        In cache population pass, this should ALWAYS be false since
+    /// we will never use the solution lookup from series expansion.
+    ///        In additional refinement pass, since we need to use the solution
+    /// from the cache to compute harmonic coefficients, then this should inherit
+    /// from the global walkSettings.
+    ///        In final reconstruction pass, this should also inherit from the global
+    /// walkSettings as well.
+    ///
+    /// \param[out] lookupWeights
+    ///        Lookup total weights.
+    /// \param[out] lookupSolution
+    ///        Lookup total solution (not yet divided by total weights).
+    ///
+    /// \return Lookup succeeded?
+    bool tryHarmonicCacheLookup(const Vector<DIM>& pt,
+                                pcg32&             sampler,
+                                const PDE<T, DIM>& pde,
+                                float              wmin,
+                                bool               ignoreSourceContribution,
+                                float*             lookupWeights,
+                                T*                 lookupSolution) const
+    {
+        /// You may need to tune this for additional refinement pass.
+        int32_t nWalksForSourceTermReconstruction = this->nSamplesForSamplingGreensFunction;
+
+        HCReconstructionProcess<T, DIM> proc{pt,
+                                             pde,
+                                             wmin,
+                                             ignoreSourceContribution,
+                                             nWalksForSourceTermReconstruction,
+                                             sampler};
+        this->m_pOctree->Lookup(pt, proc);
+
+        /// Copy lookup results.
+        if (lookupSolution)
+            *lookupSolution = proc.sumOfL;
+        if (lookupWeights)
+            *lookupWeights = proc.sumOfWeight;
+
+        return proc.successful();
+    }
+
+    /// \brief
+    ///    Compute coefficients at a single point using Booth's expansion.
+    ///
+    /// \return Return first source contribution (excluding boundary contribution).
+    T
+    computeCoefficientsAt(const PDE<T, DIM>&           pde,
+                          const WalkSettings&          walkSettings,
+                          SamplePoint<T, DIM>&         samplePt,
+                          HarmonicCacheRecord<T, DIM>* record,
+                          HarmonicCachingPass          pass) const;
+
+    /// \brief
+    ///    Reconstruct solution (boundary part only) at x using harmonic series expansion.
+    /// Return unweighted solution and weight.
+    static std::pair<T, float>
+    reconstructBoundaryContribution(Vector<DIM>&                       x,
+                                    float                              screening,
+                                    const HarmonicCacheRecord<T, DIM>& cacheRecord);
+
+    /// \brief
+    ///    Reconstruct solution (source part only) at x using off-centered Green's function.
+    /// Return unweighted solution and weight.
+    static std::pair<T, float>
+    reconstructSourceContribution(Vector<DIM>&                       x,
+                                  const HarmonicCacheRecord<T, DIM>& cacheRecord,
+                                  const PDE<T, DIM>&                 pde,
+                                  int32_t                            M,
+                                  pcg32&                             sampler);
+
+    /// \brief
+    ///    ratio is splat ratio. ratio == 1 means splat to largest disk and we
+    /// want ratio == 1, weight == 0.
+    constexpr static inline float weightingKernel(float ratio, float clampRatio = HarmonicCaching::kRho)
+    {
+        if (ratio >= clampRatio)
+            return 0;
+
+        /// More aggressive smooth falloff to 0 at clampRatio instead of clamp to 0.
+        float d = 1 - ratio / clampRatio;
+        return 3 * d * d - 2 * d * d * d;
+    };
+
+private:
+    /// Underlying estimator.
+    const WalkOnStars<T, DIM>& m_walkOnStars;
+
+    /// Fourier orders.
+    /// numFixedFourierOrders == 1 indicates a0, a1. 2 terms in total.
+    int L{10};
+
+    /// This vectors owns HarmonicCacheRecord, so we need to allocate/release memory
+    /// for them.
+    std::vector<HarmonicCacheRecord<T, DIM>*> m_CachedRecords;
+
+    /// Reader/Writer lock to protect cache population.
+    std::shared_mutex m_CachedRecordsMutex;
+
+    /// Octree.
+    std::unique_ptr<Octree<HarmonicCacheRecord<T, DIM>*, DIM>> m_pOctree;
+
+    /// Hyperparameters.
+    float   m_MinimumWeightForRecordLookup{1};     /// w_min.
+    int32_t nSamplesForSamplingGreensFunction{64}; /// M.
+    float   m_lambda{0.5};                         /// lambda. This is number of walks per unit length/surface area.
+
+    static constexpr float kHarmonicSeriesEpsilon{1e-6f}; /// avoid radial function divided by 0.
+    static constexpr float kRho{0.9};                     /// Maximum reconstruction radius ratio.
+
+    /// nWalks near Dirichlet/Neumann/Robin boundaries.
+    int32_t m_nWalksNearBoundary{128};
+};
+
+template <typename T, size_t DIM>
+void HarmonicCaching<T, DIM>::solve(const PDE<T, DIM>&                     pde,
+                                    const WalkSettings&                    walkSettings,
+                                    std::vector<SamplePoint<T, DIM>>&      samplePts,
+                                    std::vector<SampleStatistics<T, DIM>>& statistics,
+                                    bool                                   runSingleThreaded,
+                                    std::function<void(int, int)>          reportProgress)
+{
+    size_t nPoints = samplePts.size();
+    if (nPoints != statistics.size())
+    {
+        statistics.clear();
+        statistics.resize(nPoints);
+    }
+
+    /// TODO: Adapt with pcg32& rng.
+    std::random_device rd;
+    std::mt19937       g(rd());
+
+    std::vector<size_t> samplePtsIndexMapping(nPoints, 0);
+    for (size_t i = 0; i < samplePtsIndexMapping.size(); ++i)
+    {
+        samplePtsIndexMapping[i] = i;
+    }
+    std::shuffle(samplePtsIndexMapping.begin(), samplePtsIndexMapping.end(), g);
+
+    {
+        /// Population pass.
+        auto run = [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i < range.end(); ++i)
+            {
+                size_t index = samplePtsIndexMapping[i];
+                this->lazyCacheUpdate(pde, walkSettings, samplePts[index], HarmonicCachingPass::CachePopulation);
+
+                if (runSingleThreaded && reportProgress)
+                    reportProgress(1, 0);
+            }
+
+            if (!runSingleThreaded && reportProgress)
+            {
+                int tbb_thread_id = tbb::this_task_arena::current_thread_index();
+                reportProgress(range.end() - range.begin(), tbb_thread_id);
+            }
+        };
+
+        tbb::blocked_range<size_t> range(0, nPoints, runSingleThreaded ? nPoints : 1);
+        tbb::parallel_for(range, run);
+    }
+
+    {
+        /// Additional refinement pass.
+        std::vector<HarmonicCacheRecord<T, DIM>> refinedCacheRecords;
+
+        /// Copy old records.
+        for (size_t i = 0; i < this->m_CachedRecords.size(); ++i)
+        {
+            const auto& currRec = this->m_CachedRecords[i];
+
+            /// New record: keep record center and closest distance to the boundary,
+            /// reset coefficients.
+            HarmonicCacheRecord<T, DIM> tempRecord{currRec->coeffs.getTruncationOrder()};
+            tempRecord.p  = currRec->p;
+            tempRecord.rd = currRec->rd;
+
+            /// Add to refined cached record list.
+            refinedCacheRecords.push_back(std::move(tempRecord));
+        }
+
+        auto run = [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i < range.end(); ++i)
+            {
+                auto& refinedRecord = refinedCacheRecords[i];
+
+                /// Initialize sample point.
+                float distToAbsorbingBoundary  = this->m_walkOnStars.getGeometricQueries().computeDistToAbsorbingBoundary(refinedRecord.p, false);
+                float distToReflectingBoundary = this->m_walkOnStars.getGeometricQueries().computeDistToReflectingBoundary(refinedRecord.p, false);
+
+                SamplePoint<T, DIM> samplePt{
+                    refinedRecord.p, Vector<DIM>::Zero(), SampleType::InDomain, EstimationQuantity::Solution, 1.0, distToAbsorbingBoundary, distToReflectingBoundary};
+
+                /// Update harmonic coefficients.
+                this->computeCoefficientsAt(pde, walkSettings, samplePt, &refinedRecord, HarmonicCaching::HarmonicCachingPass::AdditionalRefinement);
+
+                if (runSingleThreaded && reportProgress)
+                    reportProgress(1, 0);
+            };
+
+            if (!runSingleThreaded && reportProgress)
+            {
+                int tbb_thread_id = tbb::this_task_arena::current_thread_index();
+                reportProgress(range.end() - range.begin(), tbb_thread_id);
+            }
+        };
+        /// Loop over new cache records.
+        tbb::blocked_range<size_t> range(0, refinedCacheRecords.size());
+        tbb::parallel_for(range, run);
+
+        /// Update coefficients.
+        /// Loop over all cache records.
+        for (size_t i = 0; i < this->m_CachedRecords.size(); ++i)
+        {
+            *this->m_CachedRecords[i] = std::move(refinedCacheRecords[i]);
+        }
+    }
+
+    {
+        /// Reconstruction Pass.
+        auto run = [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i < range.end(); ++i)
+            {
+                size_t index = samplePtsIndexMapping[i];
+                T      u     = this->lazyCacheUpdate(pde, walkSettings, samplePts[index], HarmonicCachingPass::FinalReconstruction);
+
+                statistics[index].addSolutionEstimate(u);
+
+                if (runSingleThreaded && reportProgress)
+                    reportProgress(1, 0);
+            }
+
+            if (!runSingleThreaded && reportProgress)
+            {
+                int tbb_thread_id = tbb::this_task_arena::current_thread_index();
+                reportProgress(range.end() - range.begin(), tbb_thread_id);
+            }
+        };
+
+        tbb::blocked_range<size_t> range(0, nPoints, runSingleThreaded ? nPoints : 1);
+        tbb::parallel_for(range, run);
+    }
+}
+
+template <typename T, size_t DIM>
+inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
+                                                  const WalkSettings&  walkSettings,
+                                                  SamplePoint<T, DIM>& samplePt,
+                                                  HarmonicCachingPass  passType)
+{
+    /// Additional refinement pass should never call lazyCacheUpdate.
+    assert(passType != HarmonicCaching::HarmonicCachingPass::Unknown && passType != HarmonicCaching::HarmonicCachingPass::AdditionalRefinement);
+
+    /// TODO: Optimization: when near reflecting boundary, we should still try using the cache
+    /// instead of running walks.
+    if (samplePt.type == SampleType::OnAbsorbingBoundary ||
+        samplePt.type == SampleType::OnReflectingBoundary ||
+        samplePt.distToReflectingBoundary <= walkSettings.epsilonShellForReflectingBoundary ||
+        samplePt.distToAbsorbingBoundary <= walkSettings.epsilonShellForAbsorbingBoundary)
+    {
+        if (passType == HarmonicCaching::HarmonicCachingPass::FinalReconstruction)
+        {
+            /// TODO: please check following copy.
+            /// Need to copy to a new sample point to avoid stats add up.
+            SamplePoint<T, DIM>      newSamplePt = samplePt;
+            SampleStatistics<T, DIM> sampleStats;
+            this->m_walkOnStars.estimateSolution(pde, walkSettings, this->m_nWalksNearBoundary, newSamplePt, sampleStats);
+
+            T solution = sampleStats.getEstimatedSolution();
+            return solution;
+        }
+        else
+        {
+            /// TODO: Use std::optional.
+            /// Should never be used!
+            return T{1000000};
+        }
+    }
+
+    float boundaryDist = std::min(samplePt.distToAbsorbingBoundary,
+                                  samplePt.distToReflectingBoundary);
+    float r            = RADIUS_SHRINK_PERCENTAGE * boundaryDist;
+
+    bool  needPopulateNewCacheRecord{false};
+    T     totalSolution{0};
+    float totalWeights{0};
+    {
+        /// Acquire a reader lock.
+        std::shared_lock<std::shared_mutex> lock(this->m_CachedRecordsMutex);
+
+        /// CachePopulation pass: we don't care about reconstruction. Ignore boundary and source
+        /// lookup results.
+        bool ignoreSourceContribution =
+            (passType == HarmonicCachingPass::CachePopulation) ? true : walkSettings.ignoreSourceContribution;
+
+        float wmin = this->m_MinimumWeightForRecordLookup;
+
+        if (this->tryHarmonicCacheLookup(samplePt.pt, samplePt.rng, pde, wmin, ignoreSourceContribution, &totalWeights, &totalSolution))
+        {
+            needPopulateNewCacheRecord = false;
+
+            if (passType == HarmonicCaching::HarmonicCachingPass::FinalReconstruction)
+                return totalSolution / totalWeights;
+            else
+                /// Should never be used!
+                return T{1000000};
+        }
+        else
+        {
+            needPopulateNewCacheRecord = true;
+        }
+    }
+
+    assert(needPopulateNewCacheRecord);
+    /// Estimate new coefficients.
+    /// TODO: Consider smart pointers.
+    HarmonicCacheRecord<T, DIM>* record = new HarmonicCacheRecord<T, DIM>{this->L}; 
+
+    T firstSourceContribution = this->computeCoefficientsAt(pde, walkSettings, samplePt, record, passType);
+
+    /// Only 1 thread can update the quadtree and cache.
+    {
+        /// Acquire a writer lock.
+        std::unique_lock<std::shared_mutex> lock(this->m_CachedRecordsMutex);
+
+        /// Update octree.
+        /// TODO: Set to 0.9*R to optimize searching.
+        fcpw::BoundingBox<DIM> bbox{samplePt.pt - Vector<DIM>::Constant(r)};
+        bbox.expandToInclude(samplePt.pt + Vector<DIM>::Constant(r));
+
+        this->m_pOctree->Add(record, bbox);
+
+        /// Update cached coefficients ptrs.
+        this->m_CachedRecords.push_back(record);
+    }
+
+    if (passType != HarmonicCaching::HarmonicCachingPass::FinalReconstruction)
+        /// Should never be used!
+        return T{1000000};
+
+    /// a0 is the boundary part.
+    T boundarySolution = record->coeffs.reconstructBoundaryContributionAtCenter();
+    T sourceSolution   = firstSourceContribution;
+
+    /// This totalWeights+=1 comes from we populate a new cache record, and also
+    /// eval solution at the cache record center. Then for a smoothstep function
+    /// the weight at 0 is 1. So we add the weight 1 to total weights.
+    totalSolution += boundarySolution + sourceSolution; /// wi == 1.
+    totalWeights += 1; /// TODO: Delegate to a function call instead of hard coding 1.
+    /// Account for source term.
+    return totalSolution / totalWeights;
+}
+
+template <typename T, size_t DIM>
+inline T
+HarmonicCaching<T, DIM>::computeCoefficientsAt(const PDE<T, DIM>&           pde,
+                                               const WalkSettings&          walkSettings,
+                                               SamplePoint<T, DIM>&         samplePt,
+                                               HarmonicCacheRecord<T, DIM>* record,
+                                               HarmonicCachingPass          pass) const
+{
+    assert(pass != HarmonicCaching::HarmonicCachingPass::Unknown);
+    assert(samplePt.type == SampleType::InDomain &&
+           samplePt.distToAbsorbingBoundary > walkSettings.epsilonShellForAbsorbingBoundary &&
+           samplePt.distToReflectingBoundary > walkSettings.epsilonShellForReflectingBoundary);
+
+    // use the distance to the boundary as the first sphere radius for all walks;
+    // shrink the radius slightly for numerical robustness---using a conservative
+    // distance does not impact correctness
+    float boundaryDist         = std::min(samplePt.distToAbsorbingBoundary,
+                                          samplePt.distToReflectingBoundary);
+    samplePt.firstSphereRadius = RADIUS_SHRINK_PERCENTAGE * boundaryDist;
+
+    /// TODO: Escalate into a class member function instead of a lambda.
+    auto NumSamplesOfR = [this, pass](float r) -> int {
+        /// Additional refinement pass could use fewer walks per record.
+        float lambda = (pass == HarmonicCachingPass::AdditionalRefinement) ? this->m_lambda / 2 : this->m_lambda;
+        if constexpr (DIM == 2)
+            return std::max<int>(32.0, lambda * 160000 * r);
+        else
+        {
+            return std::clamp<int>(lambda * 160000 * r * r, 512.0f, 10000.0f);
+        }
+    };
+
+    size_t nWalks = NumSamplesOfR(samplePt.firstSphereRadius);
+
+    /// TODO: Use uniform jittering instead of random jittering. This should improve
+    /// quality further.
+    /// Generate nWalks stratified samples in DIM-1 dimension. For 2D, we need 1D samples.
+    std::vector<float> stratifiedSamples; /// Flatten storage of stratified samples.
+    generateStratifiedSamples<DIM - 1>(stratifiedSamples, nWalks, samplePt.rng);
+    assert(stratifiedSamples.size() == nWalks * (DIM - 1));
+
+    /// Generate M stratified samples for source term.
+    std::vector<float> stratifiedSamplesSource; /// Flatten storage of stratified samples.
+    if (!walkSettings.ignoreSourceContribution)
+    {
+        generateStratifiedSamples<DIM - 1>(stratifiedSamplesSource, nWalks, samplePt.rng);
+        assert(stratifiedSamplesSource.size() == nWalks * (DIM - 1));
+    }
+
+    /// Allocate a new HarmonicCacheRecord.
+    HarmonicCoefficients<T, DIM>& coefficients{record->coeffs};
+    float                         estimateFirstSourceContribution{0};
+    int32_t                       nValidWalks{0};
+
+    /// Note: for ALLOCA, don't put this into the loop since the memory will never release until
+    /// at the end of this function.
+    float* Ylm{nullptr};
+    if constexpr (DIM == 3)
+    {
+        Ylm = sh::StackAlloc<float>(sh::SHTerms(coefficients.getTruncationOrder()));
+    }
+
+    std::queue<WalkState<T, DIM>> stateQueue;
+    for (int w = 0; w < nWalks; w++)
+    {
+        /// No need to reseed here.
+        /// Reset walk state and reset current query pt.
+        WalkState<T, DIM> state(samplePt.pt, Vector<DIM>::Zero(), Vector<DIM>::Zero(),
+                                0.0f, 1.0f, 0, false);
+
+        std::unique_ptr<GreensFnBall<DIM>> greensFn;
+        // initialize the greens function
+        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0)
+        {
+            greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+        }
+        else
+        {
+            greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
+        }
+
+        /// Initialize Green's ball.
+        greensFn->updateBall(state.currentPt, samplePt.firstSphereRadius);
+
+        /// We include source term contribution and use it only to compute the solution
+        /// but not include in the coefficient!
+        // compute the source contribution inside the ball
+        T     firstSourceContribution{0};
+        float sourcePdf{0};
+        if (!walkSettings.ignoreSourceContribution)
+        {
+            /// Importance sampling Green's function.
+            /// This is used for sampling the direction.
+            float* u = &stratifiedSamplesSource[(DIM - 1) * w];
+
+            /// First sample the direction.
+            Vector<DIM> sourceDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
+            /// Then importance sampling the radius.
+            /// pdf in solid angle.
+            float       _r{0};
+            Vector<DIM> sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.rng, _r, sourcePdf);
+
+            float greensFnNorm = greensFn->norm();
+            /// 1-sample estimator for source term. importance sampling the green's function
+            /// gives G*f/(G/normG)=normG*f.
+            T sourceContribution = greensFnNorm * pde.source(sourcePt);
+
+            /// Don't include first source contribution to coefficients!
+            //state.totalSourceContribution += state.throughput * sourceContribution;
+
+            firstSourceContribution = sourceContribution;
+            estimateFirstSourceContribution += firstSourceContribution;
+        }
+
+        /// Sample a point uniformly on the sphere; update the current position
+        /// of the walk, its throughput.
+        float* u = &stratifiedSamples[(DIM - 1) * w];
+
+        float       theta{0};
+        Vector<DIM> boundaryDirection;
+        if constexpr (DIM == 2)
+        {
+            boundaryDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u, theta);
+        }
+        else
+        {
+            boundaryDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
+        }
+        /// Solid angle pdf, that's why we use r=1 as input.
+        float boundaryPdf = SphereSampler<DIM>::pdfSampleSphereUniform(1.0f);
+
+        /// Update Green's ball.
+        Vector<DIM> ySurf = greensFn->c + greensFn->R * boundaryDirection;
+
+        /// Update walk state.
+        state.prevDistance  = greensFn->R;
+        state.prevDirection = (ySurf - state.currentPt) / greensFn->R;
+        state.currentPt     = ySurf;
+
+        /// Note that we should *NOT* update throughput of the walk since we want to know the solution at
+        /// greensFn->ySurf instead of the ball center.
+        //state.throughput *= greensFn->poissonKernel() / boundaryPdf;
+
+        /// Don't add the state to the queue unless we are sure to use WoS!!!
+        // add the state to the queue
+        //stateQueue.emplace(state);
+        //int  splitsPerformed   = -1;
+        T    totalContribution = T(0.0f);
+        bool success           = false;
+
+        /// Early termination: if we are already within epsilon shell of the Dirichlet boundary,
+        /// no need to do any walk.
+        /// This is the distance of the new WoS location to the Dirichlet boundary.
+        float distToAbsorbingBoundary = this->m_walkOnStars.getGeometricQueries().computeDistToAbsorbingBoundary(state.currentPt, false);
+        
+        if (samplePt.type == SampleType::OnAbsorbingBoundary ||
+            distToAbsorbingBoundary < walkSettings.epsilonShellForAbsorbingBoundary)
+        {
+            totalContribution = this->m_walkOnStars.getTerminalContribution(WalkCompletionCode::ReachedAbsorbingBoundary, pde, walkSettings, state);
+            success           = true;
+        }
+        else
+        {
+            /// By default, we should use WoS to compute coefficients.
+            bool useWoS{true};
+
+            /// But if this is an additional refinement pass, try lookup from cache.
+            if (pass == HarmonicCaching::HarmonicCachingPass::AdditionalRefinement)
+            {
+                float totalWeights;
+                T     totalReconstruction;
+                if (this->tryHarmonicCacheLookup(state.currentPt, samplePt.rng, pde,
+                    /* additional refinement pass uses wmin=0 */
+                    0.0, walkSettings.ignoreSourceContribution, &totalWeights, &totalReconstruction))
+                {
+                    /// Successfully found some cache records. Then we don't need WoS.
+                    useWoS  = false;
+                    success = true;
+
+                    totalContribution = totalReconstruction / totalWeights;
+                }
+            }
+
+            if (useWoS)
+            {
+                stateQueue.emplace(state);
+                int splitsPerformed = -1;
+                while (!stateQueue.empty())
+                {
+                    state = stateQueue.front();
+                    stateQueue.pop();
+                    splitsPerformed++;
+
+                    // initialize the greens function
+                    if (splitsPerformed > 0)
+                    {
+                        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == 0)
+                        {
+                            greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
+                        }
+                        else
+                        {
+                            greensFn = std::make_unique<HarmonicGreensFnBall<DIM>>();
+                        }
+                    }
+
+                    // compute the distance to the absorbing boundary
+                    float distToAbsorbingBoundary = this->m_walkOnStars.getGeometricQueries().computeDistToAbsorbingBoundary(state.currentPt, false);
+
+                    // perform the walk with the dequeued state
+                    WalkCompletionCode code = this->m_walkOnStars.walk(pde, walkSettings, distToAbsorbingBoundary, 0.0f, false, greensFn, samplePt.rng, state, stateQueue);
+
+                    if (code == WalkCompletionCode::ReachedAbsorbingBoundary ||
+                        code == WalkCompletionCode::TerminatedWithRussianRoulette ||
+                        code == WalkCompletionCode::ExceededMaxWalkLength)
+                    {
+                        // compute the walk contribution
+                        T terminalContribution = this->m_walkOnStars.getTerminalContribution(code, pde, walkSettings, state);
+                        totalContribution += state.throughput * terminalContribution +
+                            state.totalReflectingBoundaryContribution +
+                            state.totalSourceContribution;
+
+                        // record the walk length
+                        //statistics.addWalkLength(state.walkLength);
+                        success = true;
+                    }
+                }
+            }
+        }
+
+        if (success)
+        {
+            if constexpr (DIM == 2)
+            {
+                for (int i = 0; i < coefficients.getTruncationOrder(); ++i)
+                {
+                    float radialPart{0};
+                    assert(samplePt.firstSphereRadius == RADIUS_SHRINK_PERCENTAGE * boundaryDist);
+
+                    // Avoid division by very small Bessel values
+                    //if (besselVal < 1e-10) besselVal = 1e-10;
+
+                    T anScalar = totalContribution * std::cos((i + 1) * theta) * 2;
+                    T bnScalar = totalContribution * std::sin((i + 1) * theta) * 2;
+                    coefficients.an[i] += T{anScalar};
+                    coefficients.bn[i] += T{bnScalar};
+                }
+                T a0Scalar = totalContribution /* / nWalks*/;
+                coefficients.a0 += T{a0Scalar};
+
+                /// Record a valid walk.
+                ++nValidWalks;
+            }
+            else
+            {
+                /// Compute SH coefficients for direction \omega.
+                sh::SHEvaluate(boundaryDirection, coefficients.getTruncationOrder(), Ylm);
+
+                /// Compute WoS SH coefficients.
+                for (int l = 0; l <= coefficients.getTruncationOrder(); ++l)
+                {
+                    /// TODO: Use new form of series expansion in the SIGGRAPH Asia paper (which still requires the old form for a0).
+                    /// Screening == 0: 1/R^n
+                    /// Screening >0: 1/i_l(R*sqrt(alpha))
+                    float invRadialPart = pde.absorptionCoeff > 0 ?
+                        1.0 / bessel::modifiedSphericalBesselFirst(l, samplePt.firstSphereRadius * std::sqrt(pde.absorptionCoeff)) :
+                        1.0 / std::pow(samplePt.firstSphereRadius, l);
+
+                    /// Clamp infinity large coefficients to zero. Skip this
+                    /// order reconstruction.
+                    if (std::isinf(invRadialPart))
+                    {
+                        std::cerr << "inf 1/r..." << std::endl;
+                        break;
+                    }
+                    for (int m = -l; m <= l; ++m)
+                    {
+                        T almScalar = totalContribution * Ylm[sh::SHIndex(l, m)] *
+                            invRadialPart /
+                            (boundaryPdf); /// Divided by nValid walk finally.
+                        coefficients.alm[sh::SHIndex(l, m)] += T{almScalar};
+
+                        if (std::isnan(coefficients.alm[sh::SHIndex(l, m)]))
+                        {
+                            std::cerr << "nan coefficients" << std::endl;
+                        }
+                    }
+                }
+
+                /// Record a valid walk.
+                ++nValidWalks;
+            }
+        }
+    }
+
+    if constexpr (DIM == 2)
+    {
+        if (pde.absorptionCoeff > 0)
+        {
+            /// Note that 2D Screened Poisson Equation requires u(0)=a0 in our convention. So we multiply by Poisson kernel.
+            coefficients.a0 /= std::cyl_bessel_if(0, samplePt.firstSphereRadius * std::sqrt(pde.absorptionCoeff)); /// This is Poisson kernel.
+        }
+    }
+    else
+    {
+        if (pde.absorptionCoeff > 0)
+        {
+            /// 3D Screened Poisson Equation requires u(0)=1/(2*sqrt(pi))*a0 in our convention.
+            /// No-op since we perform this computation above.
+        }
+    }
+
+    coefficients.performMCDivisionForNumValidSamples(nValidWalks);
+    /// MC Division by valid samples for source term; assuming all source term walks are valid.
+    estimateFirstSourceContribution /= static_cast<float>(nWalks);
+
+    if (pass != HarmonicCaching::HarmonicCachingPass::AdditionalRefinement)
+    {
+        record->rd = samplePt.firstSphereRadius;
+        record->p  = samplePt.pt;
+    }
+    else
+        assert(record->rd != 0);
+    
+
+    return estimateFirstSourceContribution;
+}
+
+template <typename T, size_t DIM>
+std::pair<T, float>
+HarmonicCaching<T, DIM>::reconstructBoundaryContribution(Vector<DIM>&                       x,
+                                                         float                              screening,
+                                                         const HarmonicCacheRecord<T, DIM>& cacheRecord)
+{
+    /// x is the evaluation point.
+    /// Compute splatting distance.
+    float splatR = (x - cacheRecord.p).norm();
+
+    if (splatR < HarmonicCaching<T, DIM>::kHarmonicSeriesEpsilon)
+    {
+        /// weighting at 0 == 1.
+        static_assert(HarmonicCaching<T, DIM>::weightingKernel(0.0f) == 1);
+        return std::make_pair(cacheRecord.coeffs.reconstructBoundaryContributionAtCenter(), HarmonicCaching<T, DIM>::weightingKernel(0.0f));
+    }
+
+    /// Reconstructed u using series expansion.
+    T reconstruction{0};
+    if constexpr (DIM == 2)
+    {
+        Vector<DIM> dir   = x - cacheRecord.p;
+        float       theta = std::atan2(dir.y(), dir.x());
+
+        reconstruction = cacheRecord.coeffs.a0;
+        if (screening > 0)
+        {
+            reconstruction *= std::cyl_bessel_if(0, splatR * std::sqrt(screening)); /// Note that for zeroth term we put I_0(R*sqrt(c)) into coefficient such that u0=a0 for 2D.
+        }
+
+        for (int i = 0; i < cacheRecord.coeffs.getTruncationOrder(); ++i)
+        {
+            const double& R = cacheRecord.rd;
+
+            double radialPart{0};
+            if (screening > 0)
+            {
+                radialPart = std::cyl_bessel_if((i + 1), splatR * std::sqrt(screening)) / std::cyl_bessel_if((i + 1), R * std::sqrt(screening));
+            }
+            else
+            {
+                radialPart = std::pow(splatR / R, i + 1);
+            }
+
+            reconstruction += radialPart *
+                (cacheRecord.coeffs.an[i] * std::cos((i + 1) * theta) + cacheRecord.coeffs.bn[i] * std::sin((i + 1) * theta));
+        }
+    }
+    else
+    {
+        static_assert(DIM == 3, "Not supported dimensionality for series expansion.");
+
+        Vector<DIM> dir = (x - cacheRecord.p).normalized();
+
+        /// Compute SH coefficients for direction \omega.
+        float* ylm = sh::StackAlloc<float>(sh::SHTerms(cacheRecord.coeffs.getTruncationOrder()));
+
+        sh::SHEvaluate(dir, cacheRecord.coeffs.getTruncationOrder(), ylm);
+
+        /// Compute WoS SH coefficients.
+        for (int l = 0; l <= cacheRecord.coeffs.getTruncationOrder(); ++l)
+        {
+            /// Screening == 0: r^n
+            /// Screening >0: i_l(r*sqrt(alpha))
+            float radialPart = screening > 0 ? bessel::modifiedSphericalBesselFirst(l, splatR * std::sqrt(screening)) : std::pow(splatR, l);
+
+            /// TODO: Check if (radialPart < 1e-10).
+
+            for (int m = -l; m <= l; ++m)
+            {
+                /// SH reconstruction.
+                reconstruction += cacheRecord.coeffs.alm[sh::SHIndex(l, m)] * ylm[sh::SHIndex(l, m)] *
+                    radialPart;
+            }
+        }
+    }
+
+    /// To make things clear, we use the splatRadius/largestRadius as an input to the weighting function,
+    /// in the smoothStep function, it falls off to 0, e.g. when splatRadius >= 0.9 largestRadius.
+    float weight = HarmonicCaching<T, DIM>::weightingKernel(splatR / cacheRecord.rd);
+    return std::make_pair(reconstruction, weight);
+}
+
+template <typename T, size_t DIM>
+std::pair<T, float>
+HarmonicCaching<T, DIM>::reconstructSourceContribution(Vector<DIM>&                       x,
+                                                       const HarmonicCacheRecord<T, DIM>& cacheRecord,
+                                                       const PDE<T, DIM>&                 pde,
+                                                       int32_t                            M,
+                                                       pcg32&                             sampler)
+{
+    /// Note: do not use greensFn.sampleVolume(), which is the centered green's function
+    /// sampling. Here we need importance sampling off-centered Green's function, which
+    /// is tricky.
+    T estimateFirstSourceContribution{0};
+
+    /// Generate nWalks stratified samples for source term.
+    /// Note that we need 2D samples for a disk.
+    std::vector<float> stratifiedSamplesSource; /// Flatten storage of stratified samples.
+    generateStratifiedSamples<DIM>(stratifiedSamplesSource, M, sampler);
+    assert(stratifiedSamplesSource.size() == M * DIM);
+
+    for (int w = 0; w < M; ++w)
+    {
+        /// Initialize the green's ball.
+        HarmonicGreensFnBall<DIM> greensFn{};
+        /// Update ball radius to be *radiusForCoeffs*.
+        greensFn.updateBall(cacheRecord.p, cacheRecord.rd);
+
+        float  firstSourceContribution{0};
+        float* u = &stratifiedSamplesSource[DIM * w];
+
+        /// Simply uniform sample a disk.
+        Vector<DIM> sourcePt = SphereSampler<DIM>::sampleUnitBallUniform(u);
+        /// Scale to the disk.
+        sourcePt *= cacheRecord.rd;
+        /// Move to the green's ball.
+        sourcePt = cacheRecord.p + sourcePt;
+
+        /// This is area measure. Integration in area measure.
+        float pdf = SphereSampler<DIM>::pdfSampleBallUniform(cacheRecord.rd);
+        /// Green function is symmetric.
+        float green = greensFn.evaluate(sourcePt, x);
+
+        T sourceContribution    = green * pde.source(sourcePt) / pdf;
+        firstSourceContribution = sourceContribution;
+        estimateFirstSourceContribution += firstSourceContribution;
+    }
+
+    /// MC Division by valid samples for source term; assuming all source term walks are valid.
+    estimateFirstSourceContribution /= static_cast<float>(M);
+    /// Compute extrapolation radius.
+    float splatR = (x - cacheRecord.p).norm();
+
+    /// To make things clear, we use the splatRadius/largestRadius as an input to the weighting function,
+    /// in the smoothStep function, it falls off to 0, e.g. when splatRadius >= 0.9 largestRadius.
+    float weight = HarmonicCaching<T, DIM>::weightingKernel(splatR / cacheRecord.rd);
+    return std::make_pair(estimateFirstSourceContribution, weight);
+}
+} // namespace hc
+} // namespace zombie

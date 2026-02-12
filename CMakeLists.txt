@@ -54,7 +54,14 @@ list(APPEND ZOMBIE_DEPS_INCLUDES ${FCPW_ENOKI_INCLUDES})
 
 ################################################################################
 # build library
-add_library(${PROJECT_NAME} INTERFACE)
+if(MSVC)
+    file(GLOB_RECURSE ZOMBIE_HEADER_FILES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/zombie/*.h)
+    add_library(${PROJECT_NAME} INTERFACE ${ZOMBIE_HEADER_FILES})
+    source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/zombie FILES ${ZOMBIE_HEADER_FILES})
+else()
+    add_library(${PROJECT_NAME} INTERFACE)
+endif()
+
 target_include_directories(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include> ${ZOMBIE_DEPS_INCLUDES})
 target_link_libraries(${PROJECT_NAME} INTERFACE fcpw TBB::tbb)
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
