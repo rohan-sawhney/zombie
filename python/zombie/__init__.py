@@ -19,7 +19,7 @@ except ImportError as e:
         "This usually means:\n"
         "  1. The package was not built with bindings enabled (ZOMBIE_BUILD_BINDINGS=ON)\n"
         "  2. The extension module is missing from the installation\n"
-        "  3. There are missing dependencies (e.g., Slang library for GPU support)",
+        "  3. There are missing dependencies",
         ImportWarning
     )
     __all__ = []
