@@ -50,9 +50,9 @@ public:
                bool runSingleThreaded=false,
                std::function<void(int, int)> reportProgress={}) const;
 
-    friend class hc::HarmonicCaching<T, DIM>;
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // lower-level functions
 
-protected:
     // computes the contribution from the reflecting boundary at a particular point in the walk
     void computeReflectingBoundaryContribution(const PDE<T, DIM>& pde,
                                                const WalkSettings& walkSettings,

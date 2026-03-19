@@ -46,7 +46,9 @@ public:
                bool runSingleThreaded=false,
                std::function<void(int, int)> reportProgress={}) const;
 
-protected:
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // lower-level functions
+
     // computes the throughput of a single walk step
     float computeWalkStepThroughput(const PDE<T, DIM>& pde,
                                     const WalkSettings& walkSettings,
