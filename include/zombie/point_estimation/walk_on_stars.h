@@ -18,12 +18,6 @@
 #include "oneapi/tbb/parallel_for.h"
 
 namespace zombie {
-
-namespace hc{
-template <typename T, size_t DIM>
-class HarmonicCaching;
-}
-
 template <typename T, size_t DIM>
 class WalkOnStars {
 public:

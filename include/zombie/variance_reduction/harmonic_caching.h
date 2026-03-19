@@ -73,7 +73,13 @@ struct HarmonicCoefficients<T, 2>
 
     /// \brief
     ///    Divide MC estimates of a0, an, bn by numValidSamples.
-    /// TODO: use kahan sum.
+    /// 
+    /// \remarks
+    ///    For coefficients storage, we could use SampleStatistics<T> instead
+    /// of T and call addSolutionEstimate() to update coefficients. This has
+    /// the benefit of better numerical stability but it requires a bunch of
+    /// extra stats storage, and might be too heavy here, so we simply use
+    /// T instead.
     void performMCDivisionForNumValidSamples(int32_t numValidSamples)
     {
         if (numValidSamples == 0)
@@ -317,6 +323,8 @@ protected:
         FinalReconstruction
     };
 
+    inline static constexpr T kInvalidEstimation{-1};
+
     /// \brief
     ///    Update harmonic cache using lazy evaluations. Return estimated
     /// solution at samplePt.
@@ -411,12 +419,28 @@ protected:
     /// want ratio == 1, weight == 0.
     constexpr static inline float weightingKernel(float ratio, float clampRatio = HarmonicCaching::kRho)
     {
+        if (ratio == 0)
+            return 1;
+
         if (ratio >= clampRatio)
             return 0;
 
         /// More aggressive smooth falloff to 0 at clampRatio instead of clamp to 0.
         float d = 1 - ratio / clampRatio;
         return 3 * d * d - 2 * d * d * d;
+    };
+
+    /// Number of samples we should use for estimating coefficients.
+    inline int32_t NumSamplesOfR(HarmonicCachingPass pass, float r) const
+    {
+        /// Additional refinement pass could use fewer walks per record.
+        float lambda = (pass == HarmonicCachingPass::AdditionalRefinement) ? this->m_lambda / 2 : this->m_lambda;
+        if constexpr (DIM == 2)
+            return std::max<int>(32.0, lambda * 160000 * r);
+        else
+        {
+            return std::clamp<int>(lambda * 160000 * r * r, 512.0f, 10000.0f);
+        }
     };
 
 private:
@@ -464,16 +488,16 @@ void HarmonicCaching<T, DIM>::solve(const PDE<T, DIM>&                     pde,
         statistics.resize(nPoints);
     }
 
-    /// TODO: Adapt with pcg32& rng.
-    std::random_device rd;
-    std::mt19937       g(rd());
+    auto     now  = std::chrono::high_resolution_clock::now();
+    uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+    pcg32    rng{seed};
 
     std::vector<size_t> samplePtsIndexMapping(nPoints, 0);
     for (size_t i = 0; i < samplePtsIndexMapping.size(); ++i)
     {
         samplePtsIndexMapping[i] = i;
     }
-    std::shuffle(samplePtsIndexMapping.begin(), samplePtsIndexMapping.end(), g);
+    std::shuffle(samplePtsIndexMapping.begin(), samplePtsIndexMapping.end(), rng);
 
     {
         /// Population pass.
@@ -589,8 +613,8 @@ inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
     /// Additional refinement pass should never call lazyCacheUpdate.
     assert(passType != HarmonicCaching::HarmonicCachingPass::Unknown && passType != HarmonicCaching::HarmonicCachingPass::AdditionalRefinement);
 
-    /// TODO: Optimization: when near reflecting boundary, we should still try using the cache
-    /// instead of running walks.
+    /// Note: within epsilon shell of the boundary, we run new walks to estimate solutions
+    /// instead of relying on caching for better quality.
     if (samplePt.type == SampleType::OnAbsorbingBoundary ||
         samplePt.type == SampleType::OnReflectingBoundary ||
         samplePt.distToReflectingBoundary <= walkSettings.epsilonShellForReflectingBoundary ||
@@ -598,7 +622,6 @@ inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
     {
         if (passType == HarmonicCaching::HarmonicCachingPass::FinalReconstruction)
         {
-            /// TODO: please check following copy.
             /// Need to copy to a new sample point to avoid stats add up.
             SamplePoint<T, DIM>      newSamplePt = samplePt;
             SampleStatistics<T, DIM> sampleStats;
@@ -609,9 +632,7 @@ inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
         }
         else
         {
-            /// TODO: Use std::optional.
-            /// Should never be used!
-            return T{1000000};
+            return kInvalidEstimation;
         }
     }
 
@@ -640,8 +661,7 @@ inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
             if (passType == HarmonicCaching::HarmonicCachingPass::FinalReconstruction)
                 return totalSolution / totalWeights;
             else
-                /// Should never be used!
-                return T{1000000};
+                return kInvalidEstimation;
         }
         else
         {
@@ -651,7 +671,6 @@ inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
 
     assert(needPopulateNewCacheRecord);
     /// Estimate new coefficients.
-    /// TODO: Consider smart pointers.
     HarmonicCacheRecord<T, DIM>* record = new HarmonicCacheRecord<T, DIM>{this->L}; 
 
     T firstSourceContribution = this->computeCoefficientsAt(pde, walkSettings, samplePt, record, passType);
@@ -662,7 +681,6 @@ inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
         std::unique_lock<std::shared_mutex> lock(this->m_CachedRecordsMutex);
 
         /// Update octree.
-        /// TODO: Set to 0.9*R to optimize searching.
         fcpw::BoundingBox<DIM> bbox{samplePt.pt - Vector<DIM>::Constant(r)};
         bbox.expandToInclude(samplePt.pt + Vector<DIM>::Constant(r));
 
@@ -674,7 +692,7 @@ inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
 
     if (passType != HarmonicCaching::HarmonicCachingPass::FinalReconstruction)
         /// Should never be used!
-        return T{1000000};
+        return kInvalidEstimation;
 
     /// a0 is the boundary part.
     T boundarySolution = record->coeffs.reconstructBoundaryContributionAtCenter();
@@ -684,7 +702,7 @@ inline T HarmonicCaching<T, DIM>::lazyCacheUpdate(const PDE<T, DIM>&   pde,
     /// eval solution at the cache record center. Then for a smoothstep function
     /// the weight at 0 is 1. So we add the weight 1 to total weights.
     totalSolution += boundarySolution + sourceSolution; /// wi == 1.
-    totalWeights += 1; /// TODO: Delegate to a function call instead of hard coding 1.
+    totalWeights += weightingKernel(0);
     /// Account for source term.
     return totalSolution / totalWeights;
 }
@@ -709,25 +727,12 @@ HarmonicCaching<T, DIM>::computeCoefficientsAt(const PDE<T, DIM>&           pde,
                                           samplePt.distToReflectingBoundary);
     samplePt.firstSphereRadius = RADIUS_SHRINK_PERCENTAGE * boundaryDist;
 
-    /// TODO: Escalate into a class member function instead of a lambda.
-    auto NumSamplesOfR = [this, pass](float r) -> int {
-        /// Additional refinement pass could use fewer walks per record.
-        float lambda = (pass == HarmonicCachingPass::AdditionalRefinement) ? this->m_lambda / 2 : this->m_lambda;
-        if constexpr (DIM == 2)
-            return std::max<int>(32.0, lambda * 160000 * r);
-        else
-        {
-            return std::clamp<int>(lambda * 160000 * r * r, 512.0f, 10000.0f);
-        }
-    };
+    size_t nWalks = this->NumSamplesOfR(pass, samplePt.firstSphereRadius);
 
-    size_t nWalks = NumSamplesOfR(samplePt.firstSphereRadius);
-
-    /// TODO: Use uniform jittering instead of random jittering. This should improve
-    /// quality further.
+    /// Remarks: using uniform jittering can help reduce variance further.
     /// Generate nWalks stratified samples in DIM-1 dimension. For 2D, we need 1D samples.
     std::vector<float> stratifiedSamples; /// Flatten storage of stratified samples.
-    generateStratifiedSamples<DIM - 1>(stratifiedSamples, nWalks, samplePt.rng);
+    generateStratifiedSamples<DIM - 1, true>(stratifiedSamples, nWalks, samplePt.rng);
     assert(stratifiedSamples.size() == nWalks * (DIM - 1));
 
     /// Generate M stratified samples for source term.
@@ -950,7 +955,6 @@ HarmonicCaching<T, DIM>::computeCoefficientsAt(const PDE<T, DIM>&           pde,
                 /// Compute WoS SH coefficients.
                 for (int l = 0; l <= coefficients.getTruncationOrder(); ++l)
                 {
-                    /// TODO: Use new form of series expansion in the SIGGRAPH Asia paper (which still requires the old form for a0).
                     /// Screening == 0: 1/R^n
                     /// Screening >0: 1/i_l(R*sqrt(alpha))
                     float invRadialPart = pde.absorptionCoeff > 0 ?
@@ -1082,8 +1086,6 @@ HarmonicCaching<T, DIM>::reconstructBoundaryContribution(Vector<DIM>&           
             /// Screening == 0: r^n
             /// Screening >0: i_l(r*sqrt(alpha))
             float radialPart = screening > 0 ? bessel::modifiedSphericalBesselFirst(l, splatR * std::sqrt(screening)) : std::pow(splatR, l);
-
-            /// TODO: Check if (radialPart < 1e-10).
 
             for (int m = -l; m <= l; ++m)
             {
