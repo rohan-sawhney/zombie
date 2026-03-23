@@ -18,7 +18,6 @@
 #include "oneapi/tbb/parallel_for.h"
 
 namespace zombie {
-
 template <typename T, size_t DIM>
 class WalkOnStars {
 public:
@@ -74,35 +73,43 @@ public:
                            pcg32& rng, WalkState<T, DIM>& state,
                            std::queue<WalkState<T, DIM>>& stateQueue) const;
 
-    // performs a single reflecting random walk starting at the input point
-    WalkCompletionCode walk(const PDE<T, DIM>& pde,
-                            const WalkSettings& walkSettings,
-                            float distToAbsorbingBoundary,
-                            float firstSphereRadius,
-                            bool flipNormalOrientation,
-                            std::unique_ptr<GreensFnBall<DIM>>& greensFn,
-                            pcg32& rng, WalkState<T, DIM>& state,
-                            std::queue<WalkState<T, DIM>>& stateQueue) const;
-
-    // returns the terminal contribution from the end of the walk
-    T getTerminalContribution(WalkCompletionCode code,
-                              const PDE<T, DIM>& pde,
-                              const WalkSettings& walkSettings,
-                              WalkState<T, DIM>& state) const;
-
     // estimates only the solution of the given PDE at the input point
-    void estimateSolution(const PDE<T, DIM>& pde,
-                          const WalkSettings& walkSettings,
-                          int nWalks, SamplePoint<T, DIM>& samplePt,
+    void estimateSolution(const PDE<T, DIM>&        pde,
+                          const WalkSettings&       walkSettings,
+                          int                       nWalks,
+                          SamplePoint<T, DIM>&      samplePt,
                           SampleStatistics<T, DIM>& statistics) const;
 
     // estimates the solution and gradient of the given PDE at the input point;
     // NOTE: assumes the point does not lie on the boundary; the directional derivative
     // can be accessed through statistics.getEstimatedDerivative()
-    void estimateSolutionAndGradient(const PDE<T, DIM>& pde,
-                                     const WalkSettings& walkSettings,
-                                     int nWalks, SamplePoint<T, DIM>& samplePt,
+    void estimateSolutionAndGradient(const PDE<T, DIM>&        pde,
+                                     const WalkSettings&       walkSettings,
+                                     int                       nWalks,
+                                     SamplePoint<T, DIM>&      samplePt,
                                      SampleStatistics<T, DIM>& statistics) const;
+
+    // performs a single reflecting random walk starting at the input point
+    WalkCompletionCode walk(const PDE<T, DIM>&                  pde,
+                            const WalkSettings&                 walkSettings,
+                            float                               distToAbsorbingBoundary,
+                            float                               firstSphereRadius,
+                            bool                                flipNormalOrientation,
+                            std::unique_ptr<GreensFnBall<DIM>>& greensFn,
+                            pcg32&                              rng,
+                            WalkState<T, DIM>&                  state,
+                            std::queue<WalkState<T, DIM>>&      stateQueue) const;
+
+    // returns the terminal contribution from the end of the walk
+    T getTerminalContribution(WalkCompletionCode  code,
+                              const PDE<T, DIM>&  pde,
+                              const WalkSettings& walkSettings,
+                              WalkState<T, DIM>&  state) const;
+
+    const GeometricQueries<DIM>& getGeometricQueries() const noexcept
+    {
+        return this->queries;
+    }
 
     // members
     const GeometricQueries<DIM>& queries;

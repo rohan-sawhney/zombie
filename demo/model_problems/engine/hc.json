@@ -1,0 +1,41 @@
+{
+    "solverType": "hc",
+    "solver": {
+        "nWalks": 128,
+        "nWalksNearBoundary": 64,
+        "maxWalkLength": 1024,
+        "epsilonShellForAbsorbingBoundary": 1e-3,
+        "epsilonShellForReflectingBoundary": 1e-3,
+        "russianRouletteThreshold": 0.99,
+        "splittingThreshold": 1.5,
+        "wmin": 0,
+        "lambda": 0.25,
+        "numFourierOrders": 10,
+        "nSamplesForSource": 64,
+        "ignoreAbsorbingBoundaryContribution": false,
+        "ignoreReflectingBoundaryContribution": true,
+        "ignoreSourceContribution": false,
+        "runSingleThreaded": false
+    },
+    "modelProblem": {
+        "geometry": "demo/model_problems/engine/data/geometry.obj",
+        "isReflectingBoundary": "demo/model_problems/engine/data/is_reflecting_boundary.pfm",
+        "absorbingBoundaryValue": "demo/model_problems/engine/data/absorbing_boundary_value.pfm",
+        "reflectingBoundaryValue": "demo/model_problems/engine/data/reflecting_boundary_value.pfm",
+        "sourceValue": "demo/model_problems/engine/data/source_value.pfm",
+        "robinCoeff": 0.0,
+        "absorptionCoeff": 0.0,
+        "solveExterior": false,
+        "useSdfForAbsorbingBoundary": false
+    },
+    "output": {
+        "solutionFile": "demo/model_problems/engine/solutions/hc.pfm",
+        "gridRes": 256,
+        "boundaryDistanceMask": 1e-2,
+        "saveDebug": false,
+        "saveColormapped": true,
+        "colormap": "turbo",
+        "colormapMinVal": 0.0,
+        "colormapMaxVal": 1.1
+    }
+}

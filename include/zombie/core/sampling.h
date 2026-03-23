@@ -32,6 +32,11 @@ using Vector3i = Vectori<3>;
 template <size_t DIM>
 class SphereSampler {
 public:
+    static Vector<DIM> sampleUnitSphereUniform(float* u, float& phi)
+    {
+        std::cerr << "SphereSampler::sampleUnitSphereUniform not implemented for DIM: " << DIM << std::endl;
+        return Vector<DIM>::Zero();
+    }
     // samples a direction on the unit sphere
     static Vector<DIM> sampleUnitSphereUniform(float *u) {
         std::cerr << "SphereSampler::sampleUnitSphereUniform not implemented for DIM: " << DIM << std::endl;
@@ -92,6 +97,10 @@ public:
     // samples a direction on the unit sphere
     static Vector2 sampleUnitSphereUniform(float *u) {
         float phi = 2.0f*M_PI*u[0];
+        return Vector2(std::cos(phi), std::sin(phi));
+    }
+    static Vector2 sampleUnitSphereUniform(float* u, float& phi) {
+        phi = 2.0f * M_PI * u[0];
         return Vector2(std::cos(phi), std::sin(phi));
     }
     static Vector2 sampleUnitSphereUniform(pcg32& rng) {
@@ -421,27 +430,45 @@ protected:
 
 // source: https://pbr-book.org/3ed-2018/Sampling_and_Reconstruction/Stratified_Sampling#LatinHypercube
 // NOTE: sample quality reduces with increasing dimension
-template <size_t DIM>
+// It supports both uniform and random jittering for each strata.
+template <size_t DIM, bool UNIFORM_JITTER = false>
 inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples, pcg32& rng)
 {
-    const float epsilon = std::numeric_limits<float>::epsilon();
+    const float epsilon         = std::numeric_limits<float>::epsilon();
     const float oneMinusEpsilon = 1.0f - epsilon;
-    float invNSamples = 1.0f/nSamples;
-    samples.resize(DIM*nSamples);
+    const float invNSamples     = 1.0f / static_cast<float>(nSamples);
+
+    samples.resize(DIM * nSamples);
 
     // generate LHS samples along diagonal
-    for (int i = 0; i < nSamples; ++i) {
-        for (int j = 0; j < DIM; ++j) {
-            float sj = (i + rng.nextFloat())*invNSamples;
-            samples[DIM*i + j] = std::min(sj, oneMinusEpsilon);
+    for (int i = 0; i < nSamples; ++i)
+    {
+        if constexpr (UNIFORM_JITTER)
+        {
+            const float u = rng.nextFloat();
+            for (int j = 0; j < DIM; ++j)
+            {
+                const float sj       = (static_cast<float>(i) + u) * invNSamples;
+                samples[DIM * i + j] = std::min(sj, oneMinusEpsilon);
+            }
+        }
+        else
+        {
+            for (int j = 0; j < DIM; ++j)
+            {
+                const float sj       = (static_cast<float>(i) + rng.nextFloat()) * invNSamples;
+                samples[DIM * i + j] = std::min(sj, oneMinusEpsilon);
+            }
         }
     }
 
     // generate LHS samples in each dimension
-    for (int i = 0; i < DIM; ++i) {
-        for (int j = 0; j < nSamples; ++j) {
-            int other = j + rng.nextUInt(nSamples - j);
-            std::swap(samples[DIM*j + i], samples[DIM*other + i]);
+    for (int i = 0; i < DIM; ++i)
+    {
+        for (int j = 0; j < nSamples; ++j)
+        {
+            const int other = j + rng.nextUInt(nSamples - j);
+            std::swap(samples[DIM * j + i], samples[DIM * other + i]);
         }
     }
 }
