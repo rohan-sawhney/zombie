@@ -53,6 +53,10 @@ void addBoundingBoxToBoundaryMesh(const Vector<DIM>& boundingBoxMin,
                                   std::vector<Vector<DIM>>& positions,
                                   std::vector<Vectori<DIM>>& indices);
 
+template <size_t DIM>
+float computeSignedVolume(const std::vector<Vector<DIM>>& boundaryPositions,
+                          const std::vector<Vectori<DIM>>& boundaryIndices);
+
 // partitions a boundary mesh into absorbing and reflecting parts using primitive centroids---
 // this assumes the boundary discretization is perfectly adapted to the boundary conditions,
 // which isn't always a correct assumption
@@ -406,6 +410,45 @@ Vector<DIM> computePrimitiveMidpoint(const std::vector<Vector<DIM>>& positions,
     }
 
     return pMid/DIM;
+}
+
+template <size_t DIM>
+float computeSignedVolume(const std::vector<Vector<DIM>>& boundaryPositions,
+                          const std::vector<Vectori<DIM>>& boundaryIndices)
+{
+    std::cerr << "computeSignedVolume: Unsupported dimension: " << DIM << std::endl;
+    exit(EXIT_FAILURE);
+
+    return 0.0f;
+}
+
+template <>
+float computeSignedVolume<2>(const std::vector<Vector2>& boundaryPositions,
+                             const std::vector<Vector2i>& boundaryIndices)
+{
+    float volume = 0.0f;
+    for (const auto& index: boundaryIndices) {
+        Vector2 p0 = boundaryPositions[index(0)];
+        Vector2 p1 = boundaryPositions[index(1)];
+        volume += 0.5f*(p0[0]*p1[1] - p0[1]*p1[0]);
+    }
+
+    return volume;
+}
+
+template <>
+float computeSignedVolume<3>(const std::vector<Vector3>& boundaryPositions,
+                             const std::vector<Vector3i>& boundaryIndices)
+{
+    float volume = 0.0f;
+    for (const auto& index: boundaryIndices) {
+        Vector3 p0 = boundaryPositions[index(0)];
+        Vector3 p1 = boundaryPositions[index(1)];
+        Vector3 p2 = boundaryPositions[index(2)];
+        volume += p0.cross(p1).dot(p2)/6.0f;
+    }
+
+    return volume;
 }
 
 template <size_t DIM>

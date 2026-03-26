@@ -143,7 +143,7 @@ inline bool SdfGrid<DIM>::intersectZeroLevelSet(const Vector<DIM>& origin, const
                                                 float tMax, IntersectionPoint<DIM>& intersectionPt,
                                                 int maxIterations, float epsilon) const
 {
-    // first intersect whether the ray intersects the grid bounds
+    // first determine whether the ray intersects the grid bounds
     Vector<DIM> bMin = this->origin;
     Vector<DIM> bMax = this->origin + this->extent;
     Vector<DIM> invDir = dir.cwiseInverse();

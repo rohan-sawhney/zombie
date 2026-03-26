@@ -431,7 +431,7 @@ void getSolution(const std::vector<zombie::rws::EvaluationPoint<T, DIM>>& evalPt
 }
 
 template <typename T, size_t DIM>
-void runSolver(const std::string& solverType, const json& config,
+void runSolver(const std::string& solverType, const json& solverConfig,
                const std::vector<zombie::Vector<DIM>>& absorbingBoundaryPositions,
                const std::vector<zombie::Vectori<DIM>>& absorbingBoundaryIndices,
                const std::vector<zombie::Vector<DIM>>& reflectingBoundaryPositions,
@@ -449,7 +449,7 @@ void runSolver(const std::string& solverType, const json& config,
 
         // run walk on stars
         std::vector<zombie::SampleStatistics<T, DIM>> sampleStatistics;
-        runWalkOnStars<T, DIM>(config, queries, pde, solveDoubleSided, samplePts, sampleStatistics);
+        runWalkOnStars<T, DIM>(solverConfig, queries, pde, solveDoubleSided, samplePts, sampleStatistics);
 
         // extract solution from sample points
         getSolution<T, DIM>(distanceInfo, sampleStatistics, solution);
@@ -460,7 +460,7 @@ void runSolver(const std::string& solverType, const json& config,
         createBvcEvaluationPoints<T, DIM>(solveLocations, distanceInfo, evalPts);
 
         // run boundary value caching
-        runBoundaryValueCaching<T, DIM>(config, absorbingBoundaryPositions, absorbingBoundaryIndices,
+        runBoundaryValueCaching<T, DIM>(solverConfig, absorbingBoundaryPositions, absorbingBoundaryIndices,
                                         reflectingBoundaryPositions, reflectingBoundaryIndices,
                                         queries, pde, solveDoubleSided, evalPts);
 
@@ -474,7 +474,7 @@ void runSolver(const std::string& solverType, const json& config,
 
         // run reverse walk on stars
         std::vector<int> sampleCounts;
-        runReverseWalkOnStars<T, DIM>(config, absorbingBoundaryPositions, absorbingBoundaryIndices,
+        runReverseWalkOnStars<T, DIM>(solverConfig, absorbingBoundaryPositions, absorbingBoundaryIndices,
                                       reflectingBoundaryPositions, reflectingBoundaryIndices,
                                       queries, pde, solveDoubleSided, evalPts, sampleCounts);
 
