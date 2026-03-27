@@ -237,7 +237,7 @@ except ImportError as e:
     warnings.warn(
         f"Failed to import Zombie extension module: {e}\n"
         "This usually means:\n"
-        "  1. The package was not built with bindings enabled (WOSX_BUILD_BINDINGS=ON)\n"
+        "  1. The package was not built with bindings enabled (ZOMBIE_BUILD_BINDINGS=ON)\n"
         "  2. The extension module is missing from the installation\n"
         "  3. There are missing dependencies (e.g., Slang library for GPU support)",
         ImportWarning
