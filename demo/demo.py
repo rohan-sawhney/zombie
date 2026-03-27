@@ -102,27 +102,27 @@ def save_image_buffer(output_config, image_file, image_buffer):
 ##############################################################################################
 # Problem specification - geometry loading and PDE setup
 
-def load_boundary_mesh(model_problem_config, normalize=True, flip_orientation=True):
+def load_boundary_mesh(model_problem_config, dim, normalize=True, flip_orientation=True):
     # load the model problem configuration
     obj_file = model_problem_config["geometry"]
 
     # load obj file, and optionally normalize and flip mesh orientation
-    positions = zombie.float2_list()
-    indices = zombie.int2_list()
-    zombie.utils.load_boundary_mesh_2d(obj_file, positions, indices)
+    positions = zombie.FloatNList(dim=dim)
+    indices = zombie.IntNList(dim=dim)
+    zombie.Utils.load_boundary_mesh(obj_file, positions, indices, dim=dim)
 
     if normalize:
-        zombie.utils.normalize_2d(positions)
+        zombie.Utils.normalize(positions, dim=dim)
 
     if flip_orientation:
-        zombie.utils.flip_orientation_2d(indices)
+        zombie.Utils.flip_orientation(indices, dim=dim)
 
     # compute the bounding box for the domain
-    bounding_box = zombie.utils.compute_bounding_box_2d(positions, True, 1.0)
+    bounding_box = zombie.Utils.compute_bounding_box(positions, True, 1.0, dim=dim)
 
     return positions, indices, bounding_box
 
-def setup_pde(model_problem_config, bounding_box):
+def setup_pde(model_problem_config, bounding_box, dim, channels):
     # load the model problem configuration
     source_value_buffer, source_value_shape =\
         load_image_buffer(model_problem_config["sourceValue"])
@@ -144,37 +144,42 @@ def setup_pde(model_problem_config, bounding_box):
     domain_max = bounding_box[1]
 
     # setup the PDE
-    pde = zombie.core.pde_float_2d()
-    pde.source = zombie.utils.get_dense_grid_source_callback_float_2d(
-        source_value_buffer, source_value_shape, domain_min, domain_max)
-    pde.dirichlet = zombie.utils.get_dense_grid_dirichlet_callback_float_2d(
-        absorbing_boundary_value_buffer, absorbing_boundary_value_shape, domain_min, domain_max)
-    pde.robin = zombie.utils.get_dense_grid_robin_callback_float_2d(
-        reflecting_boundary_value_buffer, reflecting_boundary_value_shape, domain_min, domain_max)
+    pde = zombie.Core.PDE(dim=dim, channels=channels)
+    pde.source = zombie.Utils.get_dense_grid_source_callback(
+        source_value_buffer, source_value_shape, domain_min, domain_max,
+        dim=dim, channels=channels)
+    pde.dirichlet = zombie.Utils.get_dense_grid_dirichlet_callback(
+        absorbing_boundary_value_buffer, absorbing_boundary_value_shape,
+        domain_min, domain_max, dim=dim, channels=channels)
+    pde.robin = zombie.Utils.get_dense_grid_robin_callback(
+        reflecting_boundary_value_buffer, reflecting_boundary_value_shape,
+        domain_min, domain_max, dim=dim, channels=channels)
     if solve_exterior:
-        pde.has_reflecting_boundary_conditions = zombie.utils.get_dense_grid_indicator_callback_2d(
-            reflecting_boundary_value_buffer, reflecting_boundary_value_shape, domain_min, domain_max)
+        pde.has_reflecting_boundary_conditions = zombie.Utils.get_dense_grid_indicator_callback(
+            reflecting_boundary_value_buffer, reflecting_boundary_value_shape,
+            domain_min, domain_max, dim=dim)
     else:
-        pde.has_reflecting_boundary_conditions = zombie.utils.get_dense_grid_indicator_callback_2d(
-            is_reflecting_boundary_buffer, is_reflecting_boundary_shape, domain_min, domain_max)
-    pde.robin_coeff = zombie.core.get_constant_robin_coefficient_callback_2d(robin_coeff)
+        pde.has_reflecting_boundary_conditions = zombie.Utils.get_dense_grid_indicator_callback(
+            is_reflecting_boundary_buffer, is_reflecting_boundary_shape,
+            domain_min, domain_max, dim=dim)
+    pde.robin_coeff = zombie.Core.get_constant_robin_coefficient_callback(robin_coeff, dim=dim)
     pde.absorption_coeff = absorption_coeff
     pde.are_robin_conditions_pure_neumann = robin_coeff == 0.0
     pde.are_robin_coeffs_nonnegative = robin_coeff >= 0.0
 
     return pde
 
-def partition_boundary_mesh(has_reflecting_boundary_conditions, positions, indices):
+def partition_boundary_mesh(has_reflecting_boundary_conditions, positions, indices, dim):
     # use Zombie's default partitioning function, which assumes the boundary discretization
     # is perfectly adapted to the boundary conditions; this isn't always a correct assumption
     # and the user might want to override this function for their specific problem
-    absorbing_boundary_positions = zombie.float2_list()
-    absorbing_boundary_indices = zombie.int2_list()
-    reflecting_boundary_positions = zombie.float2_list()
-    reflecting_boundary_indices = zombie.int2_list()
-    zombie.utils.partition_boundary_mesh_2d(has_reflecting_boundary_conditions, positions, indices,
-                                            absorbing_boundary_positions, absorbing_boundary_indices,
-                                            reflecting_boundary_positions, reflecting_boundary_indices)
+    absorbing_boundary_positions = zombie.FloatNList(dim=dim)
+    absorbing_boundary_indices = zombie.IntNList(dim=dim)
+    reflecting_boundary_positions = zombie.FloatNList(dim=dim)
+    reflecting_boundary_indices = zombie.IntNList(dim=dim)
+    zombie.Utils.partition_boundary_mesh(has_reflecting_boundary_conditions, positions, indices,
+                                         absorbing_boundary_positions, absorbing_boundary_indices,
+                                         reflecting_boundary_positions, reflecting_boundary_indices, dim=dim)
 
     return absorbing_boundary_positions, absorbing_boundary_indices,\
            reflecting_boundary_positions, reflecting_boundary_indices
@@ -183,7 +188,7 @@ def populate_geometric_queries(model_problem_config, bounding_box,
                                absorbing_boundary_positions, absorbing_boundary_indices,
                                reflecting_boundary_positions, reflecting_boundary_indices,
                                min_robin_coeff_values, max_robin_coeff_values,
-                               are_robin_conditions_pure_neumann, solve_double_sided):
+                               are_robin_conditions_pure_neumann, solve_double_sided, dim):
     # load the model problem configuration
     domain_is_watertight = model_problem_config["domainIsWatertight"]\
         if "domainIsWatertight" in model_problem_config else True
@@ -195,53 +200,53 @@ def populate_geometric_queries(model_problem_config, bounding_box,
     # create the geometric queries object
     domain_min = bounding_box[0]
     domain_max = bounding_box[1]
-    geometric_queries = zombie.core.geometric_queries_2d(domain_is_watertight, domain_min, domain_max)
+    geometric_queries = zombie.Core.GeometricQueries(domain_is_watertight, domain_min, domain_max, dim=dim)
 
     # use an absorbing boundary handler to populate geometric queries for the absorbing boundary
-    dirichlet_boundary_handler = zombie.utils.fcpw_dirichlet_boundary_handler_2d()
+    dirichlet_boundary_handler = zombie.Utils.FcpwDirichletBoundaryHandler(dim=dim)
     dirichlet_boundary_handler.build_acceleration_structure(absorbing_boundary_positions,
                                                             absorbing_boundary_indices)
-    zombie.utils.populate_geometric_queries_for_dirichlet_boundary_2d(dirichlet_boundary_handler,
-                                                                      geometric_queries)
+    zombie.Utils.populate_geometric_queries_for_dirichlet_boundary(dirichlet_boundary_handler,
+                                                                   geometric_queries, dim=dim)
 
     sdf_grid_for_dirichlet_boundary = None
     if not solve_double_sided and use_sdf_for_absorbing_boundary:
         # override distance queries to use an SDF grid. The user can also use Zombie to build
         # an SDF hierarchy for double-sided problems (ommited here for simplicity)
-        sdf_grid_for_dirichlet_boundary = zombie.utils.sdf_grid_2d(domain_min, domain_max)
-        sdf_grid_shape = np.array([sdf_grid_resolution, sdf_grid_resolution], dtype=np.int32)
-        zombie.utils.populate_sdf_grid_2d(dirichlet_boundary_handler,
-                                          sdf_grid_for_dirichlet_boundary,
-                                          sdf_grid_shape)
-        zombie.utils.populate_geometric_queries_for_dirichlet_boundary_2d(sdf_grid_for_dirichlet_boundary,
-                                                                          geometric_queries)
+        sdf_grid_for_dirichlet_boundary = zombie.Utils.SDFGrid(domain_min, domain_max, dim=dim)
+        sdf_grid_shape = np.array([sdf_grid_resolution]*dim, dtype=np.int32)
+        zombie.Utils.populate_sdf_grid(dirichlet_boundary_handler,
+                                     sdf_grid_for_dirichlet_boundary,
+                                     sdf_grid_shape, dim=dim)
+        zombie.Utils.populate_geometric_queries_for_dirichlet_boundary(sdf_grid_for_dirichlet_boundary,
+                                                                       geometric_queries, dim=dim)
 
     # use a reflecting boundary handler to populate geometric queries for the reflecting boundary
-    ignore_candidate_silhouette = zombie.utils.get_ignore_candidate_silhouette_callback(solve_double_sided)
-    branch_traversal_weight = zombie.utils.get_branch_traversal_weight_callback()
+    ignore_candidate_silhouette = zombie.Utils.get_ignore_candidate_silhouette_callback(solve_double_sided)
+    branch_traversal_weight = zombie.Utils.get_branch_traversal_weight_callback()
 
     if are_robin_conditions_pure_neumann:
-        neumann_boundary_handler = zombie.utils.fcpw_neumann_boundary_handler_2d()
+        neumann_boundary_handler = zombie.Utils.FcpwNeumannBoundaryHandler(dim=dim)
         neumann_boundary_handler.build_acceleration_structure(reflecting_boundary_positions,
                                                               reflecting_boundary_indices,
                                                               ignore_candidate_silhouette)
-        zombie.utils.populate_geometric_queries_for_neumann_boundary_2d(neumann_boundary_handler,
-                                                                        branch_traversal_weight,
-                                                                        geometric_queries)
+        zombie.Utils.populate_geometric_queries_for_neumann_boundary(neumann_boundary_handler,
+                                                                     branch_traversal_weight,
+                                                                     geometric_queries, dim=dim)
 
         return geometric_queries, sdf_grid_for_dirichlet_boundary,\
                dirichlet_boundary_handler, neumann_boundary_handler
 
     else:
-        robin_boundary_handler = zombie.utils.fcpw_robin_boundary_handler_2d()
+        robin_boundary_handler = zombie.Utils.FcpwRobinBoundaryHandler(dim=dim)
         robin_boundary_handler.build_acceleration_structure(reflecting_boundary_positions,
                                                             reflecting_boundary_indices,
                                                             ignore_candidate_silhouette,
                                                             min_robin_coeff_values,
                                                             max_robin_coeff_values)
-        zombie.utils.populate_geometric_queries_for_robin_boundary_2d(robin_boundary_handler,
-                                                                      branch_traversal_weight,
-                                                                      geometric_queries)
+        zombie.Utils.populate_geometric_queries_for_robin_boundary(robin_boundary_handler,
+                                                                   branch_traversal_weight,
+                                                                   geometric_queries, dim=dim)
 
         return geometric_queries, sdf_grid_for_dirichlet_boundary,\
                dirichlet_boundary_handler, robin_boundary_handler
@@ -268,28 +273,28 @@ def compute_distance_info(solve_locations, geometric_queries, solve_double_sided
 
 def invert_exterior_problem(kelvin_transform, positions, absorbing_boundary_positions,
                             reflecting_boundary_positions, reflecting_boundary_indices,
-                            pde, robin_coeff):
+                            pde, robin_coeff, dim, channels):
     # invert the domain
-    inverted_positions = zombie.float2_list()
-    inverted_absorbing_boundary_positions = zombie.float2_list()
-    inverted_reflecting_boundary_positions = zombie.float2_list()
+    inverted_positions = zombie.FloatNList(dim=dim)
+    inverted_absorbing_boundary_positions = zombie.FloatNList(dim=dim)
+    inverted_reflecting_boundary_positions = zombie.FloatNList(dim=dim)
     kelvin_transform.transform_points(positions, inverted_positions)
     kelvin_transform.transform_points(absorbing_boundary_positions, inverted_absorbing_boundary_positions)
     kelvin_transform.transform_points(reflecting_boundary_positions, inverted_reflecting_boundary_positions)
 
     # compute the bounding box for the inverted domain
-    inverted_bounding_box = zombie.utils.compute_bounding_box_2d(inverted_positions, True, 1.0)
+    inverted_bounding_box = zombie.Utils.compute_bounding_box(inverted_positions, True, 1.0, dim=dim)
 
     # setup the modified PDE on the inverted domain
-    pde_inverted_domain = zombie.core.pde_float_2d()
+    pde_inverted_domain = zombie.Core.PDE(dim=dim, channels=channels)
     kelvin_transform.transform_pde(pde, pde_inverted_domain)
 
     # compute the modified Robin coefficients on the inverted domain
-    min_robin_coeff_values_inverted_domain = zombie.float_list()
-    max_robin_coeff_values_inverted_domain = zombie.float_list()
+    min_robin_coeff_values_inverted_domain = zombie.FloatList()
+    max_robin_coeff_values_inverted_domain = zombie.FloatList()
     if not pde_inverted_domain.are_robin_conditions_pure_neumann:
-        min_robin_coeff_values = zombie.float_list([robin_coeff]*len(reflecting_boundary_indices))
-        max_robin_coeff_values = zombie.float_list([robin_coeff]*len(reflecting_boundary_indices))
+        min_robin_coeff_values = zombie.FloatList([robin_coeff]*len(reflecting_boundary_indices))
+        max_robin_coeff_values = zombie.FloatList([robin_coeff]*len(reflecting_boundary_indices))
         kelvin_transform.compute_robin_coefficients(inverted_reflecting_boundary_positions,
                                                     reflecting_boundary_indices,
                                                     min_robin_coeff_values, max_robin_coeff_values,
@@ -300,8 +305,8 @@ def invert_exterior_problem(kelvin_transform, positions, absorbing_boundary_posi
            inverted_reflecting_boundary_positions, pde_inverted_domain,\
            min_robin_coeff_values_inverted_domain, max_robin_coeff_values_inverted_domain
 
-def invert_solve_locations(kelvin_transform, solve_locations):
-    inverted_solve_locations = np.zeros((len(solve_locations), 2))
+def invert_solve_locations(kelvin_transform, solve_locations, dim):
+    inverted_solve_locations = np.zeros((len(solve_locations), dim))
     for i in range(len(solve_locations)):
         inverted_solve_locations[i] = kelvin_transform.transform_point(solve_locations[i])
 
@@ -319,32 +324,33 @@ def compute_exterior_solution(kelvin_transform, interior_solution, inverted_solv
 # Walk on Stars solver - note that this solver is a strict generalization of Walk on Spheres,
 # and reduces to it when the PDE only has Dirichlet boundary conditions
 
-def create_sample_points(solve_locations, distance_info):
+def create_sample_points(solve_locations, distance_info, dim, channels):
     sample_points = [None]*len(solve_locations)
     sample_statistics = [None]*len(solve_locations)
 
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
-        normal = np.zeros(2)
-        sample_type = zombie.solvers.sample_type.in_domain
+        normal = np.zeros(dim)
+        sample_type = zombie.Solvers.SampleType.in_domain
         in_valid_solve_region = distance_info[i][0]
-        estimation_quantity = zombie.solvers.estimation_quantity.solution\
-                                if in_valid_solve_region else zombie.solvers.estimation_quantity.none
+        estimation_quantity = zombie.Solvers.EstimationQuantity.solution\
+                                if in_valid_solve_region else zombie.Solvers.EstimationQuantity.none
         pdf = 1.0
         dist_to_absorbing_boundary = distance_info[i][1]
         dist_to_reflecting_boundary = distance_info[i][2]
 
-        sample_points[i] = zombie.solvers.sample_point_float_2d(pt, normal, sample_type,
-                                                                estimation_quantity, pdf,
-                                                                dist_to_absorbing_boundary,
-                                                                dist_to_reflecting_boundary)
-        sample_statistics[i] = zombie.solvers.sample_statistics_float_2d()
+        sample_points[i] = zombie.Solvers.SamplePoint(pt, normal, sample_type,
+                                                      estimation_quantity, pdf,
+                                                      dist_to_absorbing_boundary,
+                                                      dist_to_reflecting_boundary,
+                                                      dim=dim, channels=channels)
+        sample_statistics[i] = zombie.Solvers.SampleStatistics(dim=dim, channels=channels)
 
-    return zombie.solvers.sample_point_float_2d_list(sample_points),\
-           zombie.solvers.sample_statistics_float_2d_list(sample_statistics)
+    return zombie.Solvers.SamplePointList(sample_points, dim=dim, channels=channels),\
+           zombie.Solvers.SampleStatisticsList(sample_statistics, dim=dim, channels=channels)
 
 def run_walk_on_stars(solver_config, sample_pts, sample_statistics,
-                      geometric_queries, pde, solve_double_sided):
+                      geometric_queries, pde, solve_double_sided, dim, channels):
     # load config settings
     epsilon_shell_for_absorbing_boundary = solver_config["epsilonShellForAbsorbingBoundary"]\
         if "epsilonShellForAbsorbingBoundary" in solver_config else 1e-3
@@ -384,25 +390,25 @@ def run_walk_on_stars(solver_config, sample_pts, sample_statistics,
         if "runSingleThreaded" in solver_config else False
 
     # initialize solver and estimate solution
-    progress_bar = zombie.utils.progress_bar(len(sample_pts))
-    report_progress = zombie.utils.get_report_progress_callback(progress_bar)
+    progress_bar = zombie.Utils.ProgressBar(len(sample_pts))
+    report_progress = zombie.Utils.get_report_progress_callback(progress_bar)
 
-    walk_settings = zombie.solvers.walk_settings(epsilon_shell_for_absorbing_boundary,
-                                                 epsilon_shell_for_reflecting_boundary,
-                                                 silhouette_precision,
-                                                 russian_roulette_threshold,
-                                                 splitting_threshold, max_walk_length,
-                                                 steps_before_applying_tikhonov,
-                                                 steps_before_using_maximal_spheres,
-                                                 solve_double_sided,
-                                                 not disable_gradient_control_variates,
-                                                 not disable_gradient_antithetic_variates,
-                                                 use_cosine_sampling_for_directional_derivatives,
-                                                 ignore_absorbing_boundary_contribution,
-                                                 ignore_reflecting_boundary_contribution,
-                                                 ignore_source_contribution, print_logs)
-    n_walks_list = zombie.int_list([n_walks]*len(sample_pts))
-    walk_on_stars = zombie.solvers.walk_on_stars_float_2d(geometric_queries)
+    walk_settings = zombie.Solvers.WalkSettings(epsilon_shell_for_absorbing_boundary,
+                                                epsilon_shell_for_reflecting_boundary,
+                                                silhouette_precision,
+                                                russian_roulette_threshold,
+                                                splitting_threshold, max_walk_length,
+                                                steps_before_applying_tikhonov,
+                                                steps_before_using_maximal_spheres,
+                                                solve_double_sided,
+                                                not disable_gradient_control_variates,
+                                                not disable_gradient_antithetic_variates,
+                                                use_cosine_sampling_for_directional_derivatives,
+                                                ignore_absorbing_boundary_contribution,
+                                                ignore_reflecting_boundary_contribution,
+                                                ignore_source_contribution, print_logs)
+    n_walks_list = zombie.IntList([n_walks]*len(sample_pts))
+    walk_on_stars = zombie.Solvers.WalkOnStars(geometric_queries, dim=dim, channels=channels)
     walk_on_stars.solve(pde, walk_settings, n_walks_list, sample_pts, sample_statistics,
                         run_single_threaded, report_progress)
     progress_bar.finish()
@@ -418,52 +424,59 @@ def get_solution_from_sample_points(sample_statistics):
 ##############################################################################################
 # Boundary Value Caching solver
 
-def create_domain_sampler(geometric_queries, solve_double_sided):
+def create_domain_sampler(geometric_queries, solve_double_sided, dim, channels):
     solve_region_min = geometric_queries.domain_min
     solve_region_max = geometric_queries.domain_max
 
     if solve_double_sided:
         solve_region_volume = np.prod(solve_region_max - solve_region_min)
-        return zombie.samplers.create_uniform_domain_sampler_float_2d(
+        return zombie.Samplers.create_uniform_domain_sampler(
                 geometric_queries.inside_bounding_domain,
                 solve_region_min, solve_region_max,
-                solve_region_volume)
+                solve_region_volume, dim=dim, channels=channels)
 
     else:
         solve_region_volume = np.abs(geometric_queries.compute_domain_signed_volume())
-        return zombie.samplers.create_uniform_domain_sampler_float_2d(
+        return zombie.Samplers.create_uniform_domain_sampler(
                 geometric_queries.inside_domain,
                 solve_region_min, solve_region_max,
-                solve_region_volume)
+                solve_region_volume, dim=dim, channels=channels)
 
 def create_boundary_sampler(positions, indices, geometric_queries,
-                            normal_offset_for_boundary, solve_double_sided):
-    boundary_sampler = zombie.samplers.create_uniform_line_segment_boundary_sampler_float_2d(
-                        positions, indices, geometric_queries.inside_bounding_domain)
+                            normal_offset_for_boundary, solve_double_sided, dim, channels):
+    if dim == 2:
+        boundary_sampler = zombie.Samplers.create_uniform_line_segment_boundary_sampler(
+                            positions, indices, geometric_queries.inside_bounding_domain,
+                            dim=dim, channels=channels)
+    else:
+        boundary_sampler = zombie.Samplers.create_uniform_triangle_boundary_sampler(
+                            positions, indices, geometric_queries.inside_bounding_domain,
+                            dim=dim, channels=channels)
     boundary_sampler.initialize(normal_offset_for_boundary, solve_double_sided)
 
     return boundary_sampler
 
-def create_bvc_evaluation_points(solve_locations, distance_info):
+def create_bvc_evaluation_points(solve_locations, distance_info, dim, channels):
     evaluation_points = [None]*len(solve_locations)
 
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
-        normal = np.zeros(2)
-        sample_type = zombie.solvers.sample_type.in_domain
+        normal = np.zeros(dim)
+        sample_type = zombie.Solvers.SampleType.in_domain
         dist_to_absorbing_boundary = distance_info[i][1]
         dist_to_reflecting_boundary = distance_info[i][2]
 
-        evaluation_points[i] = zombie.solvers.bvc_evaluation_point_float_2d(pt, normal, sample_type,
-                                                                            dist_to_absorbing_boundary,
-                                                                            dist_to_reflecting_boundary)
+        evaluation_points[i] = zombie.Solvers.BVCEvaluationPoint(pt, normal, sample_type,
+                                                                 dist_to_absorbing_boundary,
+                                                                 dist_to_reflecting_boundary,
+                                                                 dim=dim, channels=channels)
 
-    return zombie.solvers.bvc_evaluation_point_float_2d_list(evaluation_points)
+    return zombie.Solvers.BVCEvaluationPointList(evaluation_points, dim=dim, channels=channels)
 
 def run_boundary_value_caching(solver_config, evaluation_pts,
                                absorbing_boundary_positions, absorbing_boundary_indices,
                                reflecting_boundary_positions, reflecting_boundary_indices,
-                               geometric_queries, pde, solve_double_sided):
+                               geometric_queries, pde, solve_double_sided, dim, channels):
     # load config settings for walk on stars
     epsilon_shell_for_absorbing_boundary = solver_config["epsilonShellForAbsorbingBoundary"]\
         if "epsilonShellForAbsorbingBoundary" in solver_config else 1e-3
@@ -529,23 +542,24 @@ def run_boundary_value_caching(solver_config, evaluation_pts,
     # initialize boundary samplers
     absorbing_boundary_sampler = create_boundary_sampler(
         absorbing_boundary_positions, absorbing_boundary_indices, geometric_queries,
-        normal_offset_for_absorbing_boundary, solve_double_sided)
+        normal_offset_for_absorbing_boundary, solve_double_sided, dim, channels)
     reflecting_boundary_sampler = create_boundary_sampler(
         reflecting_boundary_positions, reflecting_boundary_indices, geometric_queries,
-        normal_offset_for_reflecting_boundary, solve_double_sided)
+        normal_offset_for_reflecting_boundary, solve_double_sided, dim, channels)
 
     # initialize domain sampler
-    domain_sampler = create_domain_sampler(geometric_queries, solve_double_sided)
+    domain_sampler = create_domain_sampler(geometric_queries, solve_double_sided, dim, channels)
     if ignore_source_contribution:
         domain_cache_size = 0
 
     # solve using boundary value caching
     total_work = 2*(absorbing_boundary_cache_size + reflecting_boundary_cache_size) + domain_cache_size
-    progress_bar = zombie.utils.progress_bar(total_work)
-    report_progress = zombie.utils.get_report_progress_callback(progress_bar)
+    progress_bar = zombie.Utils.ProgressBar(total_work)
+    report_progress = zombie.Utils.get_report_progress_callback(progress_bar)
 
-    boundary_value_caching = zombie.solvers.boundary_value_caching_float_2d(
-        geometric_queries, absorbing_boundary_sampler, reflecting_boundary_sampler, domain_sampler)
+    boundary_value_caching = zombie.Solvers.BoundaryValueCaching(
+        geometric_queries, absorbing_boundary_sampler, reflecting_boundary_sampler,
+        domain_sampler, dim=dim, channels=channels)
 
     # generate boundary and domain samples
     boundary_value_caching.generate_samples(absorbing_boundary_cache_size, reflecting_boundary_cache_size,
@@ -553,20 +567,20 @@ def run_boundary_value_caching(solver_config, evaluation_pts,
                                             normal_offset_for_reflecting_boundary, solve_double_sided)
 
     # compute sample estimates
-    walk_settings = zombie.solvers.walk_settings(epsilon_shell_for_absorbing_boundary,
-                                                 epsilon_shell_for_reflecting_boundary,
-                                                 silhouette_precision,
-                                                 russian_roulette_threshold,
-                                                 splitting_threshold, max_walk_length,
-                                                 steps_before_applying_tikhonov,
-                                                 steps_before_using_maximal_spheres,
-                                                 solve_double_sided,
-                                                 not disable_gradient_control_variates,
-                                                 not disable_gradient_antithetic_variates,
-                                                 use_cosine_sampling_for_directional_derivatives,
-                                                 ignore_absorbing_boundary_contribution,
-                                                 ignore_reflecting_boundary_contribution,
-                                                 ignore_source_contribution, print_logs)
+    walk_settings = zombie.Solvers.WalkSettings(epsilon_shell_for_absorbing_boundary,
+                                                epsilon_shell_for_reflecting_boundary,
+                                                silhouette_precision,
+                                                russian_roulette_threshold,
+                                                splitting_threshold, max_walk_length,
+                                                steps_before_applying_tikhonov,
+                                                steps_before_using_maximal_spheres,
+                                                solve_double_sided,
+                                                not disable_gradient_control_variates,
+                                                not disable_gradient_antithetic_variates,
+                                                use_cosine_sampling_for_directional_derivatives,
+                                                ignore_absorbing_boundary_contribution,
+                                                ignore_reflecting_boundary_contribution,
+                                                ignore_source_contribution, print_logs)
     boundary_value_caching.compute_sample_estimates(pde, walk_settings,
                                                     n_walks_for_cached_solution_estimates,
                                                     n_walks_for_cached_gradient_estimates,
@@ -601,26 +615,27 @@ def get_solution_from_bvc_evaluation_points(evaluation_pts):
 ##############################################################################################
 # Reverse Walk on Stars solver
 
-def create_rws_evaluation_points(solve_locations, distance_info):
+def create_rws_evaluation_points(solve_locations, distance_info, dim, channels):
     evaluation_points = [None]*len(solve_locations)
 
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
-        normal = np.zeros(2)
-        sample_type = zombie.solvers.sample_type.in_domain
+        normal = np.zeros(dim)
+        sample_type = zombie.Solvers.SampleType.in_domain
         dist_to_absorbing_boundary = distance_info[i][1]
         dist_to_reflecting_boundary = distance_info[i][2]
 
-        evaluation_points[i] = zombie.solvers.rws_evaluation_point_float_2d(pt, normal, sample_type,
-                                                                            dist_to_absorbing_boundary,
-                                                                            dist_to_reflecting_boundary)
+        evaluation_points[i] = zombie.Solvers.RWSEvaluationPoint(pt, normal, sample_type,
+                                                                 dist_to_absorbing_boundary,
+                                                                 dist_to_reflecting_boundary,
+                                                                 dim=dim, channels=channels)
 
-    return zombie.solvers.rws_evaluation_point_float_2d_list(evaluation_points)
+    return zombie.Solvers.RWSEvaluationPointList(evaluation_points, dim=dim, channels=channels)
 
 def run_reverse_walk_on_stars(solver_config, evaluation_pts,
                               absorbing_boundary_positions, absorbing_boundary_indices,
                               reflecting_boundary_positions, reflecting_boundary_indices,
-                              geometric_queries, pde, solve_double_sided):
+                              geometric_queries, pde, solve_double_sided, dim, channels):
     # load config settings for reverse walk on stars
     epsilon_shell_for_absorbing_boundary = solver_config["epsilonShellForAbsorbingBoundary"]\
         if "epsilonShellForAbsorbingBoundary" in solver_config else 1e-3
@@ -669,30 +684,31 @@ def run_reverse_walk_on_stars(solver_config, evaluation_pts,
     # initialize boundary samplers
     absorbing_boundary_sampler = create_boundary_sampler(
         absorbing_boundary_positions, absorbing_boundary_indices, geometric_queries,
-        normal_offset_for_absorbing_boundary, solve_double_sided)
+        normal_offset_for_absorbing_boundary, solve_double_sided, dim, channels)
     if ignore_absorbing_boundary_contribution:
         absorbing_boundary_sample_count = 0
 
     reflecting_boundary_sampler = create_boundary_sampler(
         reflecting_boundary_positions, reflecting_boundary_indices, geometric_queries,
-        0.0, solve_double_sided)
+        0.0, solve_double_sided, dim, channels)
     if ignore_reflecting_boundary_contribution:
         reflecting_boundary_sample_count = 0
 
     # initialize domain sampler
-    domain_sampler = create_domain_sampler(geometric_queries, solve_double_sided)
+    domain_sampler = create_domain_sampler(geometric_queries, solve_double_sided, dim, channels)
     if ignore_source_contribution:
         domain_sample_count = 0
 
     # solve using reverse walk on stars
     total_work = absorbing_boundary_sample_count + reflecting_boundary_sample_count + domain_sample_count
-    progress_bar = zombie.utils.progress_bar(total_work)
-    report_progress = zombie.utils.get_report_progress_callback(progress_bar)
+    progress_bar = zombie.Utils.ProgressBar(total_work)
+    report_progress = zombie.Utils.get_report_progress_callback(progress_bar)
 
-    reverse_walk_on_stars = zombie.solvers.reverse_walk_on_stars_float_2d(geometric_queries,
-                                                                          absorbing_boundary_sampler,
-                                                                          reflecting_boundary_sampler,
-                                                                          domain_sampler)
+    reverse_walk_on_stars = zombie.Solvers.ReverseWalkOnStars(geometric_queries,
+                                                              absorbing_boundary_sampler,
+                                                              reflecting_boundary_sampler,
+                                                              domain_sampler,
+                                                              dim=dim, channels=channels)
 
     # generate boundary and domain samples
     reverse_walk_on_stars.generate_samples(absorbing_boundary_sample_count,
@@ -702,17 +718,17 @@ def run_reverse_walk_on_stars(solver_config, evaluation_pts,
                                            solve_double_sided)
 
     # splat contributions to evaluation points
-    walk_settings = zombie.solvers.walk_settings(epsilon_shell_for_absorbing_boundary,
-                                                 epsilon_shell_for_reflecting_boundary,
-                                                 silhouette_precision,
-                                                 russian_roulette_threshold,
-                                                 splitting_threshold, max_walk_length,
-                                                 steps_before_applying_tikhonov,
-                                                 steps_before_using_maximal_spheres,
-                                                 solve_double_sided, False, False, False,
-                                                 ignore_absorbing_boundary_contribution,
-                                                 ignore_reflecting_boundary_contribution,
-                                                 ignore_source_contribution, print_logs)
+    walk_settings = zombie.Solvers.WalkSettings(epsilon_shell_for_absorbing_boundary,
+                                                epsilon_shell_for_reflecting_boundary,
+                                                silhouette_precision,
+                                                russian_roulette_threshold,
+                                                splitting_threshold, max_walk_length,
+                                                steps_before_applying_tikhonov,
+                                                steps_before_using_maximal_spheres,
+                                                solve_double_sided, False, False, False,
+                                                ignore_absorbing_boundary_contribution,
+                                                ignore_reflecting_boundary_contribution,
+                                                ignore_source_contribution, print_logs)
     reverse_walk_on_stars.solve(pde, walk_settings, normal_offset_for_absorbing_boundary,
                                 radius_clamp_for_kernels, regularization_for_kernels, evaluation_pts,
                                 True, run_single_threaded, report_progress)
@@ -747,40 +763,41 @@ def get_solution_from_rws_evaluation_points(evaluation_pts, sample_counts):
 def run_solver(solver_type, solver_config, solve_double_sided,
                absorbing_boundary_positions, absorbing_boundary_indices,
                reflecting_boundary_positions, reflecting_boundary_indices,
-               geometric_queries, pde, solve_locations, distance_info):
+               geometric_queries, pde, solve_locations, distance_info,
+               dim, channels):
     if solver_type == "wost":
         # create sample points to estimate solution at
-        sample_pts, sample_statistics = create_sample_points(solve_locations, distance_info)
+        sample_pts, sample_statistics = create_sample_points(solve_locations, distance_info, dim, channels)
 
         # run walk on stars
         run_walk_on_stars(solver_config, sample_pts, sample_statistics,
-                          geometric_queries, pde, solve_double_sided)
+                          geometric_queries, pde, solve_double_sided, dim, channels)
 
         # extract solution from sample points
         return get_solution_from_sample_points(sample_statistics)
 
     elif solver_type == "bvc":
         # create evaluation points to estimate solution at
-        evaluation_pts = create_bvc_evaluation_points(solve_locations, distance_info)
+        evaluation_pts = create_bvc_evaluation_points(solve_locations, distance_info, dim, channels)
 
         # run boundary value caching
         run_boundary_value_caching(solver_config, evaluation_pts,
                                    absorbing_boundary_positions, absorbing_boundary_indices,
                                    reflecting_boundary_positions, reflecting_boundary_indices,
-                                   geometric_queries, pde, solve_double_sided)
+                                   geometric_queries, pde, solve_double_sided, dim, channels)
 
         # extract solution from evaluation points
         return get_solution_from_bvc_evaluation_points(evaluation_pts)
 
     elif solver_type == "rws":
         # create evaluation points to estimate solution at
-        evaluation_pts = create_rws_evaluation_points(solve_locations, distance_info)
+        evaluation_pts = create_rws_evaluation_points(solve_locations, distance_info, dim, channels)
 
         # run reverse walk on stars
         sample_counts = run_reverse_walk_on_stars(solver_config, evaluation_pts,
                                                   absorbing_boundary_positions, absorbing_boundary_indices,
                                                   reflecting_boundary_positions, reflecting_boundary_indices,
-                                                  geometric_queries, pde, solve_double_sided)
+                                                  geometric_queries, pde, solve_double_sided, dim, channels)
 
         # extract solution from evaluation points
         return get_solution_from_rws_evaluation_points(evaluation_pts, sample_counts)
@@ -791,11 +808,12 @@ def run_solver(solver_type, solver_config, solve_double_sided,
 def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_double_sided,
                         positions, absorbing_boundary_positions, absorbing_boundary_indices,
                         reflecting_boundary_positions, reflecting_boundary_indices,
-                        pde, robin_coeff, solve_locations):
+                        pde, robin_coeff, solve_locations, dim, channels):
     # initialize a Kelvin transform: ensure origin lies inside the default domain
     # used for the demo, which is a requirement for solving exterior problems
-    origin = np.array([0.0, 0.125])
-    kelvin_transform = zombie.solvers.kelvin_transform_float_2d(origin)
+    origin = np.zeros(dim)
+    origin[1] = 0.125
+    kelvin_transform = zombie.Solvers.KelvinTransform(origin, dim=dim, channels=channels)
 
     # invert the exterior problem into an equivalent interior problem
     inverted_bounding_box, inverted_positions, inverted_absorbing_boundary_positions,\
@@ -803,7 +821,7 @@ def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_
             min_robin_coeff_values_inverted_domain, max_robin_coeff_values_inverted_domain =\
                 invert_exterior_problem(kelvin_transform, positions, absorbing_boundary_positions,
                                         reflecting_boundary_positions, reflecting_boundary_indices,
-                                        pde, robin_coeff)
+                                        pde, robin_coeff, dim, channels)
 
     # populate the geometric queries for the inverted absorbing and reflecting boundary
     geometric_queries_inverted_domain, sdf_grid_for_inverted_absorbing_boundary,\
@@ -812,10 +830,10 @@ def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_
                                        inverted_absorbing_boundary_positions, absorbing_boundary_indices,
                                        inverted_reflecting_boundary_positions, reflecting_boundary_indices,
                                        min_robin_coeff_values_inverted_domain, max_robin_coeff_values_inverted_domain,
-                                       pde_inverted_domain.are_robin_conditions_pure_neumann, solve_double_sided)
+                                       pde_inverted_domain.are_robin_conditions_pure_neumann, solve_double_sided, dim)
 
     # invert the solve locations and update the distance info
-    inverted_solve_locations = invert_solve_locations(kelvin_transform, solve_locations)
+    inverted_solve_locations = invert_solve_locations(kelvin_transform, solve_locations, dim)
     distance_info_inverted_domain = compute_distance_info(inverted_solve_locations,
                                                           geometric_queries_inverted_domain,
                                                           solve_double_sided, False)
@@ -825,7 +843,7 @@ def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_
                           inverted_absorbing_boundary_positions, absorbing_boundary_indices,
                           inverted_reflecting_boundary_positions, reflecting_boundary_indices,
                           geometric_queries_inverted_domain, pde_inverted_domain,
-                          inverted_solve_locations, distance_info_inverted_domain)
+                          inverted_solve_locations, distance_info_inverted_domain, dim, channels)
 
     # map the solution values back to the exterior domain
     return compute_exterior_solution(kelvin_transform, solution, inverted_solve_locations)
@@ -836,6 +854,10 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, help="path to the configuration file")
     args = parser.parse_args()
 
+    # problem parameters
+    dim = 2
+    channels = 1
+
     try:
         # load the configuration file
         with open(args.config, 'r') as file:
@@ -843,22 +865,22 @@ if __name__ == "__main__":
 
         # load a boundary mesh
         model_problem_config = config["modelProblem"]
-        positions, indices, bounding_box = load_boundary_mesh(model_problem_config)
+        positions, indices, bounding_box = load_boundary_mesh(model_problem_config, dim)
 
         # setup the PDE
-        pde = setup_pde(model_problem_config, bounding_box)
+        pde = setup_pde(model_problem_config, bounding_box, dim, channels)
 
         # partition the boundary mesh into absorbing and reflecting boundary elements
         absorbing_boundary_positions, absorbing_boundary_indices,\
             reflecting_boundary_positions, reflecting_boundary_indices =\
-                partition_boundary_mesh(pde.has_reflecting_boundary_conditions, positions, indices)
+                partition_boundary_mesh(pde.has_reflecting_boundary_conditions, positions, indices, dim)
 
         # specify the minimum and maximum Robin coefficient values for each reflecting boundary element:
         # we use a constant value for all elements in this demo, but Zombie supports variable coefficients
         robin_coeff = model_problem_config["robinCoeff"]\
             if "robinCoeff" in model_problem_config else 0.0
-        min_robin_coeff_values = zombie.float_list([abs(robin_coeff)]*len(reflecting_boundary_indices))
-        max_robin_coeff_values = zombie.float_list([abs(robin_coeff)]*len(reflecting_boundary_indices))
+        min_robin_coeff_values = zombie.FloatList([abs(robin_coeff)]*len(reflecting_boundary_indices))
+        max_robin_coeff_values = zombie.FloatList([abs(robin_coeff)]*len(reflecting_boundary_indices))
 
         # populate the geometric queries for the absorbing and reflecting boundary
         solve_double_sided = model_problem_config["solveDoubleSided"]\
@@ -869,7 +891,7 @@ if __name__ == "__main__":
                                            absorbing_boundary_positions, absorbing_boundary_indices,
                                            reflecting_boundary_positions, reflecting_boundary_indices,
                                            min_robin_coeff_values, max_robin_coeff_values,
-                                           pde.are_robin_conditions_pure_neumann, solve_double_sided)
+                                           pde.are_robin_conditions_pure_neumann, solve_double_sided, dim)
 
         # create solve locations on a grid for this demo
         output_config = config["output"]
@@ -886,13 +908,13 @@ if __name__ == "__main__":
             solution = run_solver_exterior(solver_type, solver_config, model_problem_config, solve_double_sided,
                                            positions, absorbing_boundary_positions, absorbing_boundary_indices,
                                            reflecting_boundary_positions, reflecting_boundary_indices,
-                                           pde, robin_coeff, solve_locations)
+                                           pde, robin_coeff, solve_locations, dim, channels)
 
         else:
             solution = run_solver(solver_type, solver_config, solve_double_sided,
                                   absorbing_boundary_positions, absorbing_boundary_indices,
                                   reflecting_boundary_positions, reflecting_boundary_indices,
-                                  geometric_queries, pde, solve_locations, distance_info)
+                                  geometric_queries, pde, solve_locations, distance_info, dim, channels)
 
         # save the solution to disk
         grid_values = create_grid_values(output_config, distance_info, solution)

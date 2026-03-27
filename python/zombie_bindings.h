@@ -74,26 +74,66 @@ NB_MAKE_OPAQUE(IntersectUnionedBoundaryFunc<2>)                        // inters
 NB_MAKE_OPAQUE(IntersectUnionedBoundaryFunc<3>)                        // intersectBoundary
 NB_MAKE_OPAQUE(FloatNToTypeFunc<bool, 2>)                              // insideDomain, insideBoundingDomain, outsideBoundingDomain, hasReflectingBoundaryConditions, insideSolveRegion
 NB_MAKE_OPAQUE(FloatNToTypeFunc<bool, 3>)                              // insideDomain, insideBoundingDomain, outsideBoundingDomain, hasReflectingBoundaryConditions, insideSolveRegion
+
+// 1-channel
 NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 2>)                             // source
 NB_MAKE_OPAQUE(FloatNToTypeFunc<float, 3>)                             // source
-NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 4>, 2>)           // source
-NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 4>, 3>)           // source
 NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 2>)                         // computeDistToBoundary, dirichlet
 NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<float, 3>)                         // computeDistToBoundary, dirichlet
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 4>, 2>)       // dirichlet
-NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 4>, 3>)       // dirichlet
 NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 2>)                   // robinCoeff, robin
 NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<float, 3>)                   // robinCoeff, robin
-NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 4>, 2>) // robin
-NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 4>, 3>) // robin
 NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 2>)                          // walkStateCallback
 NB_MAKE_OPAQUE(WalkStateToVoidFunc<float, 3>)                          // walkStateCallback
-NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 4>, 2>)        // walkStateCallback
-NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 4>, 3>)        // walkStateCallback
 NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<float, 2>)                      // terminalContributionCallback
 NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<float, 3>)                      // terminalContributionCallback
-NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 4>, 2>)    // terminalContributionCallback
-NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 4>, 3>)    // terminalContributionCallback
+
+// 4-channels
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 4>, 2>)             // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 4>, 3>)             // source
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 4>, 2>)         // dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 4>, 3>)         // dirichlet
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 4>, 2>)   // robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 4>, 3>)   // robin
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 4>, 2>)          // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 4>, 3>)          // walkStateCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 4>, 2>)      // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 4>, 3>)      // terminalContributionCallback
+
+// 16-channels
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 16>, 2>)            // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 16>, 3>)            // source
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 16>, 2>)        // dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 16>, 3>)        // dirichlet
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 16>, 2>)  // robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 16>, 3>)  // robin
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 16>, 2>)         // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 16>, 3>)         // walkStateCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 16>, 2>)     // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 16>, 3>)     // terminalContributionCallback
+
+// 64-channels
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 64>, 2>)            // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 64>, 3>)            // source
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 64>, 2>)        // dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 64>, 3>)        // dirichlet
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 64>, 2>)  // robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 64>, 3>)  // robin
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 64>, 2>)         // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 64>, 3>)         // walkStateCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 64>, 2>)     // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 64>, 3>)     // terminalContributionCallback
+
+// 256-channels
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 256>, 2>)           // source
+NB_MAKE_OPAQUE(FloatNToTypeFunc<zombie::Array<float, 256>, 3>)           // source
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 256>, 2>)       // dirichlet
+NB_MAKE_OPAQUE(FloatNBoolToTypeFunc<zombie::Array<float, 256>, 3>)       // dirichlet
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 256>, 2>) // robin
+NB_MAKE_OPAQUE(FloatNFloatNBoolToTypeFunc<zombie::Array<float, 256>, 3>) // robin
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 256>, 2>)        // walkStateCallback
+NB_MAKE_OPAQUE(WalkStateToVoidFunc<zombie::Array<float, 256>, 3>)        // walkStateCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 256>, 2>)    // terminalContributionCallback
+NB_MAKE_OPAQUE(WalkCodeStateToTypeFunc<zombie::Array<float, 256>, 3>)    // terminalContributionCallback
 
 // binding functions
 void bindNonTemplatedLibraryResources(nb::module_ m);
@@ -142,6 +182,8 @@ template <typename T, size_t DIM>
 void bindBoundaryValueCachingSolver(nb::module_ m, std::string typeStr="");
 template <typename T, size_t DIM>
 void bindReverseWalkOnStarsSolver(nb::module_ m, std::string typeStr="");
+template <typename T, size_t DIM>
+void bindKelvinTransform(nb::module_ m, std::string typeStr="");
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -297,19 +339,19 @@ nb::ndarray<nb::numpy, float> convertListToNumpyArray(const FloatNList<3>& v)
 
 void bindNonTemplatedLibraryResources(nb::module_ m)
 {
-    nb::bind_vector<BoolList>(m, "bool_list");
+    nb::bind_vector<BoolList>(m, "BoolList");
     m.def("convert_list_to_numpy_array", &convertListToNumpyArray<BoolList, bool>);
 
-    nb::bind_vector<IntList>(m, "int_list");
+    nb::bind_vector<IntList>(m, "IntList");
     m.def("convert_list_to_numpy_array", &convertListToNumpyArray<IntList, int>);
 
-    nb::bind_vector<UintList>(m, "uint_list");
+    nb::bind_vector<UintList>(m, "UintList");
     m.def("convert_list_to_numpy_array", &convertListToNumpyArray<UintList, uint32_t>);
 
-    nb::bind_vector<FloatList>(m, "float_list");
+    nb::bind_vector<FloatList>(m, "FloatList");
     m.def("convert_list_to_numpy_array", &convertListToNumpyArray<FloatList, float>);
 
-    nb::module_ opaque_types_m = m.def_submodule("opaque_types", "Opaque types module");
+    nb::module_ opaque_types_m = m.def_submodule("OpaqueTypes", "Opaque types module");
 
     nb::class_<FloatIntToBoolFunc>(opaque_types_m, "func<bool(float, int)>")
         .def("__call__", [](const FloatIntToBoolFunc& callback,
@@ -334,25 +376,25 @@ void bindNonTemplatedLibraryResources(nb::module_ m)
             return callback();
         });
 
-    nb::module_ solvers_m = m.def_submodule("solvers", "Solvers module");
+    nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
-    nb::enum_<zombie::SampleType>(solvers_m, "sample_type")
+    nb::enum_<zombie::SampleType>(solvers_m, "SampleType")
         .value("in_domain", zombie::SampleType::InDomain)
         .value("on_absorbing_boundary", zombie::SampleType::OnAbsorbingBoundary)
         .value("on_reflecting_boundary", zombie::SampleType::OnReflectingBoundary);
 
-    nb::enum_<zombie::EstimationQuantity>(solvers_m, "estimation_quantity")
+    nb::enum_<zombie::EstimationQuantity>(solvers_m, "EstimationQuantity")
         .value("solution", zombie::EstimationQuantity::Solution)
         .value("solution_and_gradient", zombie::EstimationQuantity::SolutionAndGradient)
         .value("none", zombie::EstimationQuantity::None);
 
-    nb::enum_<zombie::WalkCompletionCode>(solvers_m, "walk_completion_code")
+    nb::enum_<zombie::WalkCompletionCode>(solvers_m, "WalkCompletionCode")
         .value("reached_absorbing_boundary", zombie::WalkCompletionCode::ReachedAbsorbingBoundary)
         .value("terminated_with_russian_roulette", zombie::WalkCompletionCode::TerminatedWithRussianRoulette)
         .value("exceeded_max_walk_length", zombie::WalkCompletionCode::ExceededMaxWalkLength)
         .value("escaped_domain", zombie::WalkCompletionCode::EscapedDomain);
 
-    nb::class_<zombie::WalkSettings>(solvers_m, "walk_settings")
+    nb::class_<zombie::WalkSettings>(solvers_m, "WalkSettings")
         .def(nb::init<float, float, int, bool>(),
             "epsilon_shell_for_absorbing_boundary"_a, "epsilon_shell_for_reflecting_boundary"_a,
             "max_walk_length"_a, "solve_double_sided"_a)
@@ -382,7 +424,7 @@ void bindNonTemplatedLibraryResources(nb::module_ m)
         .def_rw("ignore_source_contribution", &zombie::WalkSettings::ignoreSourceContribution)
         .def_rw("print_logs", &zombie::WalkSettings::printLogs);
 
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+    nb::module_ utils_m = m.def_submodule("Utils", "Utilities module");
 
     utils_m.def("get_ignore_candidate_silhouette_callback",
                &zombie::getIgnoreCandidateSilhouetteCallback,
@@ -394,7 +436,7 @@ void bindNonTemplatedLibraryResources(nb::module_ m)
                "min_radial_distance"_a=1e-2f,
                "Returns a branch traversal weight function for a reflecting boundary.");
 
-    nb::class_<ProgressBar>(utils_m, "progress_bar")
+    nb::class_<ProgressBar>(utils_m, "ProgressBar")
         .def(nb::init<int, int>(),
             "total_work"_a, "display_width"_a=80)
         .def("report", &ProgressBar::report,
@@ -412,10 +454,10 @@ void bindNonTemplatedLibraryResources(nb::module_ m)
 template <size_t DIM>
 void bindIntersectBoundaryFuncs(nb::module_ m)
 {
-    nb::module_ opaque_types_m = m.def_submodule("opaque_types", "Opaque types module");
+    nb::module_ opaque_types_m = m.def_submodule("OpaqueTypes", "Opaque types module");
 
     std::string vectorStr = "float" + std::to_string(DIM);
-    std::string intersectionPointStr = "intersection_point_" + std::to_string(DIM) + "d";
+    std::string intersectionPointStr = "IntersectionPoint_" + std::to_string(DIM) + "d";
     std::string funcStr = "func<bool(" + vectorStr + ", " + vectorStr + ", " + vectorStr + ", float, bool, " + intersectionPointStr + ")>";
     nb::class_<IntersectBoundaryFunc<DIM>>(opaque_types_m, funcStr.c_str())
         .def("__call__", [](const IntersectBoundaryFunc<DIM>& callback,
@@ -438,7 +480,7 @@ void bindIntersectBoundaryFuncs(nb::module_ m)
 template <typename T, size_t DIM>
 void bindFloatNToTypeFunc(nb::module_ m, std::string typeStr)
 {
-    nb::module_ opaque_types_m = m.def_submodule("opaque_types", "Opaque types module");
+    nb::module_ opaque_types_m = m.def_submodule("OpaqueTypes", "Opaque types module");
 
     std::string vectorStr = "float" + std::to_string(DIM);
     std::string funcStr = "func<" + typeStr + "(" + vectorStr + ")>";
@@ -452,7 +494,7 @@ void bindFloatNToTypeFunc(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr)
 {
-    nb::module_ opaque_types_m = m.def_submodule("opaque_types", "Opaque types module");
+    nb::module_ opaque_types_m = m.def_submodule("OpaqueTypes", "Opaque types module");
 
     std::string vectorStr = "float" + std::to_string(DIM);
     std::string funcStr = "func<" + typeStr + "(" + vectorStr + ", bool)>";
@@ -466,7 +508,7 @@ void bindFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindFloatNFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr)
 {
-    nb::module_ opaque_types_m = m.def_submodule("opaque_types", "Opaque types module");
+    nb::module_ opaque_types_m = m.def_submodule("OpaqueTypes", "Opaque types module");
 
     std::string vectorStr = "float" + std::to_string(DIM);
     std::string funcStr = "func<" + typeStr + "(" + vectorStr + ", " + vectorStr + ", bool)>";
@@ -481,16 +523,16 @@ void bindFloatNFloatNBoolToTypeFunc(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindWalkStateFuncs(nb::module_ m, std::string typeStr)
 {
-    nb::module_ opaque_types_m = m.def_submodule("opaque_types", "Opaque types module");
+    nb::module_ opaque_types_m = m.def_submodule("OpaqueTypes", "Opaque types module");
 
-    std::string funcStr = "func<void(walk_state_" + typeStr + "_" + std::to_string(DIM) + "d)>";
+    std::string funcStr = "func<void(WalkState_" + typeStr + "_" + std::to_string(DIM) + "d)>";
     nb::class_<WalkStateToVoidFunc<T, DIM>>(opaque_types_m, funcStr.c_str())
         .def("__call__", [](const WalkStateToVoidFunc<T, DIM>& callback,
                             const zombie::WalkState<T, DIM>& a) -> void {
             callback(a);
         });
 
-    funcStr = "func<" + typeStr + "(walk_completion_code, walk_state_" + typeStr + "_" + std::to_string(DIM) + "d)>";
+    funcStr = "func<" + typeStr + "(WalkCompletionCode, WalkState_" + typeStr + "_" + std::to_string(DIM) + "d)>";
     nb::class_<WalkCodeStateToTypeFunc<T, DIM>>(opaque_types_m, funcStr.c_str())
         .def("__call__", [](const WalkCodeStateToTypeFunc<T, DIM>& callback,
                             zombie::WalkCompletionCode a,
@@ -502,15 +544,15 @@ void bindWalkStateFuncs(nb::module_ m, std::string typeStr)
 template <size_t DIM>
 void bindCoreGeometryStructures(nb::module_ m, std::string typeStr)
 {
-    nb::bind_vector<IntNList<DIM>>(m, ("int" + std::to_string(DIM) + "_list").c_str());
+    nb::bind_vector<IntNList<DIM>>(m, ("Int" + std::to_string(DIM) + "List").c_str());
     m.def("convert_list_to_numpy_array", &convertListToNumpyArray<IntNList<DIM>, int>);
 
-    nb::bind_vector<FloatNList<DIM>>(m, ("float" + std::to_string(DIM) + "_list").c_str());
+    nb::bind_vector<FloatNList<DIM>>(m, ("Float" + std::to_string(DIM) + "List").c_str());
     m.def("convert_list_to_numpy_array", &convertListToNumpyArray<FloatNList<DIM>, float>);
 
-    nb::module_ core_m = m.def_submodule("core", "Core module");
+    nb::module_ core_m = m.def_submodule("Core", "Core module");
 
-    nb::class_<zombie::IntersectionPoint<DIM>>(core_m, ("intersection_point" + typeStr).c_str())
+    nb::class_<zombie::IntersectionPoint<DIM>>(core_m, ("IntersectionPoint" + typeStr).c_str())
         .def(nb::init<>())
         .def(nb::init<const zombie::Vector<DIM>&, const zombie::Vector<DIM>&, float>(),
             "pt"_a, "normal"_a, "dist"_a)
@@ -518,7 +560,7 @@ void bindCoreGeometryStructures(nb::module_ m, std::string typeStr)
         .def_rw("normal", &zombie::IntersectionPoint<DIM>::normal)
         .def_rw("dist", &zombie::IntersectionPoint<DIM>::dist);
 
-    nb::class_<zombie::GeometricQueries<DIM>>(core_m, ("geometric_queries" + typeStr).c_str())
+    nb::class_<zombie::GeometricQueries<DIM>>(core_m, ("GeometricQueries" + typeStr).c_str())
         .def(nb::init<>())
         .def(nb::init<bool, const zombie::Vector<DIM>&, const zombie::Vector<DIM>&>(),
             "domain_is_watertight"_a, "domain_min"_a, "domain_max"_a)
@@ -542,12 +584,12 @@ void bindCoreGeometryStructures(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindDenseGrid(nb::module_ m, std::string typeStr)
 {
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+    nb::module_ utils_m = m.def_submodule("Utils", "Utilities module");
 
     if constexpr (std::is_floating_point<T>::value ||
                   std::is_integral<T>::value ||
                   std::is_same<T, bool>::value) {
-        nb::class_<zombie::DenseGrid<T, 1, DIM>>(utils_m, ("dense_grid" + typeStr).c_str())
+        nb::class_<zombie::DenseGrid<T, 1, DIM>>(utils_m, ("DenseGrid" + typeStr).c_str())
             .def(nb::init<const zombie::Vector<DIM>&, const zombie::Vector<DIM>&, bool>(),
                 "grid_min"_a, "grid_max"_a, "enable_interpolation"_a=false)
             .def(nb::init<const Eigen::Matrix<T, Eigen::Dynamic, 1>&,
@@ -590,7 +632,7 @@ void bindDenseGrid(nb::module_ m, std::string typeStr)
             .def_ro("extent", &zombie::DenseGrid<T, 1, DIM>::extent);
 
     } else {
-        nb::class_<zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>>(utils_m, ("dense_grid" + typeStr).c_str())
+        nb::class_<zombie::DenseGrid<float, T::RowsAtCompileTime, DIM>>(utils_m, ("DenseGrid" + typeStr).c_str())
             .def(nb::init<const zombie::Vector<DIM>&, const zombie::Vector<DIM>&, bool>(),
                 "grid_min"_a, "grid_max"_a, "enable_interpolation"_a=false)
             .def(nb::init<const Eigen::Matrix<float, Eigen::Dynamic, T::RowsAtCompileTime>&,
@@ -637,7 +679,7 @@ void bindDenseGrid(nb::module_ m, std::string typeStr)
 template <size_t DIM>
 void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
 {
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+    nb::module_ utils_m = m.def_submodule("Utils", "Utilities module");
 
     utils_m.def(("load_boundary_mesh" + typeStr).c_str(),
                &zombie::loadBoundaryMesh<DIM>,
@@ -684,19 +726,19 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
                "reflecting_positions"_a, "reflecting_indices"_a,
                "Partitions a boundary mesh into absorbing and reflecting parts using primitive centroids---\nthis assumes the boundary discretization is perfectly adapted to the boundary conditions,\nwhich isn't always a correct assumption.");
 
-    nb::class_<zombie::FcpwDirichletBoundaryHandler<DIM>>(utils_m, ("fcpw_dirichlet_boundary_handler" + typeStr).c_str())
+    nb::class_<zombie::FcpwDirichletBoundaryHandler<DIM>>(utils_m, ("FcpwDirichletBoundaryHandler" + typeStr).c_str())
         .def(nb::init<>())
         .def("build_acceleration_structure", &zombie::FcpwDirichletBoundaryHandler<DIM>::buildAccelerationStructure,
             "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions and indices.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
             "positions"_a, "indices"_a, "build_bvh"_a=true, "enable_bvh_vectorization"_a=false);
 
-    nb::class_<zombie::FcpwNeumannBoundaryHandler<DIM>>(utils_m, ("fcpw_neumann_boundary_handler" + typeStr).c_str())
+    nb::class_<zombie::FcpwNeumannBoundaryHandler<DIM>>(utils_m, ("FcpwNeumannBoundaryHandler" + typeStr).c_str())
         .def(nb::init<>())
         .def("build_acceleration_structure", &zombie::FcpwNeumannBoundaryHandler<DIM>::buildAccelerationStructure,
             "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions and indices.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
             "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a, "build_bvh"_a=true, "enable_bvh_vectorization"_a=false);
 
-    nb::class_<zombie::FcpwRobinBoundaryHandler<DIM>>(utils_m, ("fcpw_robin_boundary_handler" + typeStr).c_str())
+    nb::class_<zombie::FcpwRobinBoundaryHandler<DIM>>(utils_m, ("FcpwRobinBoundaryHandler" + typeStr).c_str())
         .def(nb::init<>())
         .def("build_acceleration_structure", &zombie::FcpwRobinBoundaryHandler<DIM>::buildAccelerationStructure,
             "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions, indices, and min and max absolute coefficient values per mesh face.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
@@ -707,7 +749,7 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
             "updates the Robin coefficients on the boundary mesh.",
             "min_robin_coeff_values"_a, "max_robin_coeff_values"_a);
 
-    nb::class_<zombie::SdfGrid<DIM>, zombie::DenseGrid<float, 1, DIM>>(utils_m, ("sdf_grid" + typeStr).c_str())
+    nb::class_<zombie::SdfGrid<DIM>, zombie::DenseGrid<float, 1, DIM>>(utils_m, ("SDFGrid" + typeStr).c_str())
         .def(nb::init<const zombie::Vector<DIM>&, const zombie::Vector<DIM>&>(),
             "grid_min"_a, "grid_max"_a)
         .def(nb::init<const Eigen::VectorXf&, const zombie::Vectori<DIM>&,
@@ -765,7 +807,7 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
 template <size_t DIM>
 void bindPDEIndicatorCallbacks(nb::module_ m, std::string typeStr)
 {
-    nb::module_ core_m = m.def_submodule("core", "Core module");
+    nb::module_ core_m = m.def_submodule("Core", "Core module");
 
     core_m.def(("get_constant_indicator_callback" + typeStr).c_str(),
               [](bool value) -> FloatNToTypeFunc<bool, DIM> {
@@ -774,7 +816,7 @@ void bindPDEIndicatorCallbacks(nb::module_ m, std::string typeStr)
               "value"_a,
               "Returns a constant indicator callback.");
 
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+    nb::module_ utils_m = m.def_submodule("Utils", "Utilities module");
 
     utils_m.def(("get_dense_grid_indicator_callback" + typeStr).c_str(),
                nb::overload_cast<const zombie::DenseGrid<bool, 1, DIM>&>(
@@ -794,7 +836,7 @@ void bindPDEIndicatorCallbacks(nb::module_ m, std::string typeStr)
 template <size_t DIM>
 void bindPDECoefficientCallbacks(nb::module_ m, std::string typeStr)
 {
-    nb::module_ core_m = m.def_submodule("core", "Core module");
+    nb::module_ core_m = m.def_submodule("Core", "Core module");
 
     core_m.def(("get_constant_robin_coefficient_callback" + typeStr).c_str(),
               [](float value) -> FloatNFloatNBoolToTypeFunc<float, DIM> {
@@ -815,7 +857,7 @@ void bindPDECoefficientCallbacks(nb::module_ m, std::string typeStr)
               "value"_a, "value_boundary_normal_aligned"_a,
               "Returns a constant coefficient callback.");
 
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+    nb::module_ utils_m = m.def_submodule("Utils", "Utilities module");
 
     utils_m.def(("get_dense_grid_robin_coefficient_callback" + typeStr).c_str(),
                nb::overload_cast<const zombie::DenseGrid<float, 1, DIM>&>(
@@ -851,7 +893,7 @@ void bindPDECoefficientCallbacks(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindPDESouceCallbacks(nb::module_ m, std::string typeStr)
 {
-    nb::module_ core_m = m.def_submodule("core", "Core module");
+    nb::module_ core_m = m.def_submodule("Core", "Core module");
 
     core_m.def(("get_constant_source_callback" + typeStr).c_str(),
               [](float value) -> FloatNToTypeFunc<T, DIM> {
@@ -860,7 +902,7 @@ void bindPDESouceCallbacks(nb::module_ m, std::string typeStr)
               "value"_a,
               "Returns a constant source callback.");
 
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+    nb::module_ utils_m = m.def_submodule("Utils", "Utilities module");
 
     if constexpr (std::is_floating_point<T>::value) {
         utils_m.def(("get_dense_grid_source_callback" + typeStr).c_str(),
@@ -897,7 +939,7 @@ void bindPDESouceCallbacks(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindPDEDirichletCallbacks(nb::module_ m, std::string typeStr)
 {
-    nb::module_ core_m = m.def_submodule("core", "Core module");
+    nb::module_ core_m = m.def_submodule("Core", "Core module");
 
     core_m.def(("get_constant_dirichlet_callback" + typeStr).c_str(),
               [](float value) -> FloatNBoolToTypeFunc<T, DIM> {
@@ -914,7 +956,7 @@ void bindPDEDirichletCallbacks(nb::module_ m, std::string typeStr)
               "value"_a, "value_boundary_normal_aligned"_a,
               "Returns a constant dirichlet boundary condition callback.");
 
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+    nb::module_ utils_m = m.def_submodule("Utils", "Utilities module");
 
     if constexpr (std::is_floating_point<T>::value) {
         utils_m.def(("get_dense_grid_dirichlet_callback" + typeStr).c_str(),
@@ -983,7 +1025,7 @@ void bindPDEDirichletCallbacks(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindPDERobinCallbacks(nb::module_ m, std::string typeStr)
 {
-    nb::module_ core_m = m.def_submodule("core", "Core module");
+    nb::module_ core_m = m.def_submodule("Core", "Core module");
 
     core_m.def(("get_constant_robin_callback" + typeStr).c_str(),
               [](float value) -> FloatNFloatNBoolToTypeFunc<T, DIM> {
@@ -1002,7 +1044,7 @@ void bindPDERobinCallbacks(nb::module_ m, std::string typeStr)
               "value"_a, "value_boundary_normal_aligned"_a,
               "Returns a constant robin boundary condition callback.");
 
-    nb::module_ utils_m = m.def_submodule("utils", "Utilities module");
+    nb::module_ utils_m = m.def_submodule("Utils", "Utilities module");
 
     if constexpr (std::is_floating_point<T>::value) {
         utils_m.def(("get_dense_grid_robin_callback" + typeStr).c_str(),
@@ -1071,9 +1113,9 @@ void bindPDERobinCallbacks(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindPDEStructure(nb::module_ m, std::string typeStr)
 {
-    nb::module_ core_m = m.def_submodule("core", "Core module");
+    nb::module_ core_m = m.def_submodule("Core", "Core module");
 
-    nb::class_<zombie::PDE<T, DIM>>(core_m, ("pde" + typeStr).c_str())
+    nb::class_<zombie::PDE<T, DIM>>(core_m, ("PDE" + typeStr).c_str())
         .def(nb::init<>())
         .def_rw("absorption_coeff", &zombie::PDE<T, DIM>::absorptionCoeff)
         .def_rw("are_robin_conditions_pure_neumann", &zombie::PDE<T, DIM>::areRobinConditionsPureNeumann)
@@ -1088,9 +1130,9 @@ void bindPDEStructure(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
 {
-    nb::module_ solvers_m = m.def_submodule("solvers", "Solvers module");
+    nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
-    nb::class_<zombie::WalkState<T, DIM>>(solvers_m, ("walk_state" + typeStr).c_str())
+    nb::class_<zombie::WalkState<T, DIM>>(solvers_m, ("WalkState" + typeStr).c_str())
         .def_ro("current_pt", &zombie::WalkState<T, DIM>::currentPt)
         .def_ro("current_normal", &zombie::WalkState<T, DIM>::currentNormal)
         .def_ro("prev_direction", &zombie::WalkState<T, DIM>::prevDirection)
@@ -1098,7 +1140,7 @@ void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
         .def_ro("walk_length", &zombie::WalkState<T, DIM>::walkLength)
         .def_ro("on_reflecting_boundary", &zombie::WalkState<T, DIM>::onReflectingBoundary);
 
-    nb::class_<zombie::SampleStatistics<T, DIM>>(solvers_m, ("sample_statistics" + typeStr).c_str())
+    nb::class_<zombie::SampleStatistics<T, DIM>>(solvers_m, ("SampleStatistics" + typeStr).c_str())
         .def(nb::init<>())
         .def("reset", &zombie::SampleStatistics<T, DIM>::reset,
             "Resets statistics.")
@@ -1117,7 +1159,7 @@ void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
         .def("get_mean_walk_length", &zombie::SampleStatistics<T, DIM>::getMeanWalkLength,
             "Returns mean walk length.");
 
-    nb::class_<zombie::SamplePoint<T, DIM>>(solvers_m, ("sample_point" + typeStr).c_str())
+    nb::class_<zombie::SamplePoint<T, DIM>>(solvers_m, ("SamplePoint" + typeStr).c_str())
         .def(nb::init<const zombie::Vector<DIM>&, const zombie::Vector<DIM>&, zombie::SampleType,
                       zombie::EstimationQuantity, float, float, float>(),
             "pt"_a, "normal"_a, "type"_a, "estimation_quantity"_a, "pdf"_a,
@@ -1135,8 +1177,8 @@ void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
         .def_ro("first_sphere_radius", &zombie::SamplePoint<T, DIM>::firstSphereRadius)
         .def_rw("estimate_boundary_normal_aligned", &zombie::SamplePoint<T, DIM>::estimateBoundaryNormalAligned);
 
-    nb::bind_vector<SamplePointList<T, DIM>>(solvers_m, ("sample_point" + typeStr + "_list").c_str());
-    nb::bind_vector<SampleStatisticsList<T, DIM>>(solvers_m, ("sample_statistics" + typeStr + "_list").c_str());
+    nb::bind_vector<SamplePointList<T, DIM>>(solvers_m, ("SamplePointList" + typeStr).c_str());
+    nb::bind_vector<SampleStatisticsList<T, DIM>>(solvers_m, ("SampleStatisticsList" + typeStr).c_str());
 
     solvers_m.def(("get_empty_walk_state_callback" + typeStr).c_str(),
                  []() -> WalkStateToVoidFunc<T, DIM> { return {}; },
@@ -1150,9 +1192,9 @@ void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindWalkOnSpheresSolver(nb::module_ m, std::string typeStr)
 {
-    nb::module_ solvers_m = m.def_submodule("solvers", "Solvers module");
+    nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
-    nb::class_<zombie::WalkOnSpheres<T, DIM>>(solvers_m, ("walk_on_spheres" + typeStr).c_str())
+    nb::class_<zombie::WalkOnSpheres<T, DIM>>(solvers_m, ("WalkOnSpheres" + typeStr).c_str())
         .def(nb::init<const zombie::GeometricQueries<DIM>&>(),
             "geometric_queries"_a)
         .def(nb::init<const zombie::GeometricQueries<DIM>&, WalkStateToVoidFunc<T, DIM>, WalkCodeStateToTypeFunc<T, DIM>>(),
@@ -1173,9 +1215,9 @@ void bindWalkOnSpheresSolver(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindWalkOnStarsSolver(nb::module_ m, std::string typeStr)
 {
-    nb::module_ solvers_m = m.def_submodule("solvers", "Solvers module");
+    nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
-    nb::class_<zombie::WalkOnStars<T, DIM>>(solvers_m, ("walk_on_stars" + typeStr).c_str())
+    nb::class_<zombie::WalkOnStars<T, DIM>>(solvers_m, ("WalkOnStars" + typeStr).c_str())
         .def(nb::init<const zombie::GeometricQueries<DIM>&>(),
             "geometric_queries"_a)
         .def(nb::init<const zombie::GeometricQueries<DIM>&, WalkStateToVoidFunc<T, DIM>, WalkCodeStateToTypeFunc<T, DIM>>(),
@@ -1196,9 +1238,9 @@ void bindWalkOnStarsSolver(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindSamplers(nb::module_ m, std::string typeStr)
 {
-    nb::module_ samplers_m = m.def_submodule("samplers", "Samplers module");
+    nb::module_ samplers_m = m.def_submodule("Samplers", "Samplers module");
 
-    nb::class_<zombie::BoundarySampler<T, DIM>>(samplers_m, ("boundary_sampler" + typeStr).c_str())
+    nb::class_<zombie::BoundarySampler<T, DIM>>(samplers_m, ("BoundarySampler" + typeStr).c_str())
         .def("initialize", &zombie::BoundarySampler<T, DIM>::initialize,
             "Performs any sampler specific initialization.",
             "normal_offset_for_boundary"_a, "solve_double_sided"_a)
@@ -1226,7 +1268,7 @@ void bindSamplers(nb::module_ m, std::string typeStr)
                       "Creates a uniform triangle boundary sampler.");
     }
 
-    nb::class_<zombie::DomainSampler<T, DIM>>(samplers_m, ("domain_sampler" + typeStr).c_str())
+    nb::class_<zombie::DomainSampler<T, DIM>>(samplers_m, ("DomainSampler" + typeStr).c_str())
         .def("generate_samples", &zombie::DomainSampler<T, DIM>::generateSamples,
             "Generates sample points inside the user-specified solve region.",
             "n_samples"_a, "geometric_queries"_a, "sample_pts"_a);
@@ -1241,9 +1283,9 @@ void bindSamplers(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindBoundaryValueCachingSolver(nb::module_ m, std::string typeStr)
 {
-    nb::module_ solvers_m = m.def_submodule("solvers", "Solvers module");
+    nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
-    nb::class_<zombie::bvc::EvaluationPoint<T, DIM>>(solvers_m, ("bvc_evaluation_point" + typeStr).c_str())
+    nb::class_<zombie::bvc::EvaluationPoint<T, DIM>>(solvers_m, ("BVCEvaluationPoint" + typeStr).c_str())
         .def(nb::init<const zombie::Vector<DIM>&, const zombie::Vector<DIM>&, zombie::SampleType, float, float>(),
             "pt"_a, "normal"_a, "type"_a, "dist_to_absorbing_boundary"_a, "dist_to_reflecting_boundary"_a)
         .def("get_estimated_solution", &zombie::bvc::EvaluationPoint<T, DIM>::getEstimatedSolution,
@@ -1260,9 +1302,9 @@ void bindBoundaryValueCachingSolver(nb::module_ m, std::string typeStr)
         .def_rw("dist_to_absorbing_boundary", &zombie::bvc::EvaluationPoint<T, DIM>::distToAbsorbingBoundary)
         .def_rw("dist_to_reflecting_boundary", &zombie::bvc::EvaluationPoint<T, DIM>::distToReflectingBoundary);
 
-    nb::bind_vector<BVCEvaluationPointList<T, DIM>>(solvers_m, ("bvc_evaluation_point" + typeStr + "_list").c_str());
+    nb::bind_vector<BVCEvaluationPointList<T, DIM>>(solvers_m, ("BVCEvaluationPointList" + typeStr).c_str());
 
-    nb::class_<zombie::bvc::BoundaryValueCachingSolver<T, DIM>>(solvers_m, ("boundary_value_caching" + typeStr).c_str())
+    nb::class_<zombie::bvc::BoundaryValueCachingSolver<T, DIM>>(solvers_m, ("BoundaryValueCaching" + typeStr).c_str())
         .def(nb::init<const zombie::GeometricQueries<DIM>&,
                       std::shared_ptr<zombie::BoundarySampler<T, DIM>>,
                       std::shared_ptr<zombie::BoundarySampler<T, DIM>>,
@@ -1292,9 +1334,9 @@ void bindBoundaryValueCachingSolver(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindReverseWalkOnStarsSolver(nb::module_ m, std::string typeStr)
 {
-    nb::module_ solvers_m = m.def_submodule("solvers", "Solvers module");
+    nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
-    nb::class_<zombie::rws::EvaluationPoint<T, DIM>>(solvers_m, ("rws_evaluation_point" + typeStr).c_str())
+    nb::class_<zombie::rws::EvaluationPoint<T, DIM>>(solvers_m, ("RWSEvaluationPoint" + typeStr).c_str())
         .def(nb::init<const zombie::Vector<DIM>&, const zombie::Vector<DIM>&, zombie::SampleType, float, float>(),
             "pt"_a, "normal"_a, "type"_a, "dist_to_absorbing_boundary"_a, "dist_to_reflecting_boundary"_a)
         .def("get_estimated_solution", &zombie::rws::EvaluationPoint<T, DIM>::getEstimatedSolution,
@@ -1310,10 +1352,10 @@ void bindReverseWalkOnStarsSolver(nb::module_ m, std::string typeStr)
         .def_rw("dist_to_absorbing_boundary", &zombie::rws::EvaluationPoint<T, DIM>::distToAbsorbingBoundary)
         .def_rw("dist_to_reflecting_boundary", &zombie::rws::EvaluationPoint<T, DIM>::distToReflectingBoundary);
 
-    nb::bind_vector<RWSEvaluationPointList<T, DIM>>(solvers_m, ("rws_evaluation_point" + typeStr + "_list").c_str());
+    nb::bind_vector<RWSEvaluationPointList<T, DIM>>(solvers_m, ("RWSEvaluationPointList" + typeStr).c_str());
 
     nb::class_<zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>>>(
-        solvers_m, ("reverse_walk_on_stars" + typeStr).c_str())
+        solvers_m, ("ReverseWalkOnStars" + typeStr).c_str())
         .def(nb::init<const zombie::GeometricQueries<DIM>&,
                       std::shared_ptr<zombie::BoundarySampler<T, DIM>>,
                       std::shared_ptr<zombie::BoundarySampler<T, DIM>>,
@@ -1346,9 +1388,9 @@ void bindReverseWalkOnStarsSolver(nb::module_ m, std::string typeStr)
 template <typename T, size_t DIM>
 void bindKelvinTransform(nb::module_ m, std::string typeStr)
 {
-    nb::module_ solvers_m = m.def_submodule("solvers", "Solvers module");
+    nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
-    nb::class_<zombie::KelvinTransform<T, DIM>>(solvers_m, ("kelvin_transform" + typeStr).c_str())
+    nb::class_<zombie::KelvinTransform<T, DIM>>(solvers_m, ("KelvinTransform" + typeStr).c_str())
         .def(nb::init<const zombie::Vector<DIM>&>(),
             "origin"_a=zombie::Vector<DIM>::Zero())
         .def("set_origin", &zombie::KelvinTransform<T, DIM>::setOrigin,
