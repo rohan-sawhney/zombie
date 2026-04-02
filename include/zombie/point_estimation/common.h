@@ -331,7 +331,7 @@ enum class SampleType {
 enum class EstimationQuantity {
     Solution,
     SolutionAndGradient,
-    None
+    Skip
 };
 
 template <typename T, size_t DIM>

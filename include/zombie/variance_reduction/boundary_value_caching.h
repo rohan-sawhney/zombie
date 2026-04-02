@@ -349,14 +349,14 @@ inline void BoundaryValueCaching<T, DIM>::setSourceValues(const PDE<T, DIM>& pde
     if (runSingleThreaded) {
         for (int i = 0; i < nSamplePoints; i++) {
             samplePts[i].contribution = pde.source(samplePts[i].pt);
-            samplePts[i].estimationQuantity = EstimationQuantity::None;
+            samplePts[i].estimationQuantity = EstimationQuantity::Skip;
         }
 
     } else {
         auto run = [&](const tbb::blocked_range<int>& range) {
             for (int i = range.begin(); i < range.end(); ++i) {
                 samplePts[i].contribution = pde.source(samplePts[i].pt);
-                samplePts[i].estimationQuantity = EstimationQuantity::None;
+                samplePts[i].estimationQuantity = EstimationQuantity::Skip;
             }
         };
 

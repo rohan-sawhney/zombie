@@ -331,10 +331,10 @@ def create_sample_points(solve_locations, distance_info, dim, channels):
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
         normal = np.zeros(dim)
-        sample_type = zombie.Solvers.SampleType.in_domain
+        sample_type = zombie.Solvers.SampleType.InDomain
         in_valid_solve_region = distance_info[i][0]
-        estimation_quantity = zombie.Solvers.EstimationQuantity.solution\
-                                if in_valid_solve_region else zombie.Solvers.EstimationQuantity.none
+        estimation_quantity = zombie.Solvers.EstimationQuantity.Solution\
+                                if in_valid_solve_region else zombie.Solvers.EstimationQuantity.Skip
         pdf = 1.0
         dist_to_absorbing_boundary = distance_info[i][1]
         dist_to_reflecting_boundary = distance_info[i][2]
@@ -462,7 +462,7 @@ def create_bvc_evaluation_points(solve_locations, distance_info, dim, channels):
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
         normal = np.zeros(dim)
-        sample_type = zombie.Solvers.SampleType.in_domain
+        sample_type = zombie.Solvers.SampleType.InDomain
         dist_to_absorbing_boundary = distance_info[i][1]
         dist_to_reflecting_boundary = distance_info[i][2]
 
@@ -621,7 +621,7 @@ def create_rws_evaluation_points(solve_locations, distance_info, dim, channels):
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
         normal = np.zeros(dim)
-        sample_type = zombie.Solvers.SampleType.in_domain
+        sample_type = zombie.Solvers.SampleType.InDomain
         dist_to_absorbing_boundary = distance_info[i][1]
         dist_to_reflecting_boundary = distance_info[i][2]
 

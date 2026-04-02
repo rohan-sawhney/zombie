@@ -379,20 +379,20 @@ void bindNonTemplatedLibraryResources(nb::module_ m)
     nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
     nb::enum_<zombie::SampleType>(solvers_m, "SampleType")
-        .value("in_domain", zombie::SampleType::InDomain)
-        .value("on_absorbing_boundary", zombie::SampleType::OnAbsorbingBoundary)
-        .value("on_reflecting_boundary", zombie::SampleType::OnReflectingBoundary);
+        .value("InDomain", zombie::SampleType::InDomain)
+        .value("OnAbsorbingBoundary", zombie::SampleType::OnAbsorbingBoundary)
+        .value("OnReflectingBoundary", zombie::SampleType::OnReflectingBoundary);
 
     nb::enum_<zombie::EstimationQuantity>(solvers_m, "EstimationQuantity")
-        .value("solution", zombie::EstimationQuantity::Solution)
-        .value("solution_and_gradient", zombie::EstimationQuantity::SolutionAndGradient)
-        .value("none", zombie::EstimationQuantity::None);
+        .value("Solution", zombie::EstimationQuantity::Solution)
+        .value("SolutionAndGradient", zombie::EstimationQuantity::SolutionAndGradient)
+        .value("Skip", zombie::EstimationQuantity::Skip);
 
     nb::enum_<zombie::WalkCompletionCode>(solvers_m, "WalkCompletionCode")
-        .value("reached_absorbing_boundary", zombie::WalkCompletionCode::ReachedAbsorbingBoundary)
-        .value("terminated_with_russian_roulette", zombie::WalkCompletionCode::TerminatedWithRussianRoulette)
-        .value("exceeded_max_walk_length", zombie::WalkCompletionCode::ExceededMaxWalkLength)
-        .value("escaped_domain", zombie::WalkCompletionCode::EscapedDomain);
+        .value("ReachedAbsorbingBoundary", zombie::WalkCompletionCode::ReachedAbsorbingBoundary)
+        .value("TerminatedWithRussianRoulette", zombie::WalkCompletionCode::TerminatedWithRussianRoulette)
+        .value("ExceededMaxWalkLength", zombie::WalkCompletionCode::ExceededMaxWalkLength)
+        .value("EscapedDomain", zombie::WalkCompletionCode::EscapedDomain);
 
     nb::class_<zombie::WalkSettings>(solvers_m, "WalkSettings")
         .def(nb::init<float, float, int, bool>(),

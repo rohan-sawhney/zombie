@@ -137,7 +137,7 @@ inline void WalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                                        int nWalks, SamplePoint<T, DIM>& samplePt,
                                        SampleStatistics<T, DIM>& statistics) const
 {
-    if (samplePt.estimationQuantity != EstimationQuantity::None) {
+    if (samplePt.estimationQuantity != EstimationQuantity::Skip) {
         if (samplePt.estimationQuantity == EstimationQuantity::SolutionAndGradient) {
             estimateSolutionAndGradient(pde, walkSettings, nWalks, samplePt, statistics);
 
