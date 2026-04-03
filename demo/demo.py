@@ -30,9 +30,9 @@ def create_grid_points(output_config, bounding_box):
 
     for i in range(grid_res):
         for j in range(grid_res):
-           index = i*grid_res + j
-           grid_points[index][0] = (i/float(grid_res))*extent[0] + grid_min[0]
-           grid_points[index][1] = (j/float(grid_res))*extent[1] + grid_min[1]
+            index = i * grid_res + j
+            grid_points[index][0] = (i / float(grid_res)) * extent[0] + grid_min[0]
+            grid_points[index][1] = (j / float(grid_res)) * extent[1] + grid_min[1]
 
     return grid_points
 
@@ -44,7 +44,7 @@ def create_grid_values(output_config, distance_info, values):
 
     for i in range(grid_res):
         for j in range(grid_res):
-            index = i*grid_res + j
+            index = i * grid_res + j
             in_valid_solve_region = distance_info[index][0]
             dist_to_boundary = min(distance_info[index][1], distance_info[index][2])
 
@@ -63,7 +63,7 @@ def load_image_buffer(image_file):
     image = image.transpose(Image.Transpose.TRANSPOSE)
     image_shape = np.array([image.height, image.width], dtype=np.int32)
     image = image.convert("L")
-    image = np.array(image).flatten().astype(np.float32)/255.0
+    image = np.array(image).flatten().astype(np.float32) / 255.0
 
     return image, image_shape
 
@@ -84,13 +84,13 @@ def save_image_buffer(output_config, image_file, image_buffer):
 
     # save grayscale image
     image = np.clip(image_buffer, 0.0, 1.0)
-    grayscale_image = (image*255.0).astype(np.uint8)
+    grayscale_image = (image * 255.0).astype(np.uint8)
     grayscale_image = Image.fromarray(grayscale_image)
     grayscale_image.save(image_file)
 
     # save colormapped image
     if save_colormapped:
-        image = np.clip((image_buffer - colormap_min_val)/(colormap_max_val - colormap_min_val), 0.0, 1.0)
+        image = np.clip((image_buffer - colormap_min_val) / (colormap_max_val - colormap_min_val), 0.0, 1.0)
         cmap = plt.get_cmap(colormap)
         colormapped_image = cmap(image, bytes=True)
         colormapped_image = np.clip(colormapped_image[:, :, :3].astype(np.uint8), 0, 255)
