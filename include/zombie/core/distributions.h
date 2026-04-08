@@ -411,11 +411,15 @@ public:
 
     // samples a point inside the ball given the direction along which to sample the point
     Vector2 sampleVolume(const Vector2& dir, pcg32& rng, float& r, float& pdf) {
-        // TODO: can probably do better
-        // rejection sample radius r from pdf 4.0 * r * ln(R / r) / R^2
-        float bound = 1.5f/R;
+        // sample radius r from pdf 4.0 * r * ln(R / r) / R^2
+        float u1 = rng.nextFloat();
+        float u2 = rng.nextFloat();
+        r = R*std::sqrt(u1*u2);
+        r = std::max(rClamp, r);
+        if (r > R) r = R/2.0f;
+        pdf = evaluate(r)/norm();
 
-        return GreensFnBall<2>::rejectionSampleGreensFn(dir, bound, rng, r, pdf);
+        return c + r*dir;
     }
 
     // samples a point inside the ball
@@ -515,9 +519,9 @@ public:
         // sample radius r from pdf 6.0f * r * (R - r) / R^3 using Ulrich's polar method
         float u1 = rng.nextFloat();
         float u2 = rng.nextFloat();
-        float phi = 2.0f*M_PI*u2;
-
-        r = (1.0f + std::sqrt(1.0f - std::cbrt(u1*u1))*std::cos(phi))*R/2.0f;
+        float u3 = rng.nextFloat();
+        float uMedian = std::max(std::min(u1, u2), std::min(std::max(u1, u2), u3));
+        r = R*uMedian;
         r = std::max(rClamp, r);
         if (r > R) r = R/2.0f;
         pdf = evaluate(r)/norm();
