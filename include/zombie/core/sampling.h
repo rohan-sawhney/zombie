@@ -331,7 +331,7 @@ public:
         // use >= since we reserve 0xFFFFFFFFu as an invalid flag marker during construction
         if ((uint32_t)weights.size() >= std::numeric_limits<uint32_t>::max()) {
             std::cerr << "too many entries for alias table" << std::endl;
-            return EXIT_FAILURE;
+            exit(EXIT_FAILURE);
         }
 
         // our working set / intermediate buffers (underweight & overweight); initialize to "invalid"
@@ -393,7 +393,7 @@ public:
             // this cannot occur (without some logic bug above)
             else {
                 std::cerr << "alias table construction incorrect" << std::endl;
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
             }
         }
 

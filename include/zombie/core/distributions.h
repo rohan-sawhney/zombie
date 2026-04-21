@@ -173,7 +173,7 @@ class YukawaGreensFnFreeSpace<2>: public GreensFnFreeSpace<2> {
 public:
     // constructor
     YukawaGreensFnFreeSpace(float lambda_):
-        GreensFnFreeSpace<2>(), lambda(lambda_), sqrtLambda(std::sqrt(lambda_)) {}
+        GreensFnFreeSpace<2>(), sqrtLambda(std::sqrt(lambda_)) {}
 
     // evaluates the Green's function
     float evaluate(float r) const {
@@ -211,6 +211,7 @@ public:
         float K0mur = bessel::bessk0(mur);
         float K1mur = bessel::bessk1(mur);
         float K2mur = bessel::bessk(2, mur);
+        float lambda = sqrtLambda*sqrtLambda;
         float Qr1 = sqrtLambda*K1mur;
         float Qr2 = lambda*(K0mur + K2mur)/2.0f;
 
@@ -218,7 +219,7 @@ public:
     }
 
     // members
-    float lambda, sqrtLambda; // potential
+    float sqrtLambda; // potential
 };
 
 template <>
@@ -226,7 +227,7 @@ class YukawaGreensFnFreeSpace<3>: public GreensFnFreeSpace<3> {
 public:
     // constructor
     YukawaGreensFnFreeSpace(float lambda_):
-        GreensFnFreeSpace<3>(), lambda(lambda_), sqrtLambda(std::sqrt(lambda_)) {}
+        GreensFnFreeSpace<3>(), sqrtLambda(std::sqrt(lambda_)) {}
 
     // evaluates the Green's function
     float evaluate(float r) const {
@@ -271,7 +272,7 @@ public:
     }
 
     // members
-    float lambda, sqrtLambda; // potential
+    float sqrtLambda; // potential
 };
 
 template <size_t DIM>
@@ -632,7 +633,7 @@ class YukawaGreensFnBall<2>: public GreensFnBall<2> {
 public:
     // constructor
     YukawaGreensFnBall(float lambda_):
-        GreensFnBall<2>(), lambda(lambda_), sqrtLambda(std::sqrt(lambda_)) {}
+        GreensFnBall<2>(), sqrtLambda(std::sqrt(lambda_)) {}
 
     // updates the ball center and radius
     void updateBall(const Vector2& c_, float R_, float rClamp_=1e-4f) {
@@ -648,6 +649,7 @@ public:
     Vector2 sampleVolume(const Vector2& dir, pcg32& rng, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf r * λ * (K_0(r√λ) * I_0(R√λ) - I_0(r√λ) * K_0(R√λ)) / (I_0(R√λ) - 1)
+        float lambda = sqrtLambda*sqrtLambda;
         float bound = R <= lambda ?
                       std::max(std::max(2.2f/R, 2.2f/lambda), std::max(0.6f*std::sqrt(R), 0.6f*sqrtLambda)) :
                       std::max(std::min(2.2f/R, 2.2f/lambda), std::min(0.6f*std::sqrt(R), 0.6f*sqrtLambda));
@@ -689,6 +691,7 @@ public:
 
     // evaluates the norm of the Green's function
     float norm() const {
+        float lambda = sqrtLambda*sqrtLambda;
         return (1.0f - 2.0f*M_PI*poissonKernel())/lambda;
     }
 
@@ -779,7 +782,7 @@ public:
 
 protected:
     // members
-    float lambda, sqrtLambda; // potential
+    float sqrtLambda; // potential
     float muR, K0muR, I0muR, K1muR, I1muR;
 };
 
@@ -788,7 +791,7 @@ class YukawaGreensFnBall<3>: public GreensFnBall<3> {
 public:
     // constructor
     YukawaGreensFnBall(float lambda_):
-        GreensFnBall<3>(), lambda(lambda_), sqrtLambda(std::sqrt(lambda_)) {}
+        GreensFnBall<3>(), sqrtLambda(std::sqrt(lambda_)) {}
 
     // updates the ball center and radius
     void updateBall(const Vector3& c_, float R_, float rClamp_=1e-4f) {
@@ -806,6 +809,7 @@ public:
     Vector3 sampleVolume(const Vector3& dir, pcg32& rng, float& r, float& pdf) {
         // TODO: can probably do better
         // rejection sample radius r from pdf r * λ * sinh((R - r)√λ) / (sinh(R√λ) - R√λ)
+        float lambda = sqrtLambda*sqrtLambda;
         float bound = R <= lambda ?
                       std::max(std::max(2.0f/R, 2.0f/lambda), std::max(0.5f*std::sqrt(R), 0.5f*sqrtLambda)) :
                       std::max(std::min(2.0f/R, 2.0f/lambda), std::min(0.5f*std::sqrt(R), 0.5f*sqrtLambda));
@@ -847,6 +851,7 @@ public:
 
     // evaluates the norm of the Green's function
     float norm() const {
+        float lambda = sqrtLambda*sqrtLambda;
         return (1.0f - 4.0f*M_PI*poissonKernel())/lambda;
     }
 
@@ -936,6 +941,7 @@ public:
     // evaluates the gradient of the Poisson Kernel
     Vector3 poissonKernelGradient(const Vector3& y) const {
         Vector3 d = y - c;
+        float lambda = sqrtLambda*sqrtLambda;
         float QR = lambda/I32muR;
 
         return d*QR/(4.0f*M_PI);
@@ -948,7 +954,7 @@ public:
 
 protected:
     // members
-    float lambda, sqrtLambda; // potential
+    float sqrtLambda; // potential
     float muR, expmuR, sinhmuR, K32muR, I32muR;
 };
 
