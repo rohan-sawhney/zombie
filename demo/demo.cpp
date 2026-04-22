@@ -377,7 +377,7 @@ void runReverseWalkOnStars(const json& solverConfig,
     std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
 
     zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>> reverseWalkOnStars(
-                                    queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
+        queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
 
     // generate boundary and domain samples
     reverseWalkOnStars.generateSamples(absorbingBoundarySampleCount, reflectingBoundarySampleCount,
