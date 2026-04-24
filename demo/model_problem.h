@@ -145,7 +145,7 @@ mSdfGridForInvertedAbsorbingBoundary(nullptr)
     }
     mIsReflectingBoundary = Image<1>(directoryPath + getRequired<std::string>(config, "isReflectingBoundary"));
     mSolveExterior = getOptional<bool>(config, "solveExterior", false);
-    mDomainIsWatertight = getOptional<bool>(config, "domainIsWatertight", true);
+    mDomainIsWatertight = getOptional<bool>(config, "domainIsWatertight", false);
     mUseSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);
     mSdfGridResolution = getOptional<int>(config, "sdfGridResolution", 128);
     mRobinCoeff = getOptional<float>(config, "robinCoeff", 0.0f);

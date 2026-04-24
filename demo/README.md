@@ -46,21 +46,26 @@ These model problem components are specified along with solver and output option
         "epsilonShellForAbsorbingBoundary": 1e-3,
         "epsilonShellForReflectingBoundary": 1e-3,
         "russianRouletteThreshold": 0.99,
+        "splittingThreshold": 1.5,
         "ignoreAbsorbingBoundaryContribution": false,
         "ignoreReflectingBoundaryContribution": true,
         "ignoreSourceContribution": true
     },
     "modelProblem": {
-        "geometry": "../demo/modelProblem/engine/data/geometry.obj",
-        "isReflectingBoundary": "../demo/modelProblem/engine/data/is_reflecting_boundary.pfm",
-        "absorbingBoundaryValue": "../demo/modelProblem/engine/data/absorbing_boundary_value.pfm",
-        "reflectingBoundaryValue": "../demo/modelProblem/engine/data/reflecting_boundary_value.pfm",
-        "sourceValue": "../demo/modelProblem/engine/data/source_value.pfm",
+        "geometry": "demo/model_problems/engine/data/geometry.obj",
+        "isReflectingBoundary": "demo/model_problems/engine/data/is_reflecting_boundary.pfm",
+        "absorbingBoundaryValue": "demo/model_problems/engine/data/absorbing_boundary_value.pfm",
+        "reflectingBoundaryValue": "demo/model_problems/engine/data/reflecting_boundary_value.pfm",
+        "sourceValue": "demo/model_problems/engine/data/source_value.pfm",
         "robinCoeff": 0.0,
-        "absorptionCoeff": 0.0
+        "absorptionCoeff": 0.0,
+        "solveDoubleSided": false,
+        "solveExterior": false,
+        "domainIsWatertight": true,
+        "useSdfForAbsorbingBoundary": false
     },
     "output": {
-        "solutionFile": "../demo/modelProblem/engine/solutions/wost.pfm",
+        "solutionFile": "demo/model_problems/engine/solutions/wost.pfm",
         "gridRes": 256,
         "boundaryDistanceMask": 1e-2,
         "saveDebug": false,

@@ -84,7 +84,7 @@ void runWalkOnSpheres(const json& solverConfig,
                                       !disableGradientControlVariates,
                                       !disableGradientAntitheticVariates,
                                       useCosineSamplingForDirectionalDerivatives,
-                                      ignoreAbsorbingBoundaryContribution, false,
+                                      ignoreAbsorbingBoundaryContribution, true,
                                       ignoreSourceContribution, printLogs);
     std::vector<int> nWalksVector(samplePts.size(), nWalks);
     zombie::WalkOnSpheres<T, DIM> walkOnSpheres(queries);

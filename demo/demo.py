@@ -210,7 +210,7 @@ def populate_geometric_queries(model_problem_config, bounding_box,
                                are_robin_conditions_pure_neumann, solve_double_sided, dim):
     # load the model problem configuration
     domain_is_watertight = model_problem_config["domainIsWatertight"]\
-        if "domainIsWatertight" in model_problem_config else True
+        if "domainIsWatertight" in model_problem_config else False
     use_sdf_for_absorbing_boundary = model_problem_config["useSdfForAbsorbingBoundary"]\
         if "useSdfForAbsorbingBoundary" in model_problem_config else False
     sdf_grid_resolution = model_problem_config["sdfGridResolution"]\
@@ -412,7 +412,7 @@ def run_walk_on_spheres(solver_config, sample_pts, sample_statistics,
                                                 not disable_gradient_control_variates,
                                                 not disable_gradient_antithetic_variates,
                                                 use_cosine_sampling_for_directional_derivatives,
-                                                ignore_absorbing_boundary_contribution, False,
+                                                ignore_absorbing_boundary_contribution, True,
                                                 ignore_source_contribution, print_logs)
     n_walks_list = zombie.IntList([n_walks] * len(sample_pts))
     walk_on_spheres = zombie.Solvers.WalkOnSpheres(geometric_queries, dim=dim, channels=channels)

@@ -26,7 +26,7 @@ def image_to_pfm(image_path, pfm_path, normalize = False, flip_y = False, scale 
     
     scale: float
     
-    offset: floatt
+    offset: float
     '''
     data = np.array(imread(image_path), dtype=np.float32)
     data = np.flip(data, axis=0)
