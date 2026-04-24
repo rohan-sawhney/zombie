@@ -124,12 +124,21 @@ def load_boundary_mesh(model_problem_config, dim, normalize=True, flip_orientati
 
 def setup_pde(model_problem_config, bounding_box, dim, channels):
     # load the model problem configuration
+    solve_double_sided = model_problem_config["solveDoubleSided"]\
+        if "solveDoubleSided" in model_problem_config else False
     source_value_buffer, source_value_shape =\
         load_image_buffer(model_problem_config["sourceValue"])
     absorbing_boundary_value_buffer, absorbing_boundary_value_shape =\
         load_image_buffer(model_problem_config["absorbingBoundaryValue"])
     reflecting_boundary_value_buffer, reflecting_boundary_value_shape =\
         load_image_buffer(model_problem_config["reflectingBoundaryValue"])
+    absorbing_boundary_normal_aligned_value_buffer = None
+    reflecting_boundary_normal_aligned_value_buffer = None
+    if solve_double_sided:
+        absorbing_boundary_normal_aligned_value_buffer, _ =\
+            load_image_buffer(model_problem_config["absorbingBoundaryNormalAlignedValue"])
+        reflecting_boundary_normal_aligned_value_buffer, _ =\
+            load_image_buffer(model_problem_config["reflectingBoundaryNormalAlignedValue"])
     is_reflecting_boundary_buffer, is_reflecting_boundary_shape =\
         load_image_buffer(model_problem_config["isReflectingBoundary"])
     robin_coeff = model_problem_config["robinCoeff"]\
@@ -146,14 +155,23 @@ def setup_pde(model_problem_config, bounding_box, dim, channels):
     # setup the PDE
     pde = zombie.Core.PDE(dim=dim, channels=channels)
     pde.source = zombie.Utils.get_dense_grid_source_callback(
-        source_value_buffer, source_value_shape, domain_min, domain_max,
-        dim=dim, channels=channels)
-    pde.dirichlet = zombie.Utils.get_dense_grid_dirichlet_callback(
-        absorbing_boundary_value_buffer, absorbing_boundary_value_shape,
+        source_value_buffer, source_value_shape,
         domain_min, domain_max, dim=dim, channels=channels)
-    pde.robin = zombie.Utils.get_dense_grid_robin_callback(
-        reflecting_boundary_value_buffer, reflecting_boundary_value_shape,
-        domain_min, domain_max, dim=dim, channels=channels)
+    if solve_double_sided:
+        # NOTE: assumes normal-aligned value buffers are the same shape as the value buffers
+        pde.dirichlet = zombie.Utils.get_dense_grid_dirichlet_callback(
+            absorbing_boundary_value_buffer, absorbing_boundary_normal_aligned_value_buffer,
+            absorbing_boundary_value_shape, domain_min, domain_max, dim=dim, channels=channels)
+        pde.robin = zombie.Utils.get_dense_grid_robin_callback(
+            reflecting_boundary_value_buffer, reflecting_boundary_normal_aligned_value_buffer,
+            reflecting_boundary_value_shape, domain_min, domain_max, dim=dim, channels=channels)
+    else:
+        pde.dirichlet = zombie.Utils.get_dense_grid_dirichlet_callback(
+            absorbing_boundary_value_buffer, absorbing_boundary_value_shape,
+            domain_min, domain_max, dim=dim, channels=channels)
+        pde.robin = zombie.Utils.get_dense_grid_robin_callback(
+            reflecting_boundary_value_buffer, reflecting_boundary_value_shape,
+            domain_min, domain_max, dim=dim, channels=channels)
     if solve_exterior:
         pde.has_reflecting_boundary_conditions = zombie.Utils.get_dense_grid_indicator_callback(
             reflecting_boundary_value_buffer, reflecting_boundary_value_shape,

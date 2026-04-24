@@ -71,10 +71,12 @@ protected:
     void invertExteriorProblem();
 
     // members
-    Image<1> mIsReflectingBoundary;
+    Image<1> mSourceValue;
     Image<1> mAbsorbingBoundaryValue;
     Image<1> mReflectingBoundaryValue;
-    Image<1> mSourceValue;
+    Image<1> mAbsorbingBoundaryNormalAlignedValue;
+    Image<1> mReflectingBoundaryNormalAlignedValue;
+    Image<1> mIsReflectingBoundary;
     bool mSolveDoubleSided;
     bool mSolveExterior;
     bool mDomainIsWatertight;
@@ -126,11 +128,22 @@ mSdfGridForInvertedAbsorbingBoundary(nullptr)
     std::string geometryFile = directoryPath + getRequired<std::string>(config, "geometry");
     bool normalize = getOptional<bool>(config, "normalizeDomain", true);
     bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
-    mIsReflectingBoundary = Image<1>(directoryPath + getRequired<std::string>(config, "isReflectingBoundary"));
+    mSolveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
+    mSourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
     mAbsorbingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryValue"));
     mReflectingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryValue"));
-    mSourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
-    mSolveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
+    if (mSolveDoubleSided) {
+        mAbsorbingBoundaryNormalAlignedValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryNormalAlignedValue"));
+        mReflectingBoundaryNormalAlignedValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryNormalAlignedValue"));
+        if (mAbsorbingBoundaryNormalAlignedValue.h != mAbsorbingBoundaryValue.h ||
+            mAbsorbingBoundaryNormalAlignedValue.w != mAbsorbingBoundaryValue.w ||
+            mReflectingBoundaryNormalAlignedValue.h != mReflectingBoundaryValue.h ||
+            mReflectingBoundaryNormalAlignedValue.w != mReflectingBoundaryValue.w) {
+            std::cerr << "Error: normal-aligned value buffers must be the same shape as the value buffers" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+    mIsReflectingBoundary = Image<1>(directoryPath + getRequired<std::string>(config, "isReflectingBoundary"));
     mSolveExterior = getOptional<bool>(config, "solveExterior", false);
     mDomainIsWatertight = getOptional<bool>(config, "domainIsWatertight", true);
     mUseSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);
@@ -196,15 +209,26 @@ void ModelProblem::setupPDE()
         Vector2 uv = (x - bMin)/maxLength;
         return this->mSourceValue.get(uv)[0];
     };
-    mPde.dirichlet = [this, bMin, maxLength](const Vector2& x, bool _) -> float {
+    mPde.dirichlet = [this, bMin, maxLength](const Vector2& x,
+                                             bool returnBoundaryNormalAlignedValue) -> float {
         Vector2 uv = (x - bMin)/maxLength;
+        if (returnBoundaryNormalAlignedValue) {
+            return this->mAbsorbingBoundaryNormalAlignedValue.get(uv)[0];
+        }
+
         return this->mAbsorbingBoundaryValue.get(uv)[0];
     };
-    mPde.robin = [this, bMin, maxLength](const Vector2& x, const Vector2& n, bool _) -> float {
+    mPde.robin = [this, bMin, maxLength](const Vector2& x, const Vector2& n,
+                                         bool returnBoundaryNormalAlignedValue) -> float {
         Vector2 uv = (x - bMin)/maxLength;
+        if (returnBoundaryNormalAlignedValue) {
+            return this->mReflectingBoundaryNormalAlignedValue.get(uv)[0];
+        }
+
         return this->mReflectingBoundaryValue.get(uv)[0];
     };
-    mPde.robinCoeff = [this](const Vector2& x, const Vector2& n, bool _) -> float {
+    mPde.robinCoeff = [this](const Vector2& x, const Vector2& n,
+                             bool returnBoundaryNormalAlignedValue) -> float {
         return this->mRobinCoeff;
     };
     mPde.hasReflectingBoundaryConditions = [this, bMin, maxLength](const Vector2& x) -> bool {
