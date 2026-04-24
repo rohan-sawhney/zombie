@@ -1,7 +1,7 @@
 '''
 This file is the entry point for a 2D demo application demonstrating how to use Zombie.
-It reads a 'model problem' description from a JSON file, runs the WalkOnStars, BoundaryValueCaching
-or ReverseWalkonOnStars solvers, and saves the result as a PNG file.
+It reads a 'model problem' description from a JSON file, runs the WalkOnSpheres, WalkOnStars,
+BoundaryValueCaching or ReverseWalkonOnStars solvers, and saves the result as a PNG file.
 
 The full Zombie API, including treatment of 3D domains and/or vector-valued PDEs, can be viewed
 using the following commands in the Python console:
@@ -340,8 +340,8 @@ def compute_exterior_solution(kelvin_transform, interior_solution, inverted_solv
     return exterior_solution
 
 ##############################################################################################
-# Walk on Stars solver - note that this solver is a strict generalization of Walk on Spheres,
-# and reduces to it when the PDE only has Dirichlet boundary conditions
+# Walk on Spheres and Walk on Stars solvers - note that the latter is a strict generalization
+# of the former, and reduces to it when the PDE only has Dirichlet boundary conditions
 
 def create_sample_points(solve_locations, distance_info, dim, channels):
     sample_points = [None] * len(solve_locations)
@@ -367,6 +367,58 @@ def create_sample_points(solve_locations, distance_info, dim, channels):
 
     return zombie.Solvers.SamplePointList(sample_points, dim=dim, channels=channels),\
            zombie.Solvers.SampleStatisticsList(sample_statistics, dim=dim, channels=channels)
+
+def run_walk_on_spheres(solver_config, sample_pts, sample_statistics,
+                        geometric_queries, pde, solve_double_sided, dim, channels):
+    # load config settings
+    epsilon_shell_for_absorbing_boundary = solver_config["epsilonShellForAbsorbingBoundary"]\
+        if "epsilonShellForAbsorbingBoundary" in solver_config else 1e-3
+    russian_roulette_threshold = solver_config["russianRouletteThreshold"]\
+        if "russianRouletteThreshold" in solver_config else 0.0
+    splitting_threshold = solver_config["splittingThreshold"]\
+        if "splittingThreshold" in solver_config else np.inf
+
+    n_walks = solver_config["nWalks"]\
+        if "nWalks" in solver_config else 128
+    max_walk_length = solver_config["maxWalkLength"]\
+        if "maxWalkLength" in solver_config else 1024
+    steps_before_applying_tikhonov = solver_config["stepsBeforeApplyingTikhonov"]\
+        if "stepsBeforeApplyingTikhonov" in solver_config else 0
+
+    disable_gradient_control_variates = solver_config["disableGradientControlVariates"]\
+        if "disableGradientControlVariates" in solver_config else False
+    disable_gradient_antithetic_variates = solver_config["disableGradientAntitheticVariates"]\
+        if "disableGradientAntitheticVariates" in solver_config else False
+    use_cosine_sampling_for_directional_derivatives = solver_config["useCosineSamplingForDirectionalDerivatives"]\
+        if "useCosineSamplingForDirectionalDerivatives" in solver_config else False
+    ignore_absorbing_boundary_contribution = solver_config["ignoreAbsorbingBoundaryContribution"]\
+        if "ignoreAbsorbingBoundaryContribution" in solver_config else False
+    ignore_source_contribution = solver_config["ignoreSourceContribution"]\
+        if "ignoreSourceContribution" in solver_config else False
+    print_logs = solver_config["printLogs"]\
+        if "printLogs" in solver_config else False
+    run_single_threaded = solver_config["runSingleThreaded"]\
+        if "runSingleThreaded" in solver_config else False
+
+    # initialize solver and estimate solution
+    progress_bar = zombie.Utils.ProgressBar(len(sample_pts))
+    report_progress = zombie.Utils.get_report_progress_callback(progress_bar)
+
+    walk_settings = zombie.Solvers.WalkSettings(epsilon_shell_for_absorbing_boundary,
+                                                0.0, 0.0, russian_roulette_threshold,
+                                                splitting_threshold, max_walk_length,
+                                                steps_before_applying_tikhonov,
+                                                max_walk_length, solve_double_sided,
+                                                not disable_gradient_control_variates,
+                                                not disable_gradient_antithetic_variates,
+                                                use_cosine_sampling_for_directional_derivatives,
+                                                ignore_absorbing_boundary_contribution, False,
+                                                ignore_source_contribution, print_logs)
+    n_walks_list = zombie.IntList([n_walks] * len(sample_pts))
+    walk_on_spheres = zombie.Solvers.WalkOnSpheres(geometric_queries, dim=dim, channels=channels)
+    walk_on_spheres.solve(pde, walk_settings, n_walks_list, sample_pts, sample_statistics,
+                          run_single_threaded, report_progress)
+    progress_bar.finish()
 
 def run_walk_on_stars(solver_config, sample_pts, sample_statistics,
                       geometric_queries, pde, solve_double_sided, dim, channels):
@@ -784,7 +836,18 @@ def run_solver(solver_type, solver_config, solve_double_sided,
                reflecting_boundary_positions, reflecting_boundary_indices,
                geometric_queries, pde, solve_locations, distance_info,
                dim, channels):
-    if solver_type == "wost":
+    if solver_type == "wos":
+        # create sample points to estimate solution at
+        sample_pts, sample_statistics = create_sample_points(solve_locations, distance_info, dim, channels)
+
+        # run walk on spheres
+        run_walk_on_spheres(solver_config, sample_pts, sample_statistics,
+                            geometric_queries, pde, solve_double_sided, dim, channels)
+
+        # extract solution from sample points
+        return get_solution_from_sample_points(sample_statistics)
+
+    elif solver_type == "wost":
         # create sample points to estimate solution at
         sample_pts, sample_statistics = create_sample_points(solve_locations, distance_info, dim, channels)
 

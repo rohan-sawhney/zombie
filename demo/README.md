@@ -8,7 +8,7 @@ cd build && cmake ..
 make -j4
 ```
 
-Next you can run either [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/index.html), [Boundary Value Caching](http://www.rohansawhney.io/BoundaryValueCaching.pdf) or [reverse WoSt](https://imaging.cs.cmu.edu/walk_on_stars_robin/) from the build directory:
+Next you can run the [Walk on Spheres](https://www.cs.cmu.edu/~kmcrane/Projects/MonteCarloGeometryProcessing/), [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/index.html), [Boundary Value Caching](http://www.rohansawhney.io/BoundaryValueCaching.pdf) or [reverse WoSt](https://imaging.cs.cmu.edu/walk_on_stars_robin/) from the build directory:
 
 ```
 ./demo/demo ../demo/model_problems/engine/wost.json

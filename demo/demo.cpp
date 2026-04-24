@@ -1,6 +1,6 @@
 // This file is the entry point for a 2D demo application demonstrating how to use Zombie.
-// It reads a 'model problem' description from a JSON file, runs the WalkOnStars, BoundaryValueCaching
-// or ReverseWalkonOnStars solvers, and writes the result to a PMF or PNG file.
+// It reads a 'model problem' description from a JSON file, runs the WalkOnSpheres, WalkOnStars,
+// BoundaryValueCaching or ReverseWalkonOnStars solvers, and writes the result to a PMF or PNG file.
 
 #include "model_problem.h"
 #include "grid.h"
@@ -45,6 +45,52 @@ void createSamplePoints(const std::vector<zombie::Vector<DIM>>& solveLocations,
                                                                distToReflectingBoundary));
         }
     }
+}
+
+template <typename T, size_t DIM>
+void runWalkOnSpheres(const json& solverConfig,
+                      const zombie::GeometricQueries<DIM>& queries,
+                      const zombie::PDE<T, DIM>& pde,
+                      bool solveDoubleSided,
+                      std::vector<zombie::SamplePoint<T, DIM>>& samplePts,
+                      std::vector<zombie::SampleStatistics<T, DIM>>& sampleStatistics)
+{
+    // load config settings
+    const float epsilonShellForAbsorbingBoundary = getOptional<float>(solverConfig, "epsilonShellForAbsorbingBoundary", 1e-3f);
+    const float russianRouletteThreshold = getOptional<float>(solverConfig, "russianRouletteThreshold", 0.0f);
+    const float splittingThreshold = getOptional<float>(solverConfig, "splittingThreshold", std::numeric_limits<float>::max());
+
+    const int nWalks = getOptional<int>(solverConfig, "nWalks", 128);
+    const int maxWalkLength = getOptional<int>(solverConfig, "maxWalkLength", 1024);
+    const int stepsBeforeApplyingTikhonov = getOptional<int>(solverConfig, "stepsBeforeApplyingTikhonov", 0);
+
+    const bool disableGradientControlVariates = getOptional<bool>(solverConfig, "disableGradientControlVariates", false);
+    const bool disableGradientAntitheticVariates = getOptional<bool>(solverConfig, "disableGradientAntitheticVariates", false);
+    const bool useCosineSamplingForDirectionalDerivatives = getOptional<bool>(solverConfig, "useCosineSamplingForDirectionalDerivatives", false);
+    const bool ignoreAbsorbingBoundaryContribution = getOptional<bool>(solverConfig, "ignoreAbsorbingBoundaryContribution", false);
+    const bool ignoreSourceContribution = getOptional<bool>(solverConfig, "ignoreSourceContribution", false);
+    const bool printLogs = getOptional<bool>(solverConfig, "printLogs", false);
+    const bool runSingleThreaded = getOptional<bool>(solverConfig, "runSingleThreaded", false);
+
+    // initialize solver and estimate solution
+    ProgressBar pb(samplePts.size());
+    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
+
+    zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
+                                      0.0f, 0.0f, russianRouletteThreshold,
+                                      splittingThreshold, maxWalkLength,
+                                      stepsBeforeApplyingTikhonov,
+                                      maxWalkLength, solveDoubleSided,
+                                      !disableGradientControlVariates,
+                                      !disableGradientAntitheticVariates,
+                                      useCosineSamplingForDirectionalDerivatives,
+                                      ignoreAbsorbingBoundaryContribution, false,
+                                      ignoreSourceContribution, printLogs);
+    std::vector<int> nWalksVector(samplePts.size(), nWalks);
+    zombie::WalkOnSpheres<T, DIM> walkOnSpheres(queries);
+    walkOnSpheres.solve(pde, walkSettings, nWalksVector, samplePts, sampleStatistics,
+                        runSingleThreaded, reportProgress);
+    pb.finish();
 }
 
 template <typename T, size_t DIM>
@@ -442,7 +488,19 @@ void runSolver(const std::string& solverType, const json& solverConfig,
                const std::vector<DistanceInfo>& distanceInfo,
                std::vector<T>& solution)
 {
-    if (solverType == "wost") {
+    if (solverType == "wos") {
+        // create sample points to estimate solution at
+        std::vector<zombie::SamplePoint<T, DIM>> samplePts;
+        createSamplePoints<T, DIM>(solveLocations, distanceInfo, samplePts);
+
+        // run walk on spheres
+        std::vector<zombie::SampleStatistics<T, DIM>> sampleStatistics;
+        runWalkOnSpheres<T, DIM>(solverConfig, queries, pde, solveDoubleSided, samplePts, sampleStatistics);
+
+        // extract solution from sample points
+        getSolution<T, DIM>(distanceInfo, sampleStatistics, solution);
+
+    } else if (solverType == "wost") {
         // create sample points to estimate solution at
         std::vector<zombie::SamplePoint<T, DIM>> samplePts;
         createSamplePoints<T, DIM>(solveLocations, distanceInfo, samplePts);
