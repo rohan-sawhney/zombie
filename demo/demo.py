@@ -270,7 +270,16 @@ def populate_geometric_queries(model_problem_config, bounding_box,
         return geometric_queries, sdf_grid_for_dirichlet_boundary,\
                dirichlet_boundary_handler, robin_boundary_handler
 
-def compute_distance_info(solve_locations, geometric_queries, solve_double_sided, solve_exterior):
+def compute_distance_info(solve_locations, geometric_queries,
+                          solve_double_sided, solve_exterior, dim):
+    # compute distance to absorbing and reflecting boundaries
+    dist_to_absorbing_boundary = zombie.FloatList()
+    dist_to_reflecting_boundary = zombie.FloatList()
+    zombie.Utils.compute_dist_to_boundary(geometric_queries, solve_locations,
+                                          dist_to_absorbing_boundary,
+                                          dist_to_reflecting_boundary, dim=dim)
+
+    # determine solve locations in the valid solve region
     distance_info = [None] * len(solve_locations)
 
     for i in range(len(solve_locations)):
@@ -279,10 +288,10 @@ def compute_distance_info(solve_locations, geometric_queries, solve_double_sided
         if geometric_queries.domain_is_watertight and solve_exterior:
             inside_domain = not inside_domain
         in_valid_solve_region = inside_domain or solve_double_sided
-        dist_to_absorbing_boundary = geometric_queries.compute_dist_to_absorbing_boundary(pt, False)
-        dist_to_reflecting_boundary = geometric_queries.compute_dist_to_reflecting_boundary(pt, False)
 
-        distance_info[i] = (in_valid_solve_region, dist_to_absorbing_boundary, dist_to_reflecting_boundary)
+        distance_info[i] = (in_valid_solve_region,
+                            dist_to_absorbing_boundary[i],
+                            dist_to_reflecting_boundary[i])
 
     return distance_info
 
@@ -345,7 +354,6 @@ def compute_exterior_solution(kelvin_transform, interior_solution, inverted_solv
 
 def create_sample_points(solve_locations, distance_info, dim, channels):
     sample_points = [None] * len(solve_locations)
-    sample_statistics = [None] * len(solve_locations)
 
     for i in range(len(solve_locations)):
         pt = solve_locations[i]
@@ -363,13 +371,11 @@ def create_sample_points(solve_locations, distance_info, dim, channels):
                                                       dist_to_absorbing_boundary,
                                                       dist_to_reflecting_boundary,
                                                       dim=dim, channels=channels)
-        sample_statistics[i] = zombie.Solvers.SampleStatistics(dim=dim, channels=channels)
 
-    return zombie.Solvers.SamplePointList(sample_points, dim=dim, channels=channels),\
-           zombie.Solvers.SampleStatisticsList(sample_statistics, dim=dim, channels=channels)
+    return zombie.Solvers.SamplePointList(sample_points, dim=dim, channels=channels)
 
-def run_walk_on_spheres(solver_config, sample_pts, sample_statistics,
-                        geometric_queries, pde, solve_double_sided, dim, channels):
+def run_walk_on_spheres(solver_config, sample_pts, geometric_queries, pde,
+                        solve_double_sided, dim, channels):
     # load config settings
     epsilon_shell_for_absorbing_boundary = solver_config["epsilonShellForAbsorbingBoundary"]\
         if "epsilonShellForAbsorbingBoundary" in solver_config else 1e-3
@@ -401,7 +407,8 @@ def run_walk_on_spheres(solver_config, sample_pts, sample_statistics,
         if "runSingleThreaded" in solver_config else False
 
     # initialize solver and estimate solution
-    progress_bar = zombie.Utils.ProgressBar(len(sample_pts))
+    n_samples = len(sample_pts)
+    progress_bar = zombie.Utils.ProgressBar(n_samples)
     report_progress = zombie.Utils.get_report_progress_callback(progress_bar)
 
     walk_settings = zombie.Solvers.WalkSettings(epsilon_shell_for_absorbing_boundary,
@@ -414,14 +421,17 @@ def run_walk_on_spheres(solver_config, sample_pts, sample_statistics,
                                                 use_cosine_sampling_for_directional_derivatives,
                                                 ignore_absorbing_boundary_contribution, True,
                                                 ignore_source_contribution, print_logs)
-    n_walks_list = zombie.IntList([n_walks] * len(sample_pts))
+    n_walks_list = zombie.IntList([n_walks] * n_samples)
+    sample_statistics = zombie.Solvers.create_sample_statistics_list(n_samples, dim=dim, channels=channels)
     walk_on_spheres = zombie.Solvers.WalkOnSpheres(geometric_queries, dim=dim, channels=channels)
     walk_on_spheres.solve(pde, walk_settings, n_walks_list, sample_pts, sample_statistics,
                           run_single_threaded, report_progress)
     progress_bar.finish()
 
-def run_walk_on_stars(solver_config, sample_pts, sample_statistics,
-                      geometric_queries, pde, solve_double_sided, dim, channels):
+    return sample_statistics
+
+def run_walk_on_stars(solver_config, sample_pts, geometric_queries, pde,
+                      solve_double_sided, dim, channels):
     # load config settings
     epsilon_shell_for_absorbing_boundary = solver_config["epsilonShellForAbsorbingBoundary"]\
         if "epsilonShellForAbsorbingBoundary" in solver_config else 1e-3
@@ -461,7 +471,8 @@ def run_walk_on_stars(solver_config, sample_pts, sample_statistics,
         if "runSingleThreaded" in solver_config else False
 
     # initialize solver and estimate solution
-    progress_bar = zombie.Utils.ProgressBar(len(sample_pts))
+    n_samples = len(sample_pts)
+    progress_bar = zombie.Utils.ProgressBar(n_samples)
     report_progress = zombie.Utils.get_report_progress_callback(progress_bar)
 
     walk_settings = zombie.Solvers.WalkSettings(epsilon_shell_for_absorbing_boundary,
@@ -478,11 +489,14 @@ def run_walk_on_stars(solver_config, sample_pts, sample_statistics,
                                                 ignore_absorbing_boundary_contribution,
                                                 ignore_reflecting_boundary_contribution,
                                                 ignore_source_contribution, print_logs)
-    n_walks_list = zombie.IntList([n_walks] * len(sample_pts))
+    n_walks_list = zombie.IntList([n_walks] * n_samples)
+    sample_statistics = zombie.Solvers.create_sample_statistics_list(n_samples, dim=dim, channels=channels)
     walk_on_stars = zombie.Solvers.WalkOnStars(geometric_queries, dim=dim, channels=channels)
     walk_on_stars.solve(pde, walk_settings, n_walks_list, sample_pts, sample_statistics,
                         run_single_threaded, report_progress)
     progress_bar.finish()
+
+    return sample_statistics
 
 def get_solution_from_sample_points(sample_statistics):
     solution = np.zeros(len(sample_statistics))
@@ -838,22 +852,22 @@ def run_solver(solver_type, solver_config, solve_double_sided,
                dim, channels):
     if solver_type == "wos":
         # create sample points to estimate solution at
-        sample_pts, sample_statistics = create_sample_points(solve_locations, distance_info, dim, channels)
+        sample_pts = create_sample_points(solve_locations, distance_info, dim, channels)
 
         # run walk on spheres
-        run_walk_on_spheres(solver_config, sample_pts, sample_statistics,
-                            geometric_queries, pde, solve_double_sided, dim, channels)
+        sample_statistics = run_walk_on_spheres(solver_config, sample_pts, geometric_queries,
+                                                pde, solve_double_sided, dim, channels)
 
         # extract solution from sample points
         return get_solution_from_sample_points(sample_statistics)
 
     elif solver_type == "wost":
         # create sample points to estimate solution at
-        sample_pts, sample_statistics = create_sample_points(solve_locations, distance_info, dim, channels)
+        sample_pts = create_sample_points(solve_locations, distance_info, dim, channels)
 
         # run walk on stars
-        run_walk_on_stars(solver_config, sample_pts, sample_statistics,
-                          geometric_queries, pde, solve_double_sided, dim, channels)
+        sample_statistics = run_walk_on_stars(solver_config, sample_pts, geometric_queries,
+                                              pde, solve_double_sided, dim, channels)
 
         # extract solution from sample points
         return get_solution_from_sample_points(sample_statistics)
@@ -918,7 +932,7 @@ def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_
     inverted_solve_locations = invert_solve_locations(kelvin_transform, solve_locations, dim)
     distance_info_inverted_domain = compute_distance_info(inverted_solve_locations,
                                                           geometric_queries_inverted_domain,
-                                                          solve_double_sided, False)
+                                                          solve_double_sided, False, dim)
 
     # run the solver
     solution = run_solver(solver_type, solver_config, solve_double_sided,
@@ -980,7 +994,8 @@ if __name__ == "__main__":
         solve_exterior = model_problem_config["solveExterior"]\
             if "solveExterior" in model_problem_config else False
         solve_locations = create_grid_points(output_config, bounding_box)
-        distance_info = compute_distance_info(solve_locations, geometric_queries, solve_double_sided, solve_exterior)
+        distance_info = compute_distance_info(solve_locations, geometric_queries,
+                                              solve_double_sided, solve_exterior, dim)
 
         # run the solver
         solver_type = config["solverType"]

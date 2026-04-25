@@ -37,6 +37,7 @@ struct Image {
     Array<CHANNELS> get(Vector2 uv, bool flipY=true) const;
     Array<CHANNELS>& get(size_t i, size_t j);
     float& get(size_t i, size_t j, size_t c);
+    Eigen::Matrix<float, Eigen::Dynamic, CHANNELS> toEigen() const;
 
     // set image values from RGB values
     void setFromRGB(size_t i, size_t j, const Array3& rgb);
@@ -106,6 +107,22 @@ float& Image<CHANNELS>::get(size_t i, size_t j, size_t c)
     if (i*w + j < buffer.size() && c < CHANNELS) return buffer[i*w + j][c];
     std::cerr << "index out of range: (" << i << "," << j << "," << c << ")" << std::endl;
     exit(EXIT_FAILURE);
+}
+
+template <size_t CHANNELS>
+Eigen::Matrix<float, Eigen::Dynamic, CHANNELS> Image<CHANNELS>::toEigen() const
+{
+    Eigen::Matrix<float, Eigen::Dynamic, CHANNELS> data(buffer.size(), CHANNELS);
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            // Preserve the UV/image orientation used by get().
+            Vector2 uv((i + 0.5f)/static_cast<float>(h),
+                       (j + 0.5f)/static_cast<float>(w));
+            data.row(i*w + j) = get(uv).transpose();
+        }
+    }
+
+    return data;
 }
 
 template <size_t CHANNELS>

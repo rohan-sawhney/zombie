@@ -152,6 +152,8 @@ try:
     ]:
         setattr(Solvers, _name, _dim_channels_factory(Solvers, _name))
 
+    Solvers.create_sample_statistics_list = _dim_channels_func(
+        Solvers, "create_sample_statistics_list")
     Solvers.get_empty_walk_state_callback = _dim_channels_func(
         Solvers, "get_empty_walk_state_callback")
     Solvers.get_empty_terminal_contribution_callback = _dim_channels_func(
@@ -190,6 +192,8 @@ try:
         "flip_orientation",
         "compute_bounding_box",
         "add_bounding_box_to_boundary_mesh",
+        "compute_signed_volume",
+        "compute_dist_to_boundary",
         "partition_boundary_mesh",
         "populate_sdf_grid",
         "populate_geometric_queries_for_dirichlet_boundary",

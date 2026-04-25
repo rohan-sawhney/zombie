@@ -719,6 +719,30 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
                "bounding_box_min"_a, "bounding_box_max"_a, "positions"_a, "indices"_a,
                "Adds a bounding box to a boundary mesh.");
 
+    utils_m.def(("compute_signed_volume" + typeStr).c_str(),
+               &zombie::computeSignedVolume<DIM>,
+               "boundary_positions"_a, "boundary_indices"_a,
+               "Computes the signed volume of a boundary mesh.");
+
+    utils_m.def(("compute_dist_to_boundary" + typeStr).c_str(),
+               [](const zombie::GeometricQueries<DIM>& geometricQueries,
+                  const FloatNList<DIM>& solveLocations,
+                  FloatList& distToAbsorbingBoundary,
+                  FloatList& distToReflectingBoundary) {
+                   distToAbsorbingBoundary.resize(solveLocations.size());
+                   distToReflectingBoundary.resize(solveLocations.size());
+
+                   for (size_t i = 0; i < solveLocations.size(); i++) {
+                       distToAbsorbingBoundary[i] =
+                           geometricQueries.computeDistToAbsorbingBoundary(solveLocations[i], false);
+                       distToReflectingBoundary[i] =
+                           geometricQueries.computeDistToReflectingBoundary(solveLocations[i], false);
+                   }
+               },
+               "geometric_queries"_a, "solve_locations"_a,
+               "dist_to_absorbing_boundary"_a, "dist_to_reflecting_boundary"_a,
+               "Computes distance to absorbing and reflecting boundaries for a set of locations.");
+
     utils_m.def(("partition_boundary_mesh" + typeStr).c_str(),
                &zombie::partitionBoundaryMesh<DIM>,
                "on_reflecting_boundary"_a, "positions"_a, "indices"_a,
@@ -1179,6 +1203,13 @@ void bindRandomWalkStructures(nb::module_ m, std::string typeStr)
 
     nb::bind_vector<SamplePointList<T, DIM>>(solvers_m, ("SamplePointList" + typeStr).c_str());
     nb::bind_vector<SampleStatisticsList<T, DIM>>(solvers_m, ("SampleStatisticsList" + typeStr).c_str());
+
+    solvers_m.def(("create_sample_statistics_list" + typeStr).c_str(),
+                 [](int size) -> SampleStatisticsList<T, DIM> {
+                    return SampleStatisticsList<T, DIM>(static_cast<size_t>(size));
+                 },
+                 "size"_a,
+                 "Creates a SampleStatisticsList with the given size.");
 
     solvers_m.def(("get_empty_walk_state_callback" + typeStr).c_str(),
                  []() -> WalkStateToVoidFunc<T, DIM> { return {}; },
