@@ -124,8 +124,14 @@ def load_boundary_mesh(model_problem_config, dim, normalize=True, flip_orientati
 
 def setup_pde(model_problem_config, bounding_box, dim, channels):
     # load the model problem configuration
+    robin_coeff = model_problem_config["robinCoeff"]\
+        if "robinCoeff" in model_problem_config else 0.0
+    absorption_coeff = model_problem_config["absorptionCoeff"]\
+        if "absorptionCoeff" in model_problem_config else 0.0
     solve_double_sided = model_problem_config["solveDoubleSided"]\
         if "solveDoubleSided" in model_problem_config else False
+    solve_exterior = model_problem_config["solveExterior"]\
+        if "solveExterior" in model_problem_config else False
     source_value_buffer, source_value_shape =\
         load_image_buffer(model_problem_config["sourceValue"])
     absorbing_boundary_value_buffer, absorbing_boundary_value_shape =\
@@ -139,16 +145,15 @@ def setup_pde(model_problem_config, bounding_box, dim, channels):
             load_image_buffer(model_problem_config["absorbingBoundaryNormalAlignedValue"])
         reflecting_boundary_normal_aligned_value_buffer, _ =\
             load_image_buffer(model_problem_config["reflectingBoundaryNormalAlignedValue"])
-    is_reflecting_boundary_buffer, is_reflecting_boundary_shape =\
-        load_image_buffer(model_problem_config["isReflectingBoundary"])
-    robin_coeff = model_problem_config["robinCoeff"]\
-        if "robinCoeff" in model_problem_config else 0.0
-    absorption_coeff = model_problem_config["absorptionCoeff"]\
-        if "absorptionCoeff" in model_problem_config else 0.0
-    solve_exterior = model_problem_config["solveExterior"]\
-        if "solveExterior" in model_problem_config else False
+    is_reflecting_boundary_buffer = None
+    is_reflecting_boundary_shape = None
     if solve_exterior:
         absorption_coeff = 0.0 # kelvin transform requires absorption coefficient to be 0
+        is_reflecting_boundary_buffer, is_reflecting_boundary_shape =\
+            load_image_buffer(model_problem_config["reflectingBoundaryValue"])
+    else:
+        is_reflecting_boundary_buffer, is_reflecting_boundary_shape =\
+            load_image_buffer(model_problem_config["isReflectingBoundary"])
     domain_min = bounding_box[0]
     domain_max = bounding_box[1]
 
@@ -172,14 +177,9 @@ def setup_pde(model_problem_config, bounding_box, dim, channels):
         pde.robin = zombie.Utils.get_dense_grid_robin_callback(
             reflecting_boundary_value_buffer, reflecting_boundary_value_shape,
             domain_min, domain_max, dim=dim, channels=channels)
-    if solve_exterior:
-        pde.has_reflecting_boundary_conditions = zombie.Utils.get_dense_grid_indicator_callback(
-            reflecting_boundary_value_buffer, reflecting_boundary_value_shape,
-            domain_min, domain_max, dim=dim)
-    else:
-        pde.has_reflecting_boundary_conditions = zombie.Utils.get_dense_grid_indicator_callback(
-            is_reflecting_boundary_buffer, is_reflecting_boundary_shape,
-            domain_min, domain_max, dim=dim)
+    pde.has_reflecting_boundary_conditions = zombie.Utils.get_dense_grid_indicator_callback(
+        is_reflecting_boundary_buffer, is_reflecting_boundary_shape,
+        domain_min, domain_max, dim=dim)
     pde.robin_coeff = zombie.Core.get_constant_robin_coefficient_callback(robin_coeff, dim=dim)
     pde.absorption_coeff = absorption_coeff
     pde.are_robin_conditions_pure_neumann = robin_coeff == 0.0
