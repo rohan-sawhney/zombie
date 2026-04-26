@@ -1,0 +1,37 @@
+{
+    "solverType": "wos",
+    "deviceBackend": "cuda",
+    "solver": {
+        "nWalks": 128,
+        "maxWalkLength": 1024,
+        "epsilonShellForAbsorbingBoundary": 1e-3,
+        "russianRouletteThreshold": 0.99,
+        "splittingThreshold": 1.5,
+        "ignoreAbsorbingBoundaryContribution": false,
+        "ignoreSourceContribution": false,
+        "disablePersistentThreads": false
+    },
+    "modelProblem": {
+        "channels": 4,
+        "geometry": "demo/model_problems/nautilus/data/geometry.obj",
+        "isReflectingBoundary": "demo/model_problems/nautilus/data/zero.png",
+        "absorbingBoundaryValue": "demo/model_problems/nautilus/data/absorbing_boundary_value.png",
+        "absorbingBoundaryNormalAlignedValue": "demo/model_problems/nautilus/data/absorbing_boundary_normal_aligned_value.png",
+        "reflectingBoundaryValue": "demo/model_problems/nautilus/data/zero.png",
+        "reflectingBoundaryNormalAlignedValue": "demo/model_problems/nautilus/data/zero.png",
+        "sourceValue": "demo/model_problems/nautilus/data/source_value.png",
+        "robinCoeff": 0.0,
+        "absorptionCoeff": 0.0,
+        "solveDoubleSided": true,
+        "domainIsWatertight": false,
+        "solveExterior": false,
+        "useSdfForAbsorbingBoundary": false
+    },
+    "output": {
+        "solutionFile": "demo/model_problems/nautilus/solutions/wos.png",
+        "gridRes": 1024,
+        "boundaryDistanceMask": 0.0,
+        "saveDebug": false,
+        "saveColormapped": false
+    }
+}
