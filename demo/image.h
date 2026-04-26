@@ -21,8 +21,24 @@
 template <size_t DIM>
 using Array = Eigen::Array<float, DIM, 1>;
 using Array3 = Array<3>;
+using Array4 = Array<4>;
 using Vector2 = Eigen::Matrix<float, 2, 1>;
 using Vector2i = Eigen::Matrix<int, 2, 1>;
+
+template <typename T>
+struct ValueTraits;
+
+template <>
+struct ValueTraits<float> {
+    static constexpr size_t channels = 1;
+    static constexpr size_t imageChannels = 1;
+};
+
+template <>
+struct ValueTraits<Array4> {
+    static constexpr size_t channels = Array4::RowsAtCompileTime;
+    static constexpr size_t imageChannels = 3;
+};
 
 template <size_t CHANNELS>
 struct Image {
@@ -287,7 +303,7 @@ void Image<CHANNELS>::writePNG(const std::string& filename)
         }
     }
 
-    if (!stbi_write_png(filename.c_str(), w, h, CHANNELS, tmpBuffer.data(), w*3)) {
+    if (!stbi_write_png(filename.c_str(), w, h, CHANNELS, tmpBuffer.data(), w*CHANNELS)) {
         std::cerr << "Failed to save image: " << filename << std::endl;
         exit(EXIT_FAILURE);
     }

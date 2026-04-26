@@ -1,6 +1,6 @@
-// This file defines a ModelProblem class, which is used to describe a scalar-valued
-// Poisson or screened Poisson PDE on a 2D domain via a boundary mesh, associated
-// boundary conditions, source term, and robin and absorption coefficients.
+// This file defines a ModelProblem class, which is used to describe a scalar- or
+// vector-valued Poisson or screened Poisson PDE on a 2D domain via a boundary mesh,
+// associated boundary conditions, source term, and robin and absorption coefficients.
 //
 // The boundary mesh is read from an OBJ file, while the input PDE data is read
 // from images for the purposes of this demo. NOTE: Users may analogously define
@@ -15,8 +15,12 @@
 #include "config.h"
 #include "image.h"
 
+template <typename T>
 class ModelProblem {
 public:
+    static constexpr size_t CHANNELS = ValueTraits<T>::channels;
+    static constexpr size_t IMAGE_CHANNELS = ValueTraits<T>::imageChannels;
+
     // constructor
     ModelProblem(const json& config, std::string directoryPath);
 
@@ -32,15 +36,15 @@ public:
     const std::vector<Vector2>& getAbsorbingBoundaryPositions() { return mAbsorbingBoundaryPositions; }
     const std::vector<Vector2>& getReflectingBoundaryPositions() { return mReflectingBoundaryPositions; }
     const std::pair<Vector2, Vector2>& getBoundingBox() { return mBoundingBox; }
-    const zombie::PDE<float, 2>& getPDE() { return mPde; }
+    const zombie::PDE<T, 2>& getPDE() { return mPde; }
     const zombie::GeometricQueries<2>& getGeometricQueries() { return mQueries; }
 
     // getters for inverted domain (needed for solving exterior problems)
-    const zombie::KelvinTransform<float, 2>& getKelvinTransform() { return mKelvinTransform; }
+    const zombie::KelvinTransform<T, 2>& getKelvinTransform() { return mKelvinTransform; }
     const std::vector<Vector2>& getInvertedAbsorbingBoundaryPositions() { return mInvertedAbsorbingBoundaryPositions; }
     const std::vector<Vector2>& getInvertedReflectingBoundaryPositions() { return mInvertedReflectingBoundaryPositions; }
     const std::pair<Vector2, Vector2>& getInvertedBoundingBox() { return mInvertedBoundingBox; }
-    const zombie::PDE<float, 2>& getPDEInvertedDomain() { return mPdeInvertedDomain; }
+    const zombie::PDE<T, 2>& getPDEInvertedDomain() { return mPdeInvertedDomain; }
     const zombie::GeometricQueries<2>& getGeometricQueriesInvertedDomain() { return mQueriesInvertedDomain; }
 
 protected:
@@ -49,6 +53,9 @@ protected:
 
     // sets up the PDE
     void setupPDE();
+
+    // converts image values to PDE values
+    T getPDEValue(const Image<IMAGE_CHANNELS>& image, Vector2 uv) const;
 
     // partitions the boundary mesh into absorbing and reflecting parts
     void partitionBoundaryMesh();
@@ -71,11 +78,11 @@ protected:
     void invertExteriorProblem();
 
     // members
-    Image<1> mSourceValue;
-    Image<1> mAbsorbingBoundaryValue;
-    Image<1> mReflectingBoundaryValue;
-    Image<1> mAbsorbingBoundaryNormalAlignedValue;
-    Image<1> mReflectingBoundaryNormalAlignedValue;
+    Image<IMAGE_CHANNELS> mSourceValue;
+    Image<IMAGE_CHANNELS> mAbsorbingBoundaryValue;
+    Image<IMAGE_CHANNELS> mReflectingBoundaryValue;
+    Image<IMAGE_CHANNELS> mAbsorbingBoundaryNormalAlignedValue;
+    Image<IMAGE_CHANNELS> mReflectingBoundaryNormalAlignedValue;
     Image<1> mIsReflectingBoundary;
     bool mSolveDoubleSided;
     bool mSolveExterior;
@@ -93,7 +100,7 @@ protected:
     std::vector<Vector2> mAbsorbingBoundaryPositions;
     std::vector<Vector2> mReflectingBoundaryPositions;
     std::pair<Vector2, Vector2> mBoundingBox;
-    zombie::PDE<float, 2> mPde;
+    zombie::PDE<T, 2> mPde;
     std::vector<float> mMinRobinCoeffValues;
     std::vector<float> mMaxRobinCoeffValues;
     std::unique_ptr<zombie::SdfGrid<2>> mSdfGridForAbsorbingBoundary;
@@ -102,11 +109,11 @@ protected:
     zombie::FcpwRobinBoundaryHandler<2> mReflectingRobinBoundaryHandler;
     zombie::GeometricQueries<2> mQueries;
 
-    zombie::KelvinTransform<float, 2> mKelvinTransform;
+    zombie::KelvinTransform<T, 2> mKelvinTransform;
     std::vector<Vector2> mInvertedAbsorbingBoundaryPositions;
     std::vector<Vector2> mInvertedReflectingBoundaryPositions;
     std::pair<Vector2, Vector2> mInvertedBoundingBox;
-    zombie::PDE<float, 2> mPdeInvertedDomain;
+    zombie::PDE<T, 2> mPdeInvertedDomain;
     std::vector<float> mMinRobinCoeffValuesInvertedDomain;
     std::vector<float> mMaxRobinCoeffValuesInvertedDomain;
     std::unique_ptr<zombie::SdfGrid<2>> mSdfGridForInvertedAbsorbingBoundary;
@@ -119,22 +126,27 @@ protected:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-ModelProblem::ModelProblem(const json& config, std::string directoryPath):
+template <typename T>
+ModelProblem<T>::ModelProblem(const json& config, std::string directoryPath):
 mKelvinTransform(Vector2(0.0f, 0.125f)), // ensure origin lies inside default domain for demo, a requirement for exterior problems
 mSdfGridForAbsorbingBoundary(nullptr),
 mSdfGridForInvertedAbsorbingBoundary(nullptr)
 {
     // load config settings
-    std::string geometryFile = directoryPath + getRequired<std::string>(config, "geometry");
+    auto getFilePath = [config, directoryPath](const std::string& fileName) -> std::string {
+        return directoryPath + getRequired<std::string>(config, fileName);
+    };
+
+    std::string geometryFile = getFilePath("geometry");
     bool normalize = getOptional<bool>(config, "normalizeDomain", true);
     bool flipOrientation = getOptional<bool>(config, "flipOrientation", true);
     mSolveDoubleSided = getOptional<bool>(config, "solveDoubleSided", false);
-    mSourceValue = Image<1>(directoryPath + getRequired<std::string>(config, "sourceValue"));
-    mAbsorbingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryValue"));
-    mReflectingBoundaryValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryValue"));
+    mSourceValue = Image<IMAGE_CHANNELS>(getFilePath("sourceValue"));
+    mAbsorbingBoundaryValue = Image<IMAGE_CHANNELS>(getFilePath("absorbingBoundaryValue"));
+    mReflectingBoundaryValue = Image<IMAGE_CHANNELS>(getFilePath("reflectingBoundaryValue"));
     if (mSolveDoubleSided) {
-        mAbsorbingBoundaryNormalAlignedValue = Image<1>(directoryPath + getRequired<std::string>(config, "absorbingBoundaryNormalAlignedValue"));
-        mReflectingBoundaryNormalAlignedValue = Image<1>(directoryPath + getRequired<std::string>(config, "reflectingBoundaryNormalAlignedValue"));
+        mAbsorbingBoundaryNormalAlignedValue = Image<IMAGE_CHANNELS>(getFilePath("absorbingBoundaryNormalAlignedValue"));
+        mReflectingBoundaryNormalAlignedValue = Image<IMAGE_CHANNELS>(getFilePath("reflectingBoundaryNormalAlignedValue"));
         if (mAbsorbingBoundaryNormalAlignedValue.h != mAbsorbingBoundaryValue.h ||
             mAbsorbingBoundaryNormalAlignedValue.w != mAbsorbingBoundaryValue.w ||
             mReflectingBoundaryNormalAlignedValue.h != mReflectingBoundaryValue.h ||
@@ -191,7 +203,8 @@ mSdfGridForInvertedAbsorbingBoundary(nullptr)
     }
 }
 
-void ModelProblem::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation)
+template <typename T>
+void ModelProblem<T>::loadOBJ(const std::string& filename, bool normalize, bool flipOrientation)
 {
     zombie::loadBoundaryMesh<2>(filename, mPositions, mIndices);
     if (normalize) zombie::normalize<2>(mPositions);
@@ -199,33 +212,43 @@ void ModelProblem::loadOBJ(const std::string& filename, bool normalize, bool fli
     mBoundingBox = zombie::computeBoundingBox<2>(mPositions, true, 1.0);
 }
 
-void ModelProblem::setupPDE()
+template <typename T>
+T ModelProblem<T>::getPDEValue(const Image<IMAGE_CHANNELS>& image, Vector2 uv) const
+{
+    if constexpr (std::is_same_v<T, float>) {
+        return image.get(uv)[0];
+
+    } else {
+        T value = T::Zero();
+        value.template head<IMAGE_CHANNELS>() = image.get(uv);
+        return value;
+    }
+}
+
+template <typename T>
+void ModelProblem<T>::setupPDE()
 {
     Vector2 bMin = mBoundingBox.first;
     Vector2 bMax = mBoundingBox.second;
     float maxLength = (bMax - bMin).maxCoeff();
 
-    mPde.source = [this, bMin, maxLength](const Vector2& x) -> float {
+    mPde.source = [this, bMin, maxLength](const Vector2& x) -> T {
         Vector2 uv = (x - bMin)/maxLength;
-        return this->mSourceValue.get(uv)[0];
+        return this->getPDEValue(this->mSourceValue, uv);
     };
     mPde.dirichlet = [this, bMin, maxLength](const Vector2& x,
-                                             bool returnBoundaryNormalAlignedValue) -> float {
+                                             bool returnBoundaryNormalAlignedValue) -> T {
         Vector2 uv = (x - bMin)/maxLength;
-        if (returnBoundaryNormalAlignedValue) {
-            return this->mAbsorbingBoundaryNormalAlignedValue.get(uv)[0];
-        }
-
-        return this->mAbsorbingBoundaryValue.get(uv)[0];
+        return returnBoundaryNormalAlignedValue ?
+                this->getPDEValue(this->mAbsorbingBoundaryNormalAlignedValue, uv) :
+                this->getPDEValue(this->mAbsorbingBoundaryValue, uv);
     };
     mPde.robin = [this, bMin, maxLength](const Vector2& x, const Vector2& n,
-                                         bool returnBoundaryNormalAlignedValue) -> float {
+                                         bool returnBoundaryNormalAlignedValue) -> T {
         Vector2 uv = (x - bMin)/maxLength;
-        if (returnBoundaryNormalAlignedValue) {
-            return this->mReflectingBoundaryNormalAlignedValue.get(uv)[0];
-        }
-
-        return this->mReflectingBoundaryValue.get(uv)[0];
+        return returnBoundaryNormalAlignedValue ?
+                this->getPDEValue(this->mReflectingBoundaryNormalAlignedValue, uv) :
+                this->getPDEValue(this->mReflectingBoundaryValue, uv);
     };
     mPde.robinCoeff = [this](const Vector2& x, const Vector2& n,
                              bool returnBoundaryNormalAlignedValue) -> float {
@@ -241,7 +264,8 @@ void ModelProblem::setupPDE()
     mPde.absorptionCoeff = mAbsorptionCoeff;
 }
 
-void ModelProblem::partitionBoundaryMesh()
+template <typename T>
+void ModelProblem<T>::partitionBoundaryMesh()
 {
     // use Zombie's default partitioning function, which assumes the boundary discretization
     // is perfectly adapted to the boundary conditions; this isn't always a correct assumption
@@ -251,17 +275,18 @@ void ModelProblem::partitionBoundaryMesh()
                                      mReflectingBoundaryPositions, mReflectingBoundaryIndices);
 }
 
-void ModelProblem::populateGeometricQueries(const std::vector<Vector2>& absorbingBoundaryPositions,
-                                            const std::vector<Vector2>& reflectingBoundaryPositions,
-                                            const std::pair<Vector2, Vector2>& boundingBox,
-                                            const std::vector<float>& minRobinCoeffValues,
-                                            const std::vector<float>& maxRobinCoeffValues,
-                                            bool areRobinConditionsPureNeumann,
-                                            std::unique_ptr<zombie::SdfGrid<2>>& sdfGridForAbsorbingBoundary,
-                                            zombie::FcpwDirichletBoundaryHandler<2>& absorbingBoundaryHandler,
-                                            zombie::FcpwNeumannBoundaryHandler<2>& reflectingNeumannBoundaryHandler,
-                                            zombie::FcpwRobinBoundaryHandler<2>& reflectingRobinBoundaryHandler,
-                                            zombie::GeometricQueries<2>& queries)
+template <typename T>
+void ModelProblem<T>::populateGeometricQueries(const std::vector<Vector2>& absorbingBoundaryPositions,
+                                               const std::vector<Vector2>& reflectingBoundaryPositions,
+                                               const std::pair<Vector2, Vector2>& boundingBox,
+                                               const std::vector<float>& minRobinCoeffValues,
+                                               const std::vector<float>& maxRobinCoeffValues,
+                                               bool areRobinConditionsPureNeumann,
+                                               std::unique_ptr<zombie::SdfGrid<2>>& sdfGridForAbsorbingBoundary,
+                                               zombie::FcpwDirichletBoundaryHandler<2>& absorbingBoundaryHandler,
+                                               zombie::FcpwNeumannBoundaryHandler<2>& reflectingNeumannBoundaryHandler,
+                                               zombie::FcpwRobinBoundaryHandler<2>& reflectingRobinBoundaryHandler,
+                                               zombie::GeometricQueries<2>& queries)
 {
     // set the domain extent for geometric queries
     queries.domainIsWatertight = mDomainIsWatertight;
@@ -301,7 +326,8 @@ void ModelProblem::populateGeometricQueries(const std::vector<Vector2>& absorbin
     }
 }
 
-void ModelProblem::invertExteriorProblem()
+template <typename T>
+void ModelProblem<T>::invertExteriorProblem()
 {
     // invert the domain
     std::vector<Vector2> invertedPositions;

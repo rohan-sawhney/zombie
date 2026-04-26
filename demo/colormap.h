@@ -25,7 +25,7 @@ Array3 applyColormap(float value, const std::string& cmapKey)
     return Array3(value, value, value);
 }
 
-std::shared_ptr<Image<3>> getColormappedImage(std::shared_ptr<Image<3>>& image,
+std::shared_ptr<Image<3>> getColormappedImage(std::shared_ptr<Image<1>>& image,
                                               const std::string colormap,
                                               float minVal=0, float maxVal=1)
 {

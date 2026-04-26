@@ -36,11 +36,12 @@ def create_grid_points(output_config, bounding_box):
 
     return grid_points
 
-def create_grid_values(output_config, distance_info, values):
+def create_grid_values(output_config, distance_info, values, channels):
     grid_res = output_config["gridRes"]
     boundary_dist_mask = output_config["boundaryDistanceMask"]\
         if "boundaryDistanceMask" in output_config else 0.0
-    grid_values = np.zeros((grid_res, grid_res))
+    grid_values = np.zeros((grid_res, grid_res))\
+        if channels == 1 else np.zeros((grid_res, grid_res, channels))
 
     for i in range(grid_res):
         for j in range(grid_res):
@@ -53,21 +54,25 @@ def create_grid_values(output_config, distance_info, values):
 
     return grid_values
 
-def load_image_buffer(image_file):
+def load_image_buffer(image_file, channels):
     # PIL does not support pfm files, so default to png
     if image_file.endswith(".pfm"):
         image_file = image_file.replace(".pfm", ".png")
 
-    # load image and convert to grayscale
+    # load image and convert to the expected channel layout
     image = Image.open(image_file)
     image = image.transpose(Image.Transpose.TRANSPOSE)
     image_shape = np.array([image.height, image.width], dtype=np.int32)
-    image = image.convert("L")
-    image = np.array(image).flatten().astype(np.float32) / 255.0
+    if channels == 1:
+        image = image.convert("L")
+        image = np.array(image).flatten().astype(np.float32) / 255.0
+    else:
+        image = image.convert("RGBA")
+        image = np.array(image).reshape(-1, channels).astype(np.float32) / 255.0
 
     return image, image_shape
 
-def save_image_buffer(output_config, image_file, image_buffer):
+def save_image_buffer(output_config, image_file, image_buffer, channels):
     # load the output configuration
     colormap = output_config["colormap"]\
         if "colormap" in output_config else "turbo"
@@ -82,14 +87,18 @@ def save_image_buffer(output_config, image_file, image_buffer):
     if image_file.endswith(".pfm"):
         image_file = image_file.replace(".pfm", ".png")
 
-    # save grayscale image
+    output_directory = os.path.dirname(image_file)
+    if output_directory:
+        os.makedirs(output_directory, exist_ok=True)
+
+    # save image
     image = np.clip(image_buffer, 0.0, 1.0)
-    grayscale_image = (image * 255.0).astype(np.uint8)
-    grayscale_image = Image.fromarray(grayscale_image)
-    grayscale_image.save(image_file)
+    output_image = (image * 255.0).astype(np.uint8)
+    output_image = Image.fromarray(output_image)
+    output_image.save(image_file)
 
     # save colormapped image
-    if save_colormapped:
+    if channels == 1 and save_colormapped:
         image = np.clip((image_buffer - colormap_min_val) / (colormap_max_val - colormap_min_val), 0.0, 1.0)
         cmap = plt.get_cmap(colormap)
         colormapped_image = cmap(image, bytes=True)
@@ -101,6 +110,15 @@ def save_image_buffer(output_config, image_file, image_buffer):
 
 ##############################################################################################
 # Problem specification - geometry loading and PDE setup
+
+def get_channels(model_problem_config):
+    channels = model_problem_config["channels"]\
+        if "channels" in model_problem_config else 1
+
+    if channels not in (1, 4):
+        raise ValueError("channels must be 1 or 4")
+
+    return channels
 
 def load_boundary_mesh(model_problem_config, dim, normalize=True, flip_orientation=True):
     # load the model problem configuration
@@ -133,27 +151,27 @@ def setup_pde(model_problem_config, bounding_box, dim, channels):
     solve_exterior = model_problem_config["solveExterior"]\
         if "solveExterior" in model_problem_config else False
     source_value_buffer, source_value_shape =\
-        load_image_buffer(model_problem_config["sourceValue"])
+        load_image_buffer(model_problem_config["sourceValue"], channels)
     absorbing_boundary_value_buffer, absorbing_boundary_value_shape =\
-        load_image_buffer(model_problem_config["absorbingBoundaryValue"])
+        load_image_buffer(model_problem_config["absorbingBoundaryValue"], channels)
     reflecting_boundary_value_buffer, reflecting_boundary_value_shape =\
-        load_image_buffer(model_problem_config["reflectingBoundaryValue"])
+        load_image_buffer(model_problem_config["reflectingBoundaryValue"], channels)
     absorbing_boundary_normal_aligned_value_buffer = None
     reflecting_boundary_normal_aligned_value_buffer = None
     if solve_double_sided:
         absorbing_boundary_normal_aligned_value_buffer, _ =\
-            load_image_buffer(model_problem_config["absorbingBoundaryNormalAlignedValue"])
+            load_image_buffer(model_problem_config["absorbingBoundaryNormalAlignedValue"], channels)
         reflecting_boundary_normal_aligned_value_buffer, _ =\
-            load_image_buffer(model_problem_config["reflectingBoundaryNormalAlignedValue"])
+            load_image_buffer(model_problem_config["reflectingBoundaryNormalAlignedValue"], channels)
     is_reflecting_boundary_buffer = None
     is_reflecting_boundary_shape = None
     if solve_exterior:
         absorption_coeff = 0.0 # kelvin transform requires absorption coefficient to be 0
         is_reflecting_boundary_buffer, is_reflecting_boundary_shape =\
-            load_image_buffer(model_problem_config["reflectingBoundaryValue"])
+            load_image_buffer(model_problem_config["reflectingBoundaryValue"], 1)
     else:
         is_reflecting_boundary_buffer, is_reflecting_boundary_shape =\
-            load_image_buffer(model_problem_config["isReflectingBoundary"])
+            load_image_buffer(model_problem_config["isReflectingBoundary"], 1)
     domain_min = bounding_box[0]
     domain_max = bounding_box[1]
 
@@ -340,11 +358,22 @@ def invert_solve_locations(kelvin_transform, solve_locations, dim):
 
     return inverted_solve_locations
 
-def compute_exterior_solution(kelvin_transform, interior_solution, inverted_solve_locations):
-    exterior_solution = np.zeros(len(interior_solution))
+def create_solution_values(count, channels):
+    return np.zeros(count) if channels == 1 else np.zeros((count, channels))
+
+def get_solution_value(solution, channels):
+    if channels == 1:
+        return solution
+
+    return np.asarray(solution, dtype=np.float32).reshape(channels)
+
+def compute_exterior_solution(kelvin_transform, interior_solution,
+                              inverted_solve_locations, channels):
+    exterior_solution = create_solution_values(len(interior_solution), channels)
     for i in range(len(interior_solution)):
-        exterior_solution[i] = kelvin_transform.transform_solution_estimate(interior_solution[i],
-                                                                            inverted_solve_locations[i])
+        solution = kelvin_transform.transform_solution_estimate(interior_solution[i],
+                                                                inverted_solve_locations[i])
+        exterior_solution[i] = get_solution_value(solution, channels)
 
     return exterior_solution
 
@@ -498,11 +527,11 @@ def run_walk_on_stars(solver_config, sample_pts, geometric_queries, pde,
 
     return sample_statistics
 
-def get_solution_from_sample_points(sample_statistics):
-    solution = np.zeros(len(sample_statistics))
+def get_solution_from_sample_points(sample_statistics, channels):
+    solution = create_solution_values(len(sample_statistics), channels)
 
     for i in range(len(sample_statistics)):
-        solution[i] = sample_statistics[i].get_estimated_solution()
+        solution[i] = get_solution_value(sample_statistics[i].get_estimated_solution(), channels)
 
     return solution
 
@@ -689,11 +718,11 @@ def run_boundary_value_caching(solver_config, evaluation_pts,
                                                            evaluation_pts, run_single_threaded)
     progress_bar.finish()
 
-def get_solution_from_bvc_evaluation_points(evaluation_pts):
-    solution = np.zeros(len(evaluation_pts))
+def get_solution_from_bvc_evaluation_points(evaluation_pts, channels):
+    solution = create_solution_values(len(evaluation_pts), channels)
 
     for i in range(len(evaluation_pts)):
-        solution[i] = evaluation_pts[i].get_estimated_solution()
+        solution[i] = get_solution_value(evaluation_pts[i].get_estimated_solution(), channels)
 
     return solution
 
@@ -825,8 +854,8 @@ def run_reverse_walk_on_stars(solver_config, evaluation_pts,
             reverse_walk_on_stars.get_reflecting_boundary_sample_count(True),
             reverse_walk_on_stars.get_domain_sample_count()]
 
-def get_solution_from_rws_evaluation_points(evaluation_pts, sample_counts):
-    solution = np.zeros(len(evaluation_pts))
+def get_solution_from_rws_evaluation_points(evaluation_pts, sample_counts, channels):
+    solution = create_solution_values(len(evaluation_pts), channels)
     absorbing_boundary_sample_count = sample_counts[0]
     absorbing_boundary_normal_aligned_sample_count = sample_counts[1]
     reflecting_boundary_sample_count = sample_counts[2]
@@ -834,11 +863,12 @@ def get_solution_from_rws_evaluation_points(evaluation_pts, sample_counts):
     domain_sample_count = sample_counts[4]
 
     for i in range(len(evaluation_pts)):
-        solution[i] = evaluation_pts[i].get_estimated_solution(absorbing_boundary_sample_count,
-                                                               absorbing_boundary_normal_aligned_sample_count,
-                                                               reflecting_boundary_sample_count,
-                                                               reflecting_boundary_normal_aligned_sample_count,
-                                                               domain_sample_count)
+        solution_estimate = evaluation_pts[i].get_estimated_solution(absorbing_boundary_sample_count,
+                                                                     absorbing_boundary_normal_aligned_sample_count,
+                                                                     reflecting_boundary_sample_count,
+                                                                     reflecting_boundary_normal_aligned_sample_count,
+                                                                     domain_sample_count)
+        solution[i] = get_solution_value(solution_estimate, channels)
 
     return solution
 
@@ -859,7 +889,7 @@ def run_solver(solver_type, solver_config, solve_double_sided,
                                                 pde, solve_double_sided, dim, channels)
 
         # extract solution from sample points
-        return get_solution_from_sample_points(sample_statistics)
+        return get_solution_from_sample_points(sample_statistics, channels)
 
     elif solver_type == "wost":
         # create sample points to estimate solution at
@@ -870,7 +900,7 @@ def run_solver(solver_type, solver_config, solve_double_sided,
                                               pde, solve_double_sided, dim, channels)
 
         # extract solution from sample points
-        return get_solution_from_sample_points(sample_statistics)
+        return get_solution_from_sample_points(sample_statistics, channels)
 
     elif solver_type == "bvc":
         # create evaluation points to estimate solution at
@@ -883,7 +913,7 @@ def run_solver(solver_type, solver_config, solve_double_sided,
                                    geometric_queries, pde, solve_double_sided, dim, channels)
 
         # extract solution from evaluation points
-        return get_solution_from_bvc_evaluation_points(evaluation_pts)
+        return get_solution_from_bvc_evaluation_points(evaluation_pts, channels)
 
     elif solver_type == "rws":
         # create evaluation points to estimate solution at
@@ -896,7 +926,7 @@ def run_solver(solver_type, solver_config, solve_double_sided,
                                                   geometric_queries, pde, solve_double_sided, dim, channels)
 
         # extract solution from evaluation points
-        return get_solution_from_rws_evaluation_points(evaluation_pts, sample_counts)
+        return get_solution_from_rws_evaluation_points(evaluation_pts, sample_counts, channels)
 
     else:
         raise ValueError("Invalid solver type")
@@ -942,7 +972,7 @@ def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_
                           inverted_solve_locations, distance_info_inverted_domain, dim, channels)
 
     # map the solution values back to the exterior domain
-    return compute_exterior_solution(kelvin_transform, solution, inverted_solve_locations)
+    return compute_exterior_solution(kelvin_transform, solution, inverted_solve_locations, channels)
 
 if __name__ == "__main__":
     # parse arguments
@@ -950,17 +980,17 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, help="path to the configuration file")
     args = parser.parse_args()
 
-    # problem parameters
-    dim = 2
-    channels = 1
-
     try:
         # load the configuration file
         with open(args.config, 'r') as file:
             config = json.load(file)
 
-        # load a boundary mesh
+        # set problem parameters
         model_problem_config = config["modelProblem"]
+        channels = get_channels(model_problem_config)
+        dim = 2
+
+        # load a boundary mesh
         positions, indices, bounding_box = load_boundary_mesh(model_problem_config, dim)
 
         # setup the PDE
@@ -1014,13 +1044,16 @@ if __name__ == "__main__":
                                   geometric_queries, pde, solve_locations, distance_info, dim, channels)
 
         # save the solution to disk
-        grid_values = create_grid_values(output_config, distance_info, solution)
+        grid_values = create_grid_values(output_config, distance_info, solution, channels)
         solution_file = output_config["solutionFile"]\
             if "solutionFile" in output_config else "solution.png"
-        save_image_buffer(output_config, solution_file, grid_values)
+        save_image_buffer(output_config, solution_file, grid_values, channels)
 
     except FileNotFoundError:
         print("Configuration file not found")
 
     except json.JSONDecodeError:
         print("Invalid configuration file")
+
+    except ValueError as error:
+        print(error)

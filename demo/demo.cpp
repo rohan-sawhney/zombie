@@ -545,21 +545,10 @@ void runSolver(const std::string& solverType, const json& solverConfig,
     }
 }
 
-int main(int argc, const char *argv[])
+template <typename T>
+int runDemo(const json& config)
 {
-    if (argc != 2) {
-        std::cerr << "must provide config filename" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    std::ifstream configFile(argv[1]);
-    if (!configFile.is_open()) {
-        std::cerr << "Error opening file: " << argv[1] << std::endl;
-        return EXIT_FAILURE;
-    }
-
     // load config settings
-    json config = json::parse(configFile);
     const std::string solverType = getOptional<std::string>(config, "solverType", "wost");
     const json modelProblemConfig = getRequired<json>(config, "modelProblem");
     const json solverConfig = getRequired<json>(config, "solver");
@@ -567,7 +556,7 @@ int main(int argc, const char *argv[])
     const std::string zombieDirectoryPath = "../"; // local path to zombie directory
 
     // initialize the model problem
-    ModelProblem modelProblem(modelProblemConfig, zombieDirectoryPath);
+    ModelProblem<T> modelProblem(modelProblemConfig, zombieDirectoryPath);
     const std::vector<Vector2i>& absorbingBoundaryIndices = modelProblem.getAbsorbingBoundaryIndices();
     const std::vector<Vector2i>& reflectingBoundaryIndices = modelProblem.getReflectingBoundaryIndices();
     const std::pair<Vector2, Vector2>& boundingBox = modelProblem.getBoundingBox();
@@ -582,12 +571,12 @@ int main(int argc, const char *argv[])
     computeDistanceInfo<2>(solveLocations, queries, solveDoubleSided, solveExterior, distanceInfo);
 
     // solve the model problem
-    std::vector<float> solution;
+    std::vector<T> solution;
     if (solveExterior) {
-        const zombie::KelvinTransform<float, 2>& kelvinTransform = modelProblem.getKelvinTransform();
+        const zombie::KelvinTransform<T, 2>& kelvinTransform = modelProblem.getKelvinTransform();
         const std::vector<Vector2>& invertedAbsorbingBoundaryPositions = modelProblem.getInvertedAbsorbingBoundaryPositions();
         const std::vector<Vector2>& invertedReflectingBoundaryPositions = modelProblem.getInvertedReflectingBoundaryPositions();
-        const zombie::PDE<float, 2>& pdeInvertedDomain = modelProblem.getPDEInvertedDomain();
+        const zombie::PDE<T, 2>& pdeInvertedDomain = modelProblem.getPDEInvertedDomain();
         const zombie::GeometricQueries<2>& queriesInvertedDomain = modelProblem.getGeometricQueriesInvertedDomain();
 
         // invert the solve locations and update the distance info
@@ -601,11 +590,11 @@ int main(int argc, const char *argv[])
                                solveDoubleSided, false, distanceInfoInvertedDomain);
 
         // run the solver on the inverted domain
-        runSolver<float, 2>(solverType, solverConfig,
-                            invertedAbsorbingBoundaryPositions, absorbingBoundaryIndices,
-                            invertedReflectingBoundaryPositions, reflectingBoundaryIndices,
-                            queriesInvertedDomain, pdeInvertedDomain, solveDoubleSided,
-                            invertedSolveLocations, distanceInfoInvertedDomain, solution);
+        runSolver<T, 2>(solverType, solverConfig,
+                        invertedAbsorbingBoundaryPositions, absorbingBoundaryIndices,
+                        invertedReflectingBoundaryPositions, reflectingBoundaryIndices,
+                        queriesInvertedDomain, pdeInvertedDomain, solveDoubleSided,
+                        invertedSolveLocations, distanceInfoInvertedDomain, solution);
 
         // map the solution values back to the exterior domain
         for (int i = 0; i < nSolveLocations; i++) {
@@ -615,17 +604,44 @@ int main(int argc, const char *argv[])
     } else {
         const std::vector<Vector2>& absorbingBoundaryPositions = modelProblem.getAbsorbingBoundaryPositions();
         const std::vector<Vector2>& reflectingBoundaryPositions = modelProblem.getReflectingBoundaryPositions();
-        const zombie::PDE<float, 2>& pde = modelProblem.getPDE();
+        const zombie::PDE<T, 2>& pde = modelProblem.getPDE();
 
         // run the solver on the input domain
-        runSolver<float, 2>(solverType, solverConfig,
-                            absorbingBoundaryPositions, absorbingBoundaryIndices,
-                            reflectingBoundaryPositions, reflectingBoundaryIndices,
-                            queries, pde, solveDoubleSided, solveLocations,
-                            distanceInfo, solution);
+        runSolver<T, 2>(solverType, solverConfig,
+                        absorbingBoundaryPositions, absorbingBoundaryIndices,
+                        reflectingBoundaryPositions, reflectingBoundaryIndices,
+                        queries, pde, solveDoubleSided, solveLocations,
+                        distanceInfo, solution);
     }
 
     // save the solution to disk
-    saveGridValues(outputConfig, zombieDirectoryPath, distanceInfo, solution);
+    saveGridValues<T>(outputConfig, zombieDirectoryPath, distanceInfo, solution);
     return 0;
+}
+
+int main(int argc, const char *argv[])
+{
+    if (argc != 2) {
+        std::cerr << "must provide config filename" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    std::ifstream configFile(argv[1]);
+    if (!configFile.is_open()) {
+        std::cerr << "Error opening file: " << argv[1] << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    json config = json::parse(configFile);
+    const json modelProblemConfig = getRequired<json>(config, "modelProblem");
+    const int channels = getOptional<int>(modelProblemConfig, "channels", 1);
+    if (channels == 1) {
+        return runDemo<float>(config);
+
+    } else if (channels == 4) {
+        return runDemo<Array4>(config);
+    }
+
+    std::cerr << "C++ basic_2d demo only supports channels = 1 or channels = 4" << std::endl;
+    return EXIT_FAILURE;
 }
