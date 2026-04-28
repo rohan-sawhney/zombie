@@ -51,11 +51,11 @@ protected:
     // loads a boundary mesh from an OBJ file
     void loadOBJ(const std::string& filename, bool normalize, bool flipOrientation);
 
-    // sets up the PDE
-    void setupPDE();
-
     // converts image values to PDE values
     T getPDEValue(const Image<IMAGE_CHANNELS>& image, Vector2 uv) const;
+
+    // sets up the PDE
+    void setupPDE();
 
     // partitions the boundary mesh into absorbing and reflecting parts
     void partitionBoundaryMesh();
