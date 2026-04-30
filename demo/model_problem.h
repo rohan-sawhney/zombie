@@ -60,18 +60,18 @@ protected:
     // partitions the boundary mesh into absorbing and reflecting parts
     void partitionBoundaryMesh();
 
-    // populates geometric queries for the absorbing and reflecting boundary
-    void populateGeometricQueries(const std::vector<Vector2>& absorbingBoundaryPositions,
-                                  const std::vector<Vector2>& reflectingBoundaryPositions,
-                                  const std::pair<Vector2, Vector2>& boundingBox,
-                                  const std::vector<float>& minRobinCoeffValues,
-                                  const std::vector<float>& maxRobinCoeffValues,
-                                  bool areRobinConditionsPureNeumann,
-                                  std::unique_ptr<zombie::SdfGrid<2>>& sdfGridForAbsorbingBoundary,
-                                  zombie::FcpwDirichletBoundaryHandler<2>& absorbingBoundaryHandler,
-                                  zombie::FcpwNeumannBoundaryHandler<2>& reflectingNeumannBoundaryHandler,
-                                  zombie::FcpwRobinBoundaryHandler<2>& reflectingRobinBoundaryHandler,
-                                  zombie::GeometricQueries<2>& queries);
+    // sets up geometric queries for the absorbing and reflecting boundary
+    void setupGeometricQueries(const std::vector<Vector2>& absorbingBoundaryPositions,
+                               const std::vector<Vector2>& reflectingBoundaryPositions,
+                               const std::pair<Vector2, Vector2>& boundingBox,
+                               const std::vector<float>& minRobinCoeffValues,
+                               const std::vector<float>& maxRobinCoeffValues,
+                               bool areRobinConditionsPureNeumann,
+                               std::unique_ptr<zombie::SdfGrid<2>>& sdfGridForAbsorbingBoundary,
+                               zombie::FcpwDirichletBoundaryHandler<2>& absorbingBoundaryHandler,
+                               zombie::FcpwNeumannBoundaryHandler<2>& reflectingNeumannBoundaryHandler,
+                               zombie::FcpwRobinBoundaryHandler<2>& reflectingRobinBoundaryHandler,
+                               zombie::GeometricQueries<2>& queries);
 
     // applies a Kelvin transform to convert an exterior problem into an
     // equivalent interior problem with a modified PDE on the inverted domain
@@ -177,29 +177,29 @@ mSdfGridForInvertedAbsorbingBoundary(nullptr)
     mMinRobinCoeffValues.resize(mReflectingBoundaryIndices.size(), std::fabs(mRobinCoeff));
     mMaxRobinCoeffValues.resize(mReflectingBoundaryIndices.size(), std::fabs(mRobinCoeff));
 
-    // populate the geometric queries for the absorbing and reflecting boundary
-    populateGeometricQueries(mAbsorbingBoundaryPositions, mReflectingBoundaryPositions,
-                             mBoundingBox, mMinRobinCoeffValues, mMaxRobinCoeffValues,
-                             mPde.areRobinConditionsPureNeumann, mSdfGridForAbsorbingBoundary,
-                             mAbsorbingBoundaryHandler, mReflectingNeumannBoundaryHandler,
-                             mReflectingRobinBoundaryHandler, mQueries);
+    // set up geometric queries for the absorbing and reflecting boundary
+    setupGeometricQueries(mAbsorbingBoundaryPositions, mReflectingBoundaryPositions,
+                          mBoundingBox, mMinRobinCoeffValues, mMaxRobinCoeffValues,
+                          mPde.areRobinConditionsPureNeumann, mSdfGridForAbsorbingBoundary,
+                          mAbsorbingBoundaryHandler, mReflectingNeumannBoundaryHandler,
+                          mReflectingRobinBoundaryHandler, mQueries);
 
     if (mSolveExterior) {
         // invert the exterior problem into an equivalent interior problem
         invertExteriorProblem();
 
-        // populate the geometric queries for the inverted absorbing and reflecting boundary
-        populateGeometricQueries(mInvertedAbsorbingBoundaryPositions,
-                                 mInvertedReflectingBoundaryPositions,
-                                 mInvertedBoundingBox,
-                                 mMinRobinCoeffValuesInvertedDomain,
-                                 mMaxRobinCoeffValuesInvertedDomain,
-                                 mPdeInvertedDomain.areRobinConditionsPureNeumann,
-                                 mSdfGridForInvertedAbsorbingBoundary,
-                                 mInvertedAbsorbingBoundaryHandler,
-                                 mInvertedReflectingNeumannBoundaryHandler,
-                                 mInvertedReflectingRobinBoundaryHandler,
-                                 mQueriesInvertedDomain);
+        // set up geometric queries for the inverted absorbing and reflecting boundary
+        setupGeometricQueries(mInvertedAbsorbingBoundaryPositions,
+                              mInvertedReflectingBoundaryPositions,
+                              mInvertedBoundingBox,
+                              mMinRobinCoeffValuesInvertedDomain,
+                              mMaxRobinCoeffValuesInvertedDomain,
+                              mPdeInvertedDomain.areRobinConditionsPureNeumann,
+                              mSdfGridForInvertedAbsorbingBoundary,
+                              mInvertedAbsorbingBoundaryHandler,
+                              mInvertedReflectingNeumannBoundaryHandler,
+                              mInvertedReflectingRobinBoundaryHandler,
+                              mQueriesInvertedDomain);
     }
 }
 
@@ -276,17 +276,17 @@ void ModelProblem<T>::partitionBoundaryMesh()
 }
 
 template <typename T>
-void ModelProblem<T>::populateGeometricQueries(const std::vector<Vector2>& absorbingBoundaryPositions,
-                                               const std::vector<Vector2>& reflectingBoundaryPositions,
-                                               const std::pair<Vector2, Vector2>& boundingBox,
-                                               const std::vector<float>& minRobinCoeffValues,
-                                               const std::vector<float>& maxRobinCoeffValues,
-                                               bool areRobinConditionsPureNeumann,
-                                               std::unique_ptr<zombie::SdfGrid<2>>& sdfGridForAbsorbingBoundary,
-                                               zombie::FcpwDirichletBoundaryHandler<2>& absorbingBoundaryHandler,
-                                               zombie::FcpwNeumannBoundaryHandler<2>& reflectingNeumannBoundaryHandler,
-                                               zombie::FcpwRobinBoundaryHandler<2>& reflectingRobinBoundaryHandler,
-                                               zombie::GeometricQueries<2>& queries)
+void ModelProblem<T>::setupGeometricQueries(const std::vector<Vector2>& absorbingBoundaryPositions,
+                                            const std::vector<Vector2>& reflectingBoundaryPositions,
+                                            const std::pair<Vector2, Vector2>& boundingBox,
+                                            const std::vector<float>& minRobinCoeffValues,
+                                            const std::vector<float>& maxRobinCoeffValues,
+                                            bool areRobinConditionsPureNeumann,
+                                            std::unique_ptr<zombie::SdfGrid<2>>& sdfGridForAbsorbingBoundary,
+                                            zombie::FcpwDirichletBoundaryHandler<2>& absorbingBoundaryHandler,
+                                            zombie::FcpwNeumannBoundaryHandler<2>& reflectingNeumannBoundaryHandler,
+                                            zombie::FcpwRobinBoundaryHandler<2>& reflectingRobinBoundaryHandler,
+                                            zombie::GeometricQueries<2>& queries)
 {
     // set the domain extent for geometric queries
     queries.domainIsWatertight = mDomainIsWatertight;

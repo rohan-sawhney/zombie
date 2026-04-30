@@ -221,11 +221,11 @@ def partition_boundary_mesh(has_reflecting_boundary_conditions, positions, indic
     return absorbing_boundary_positions, absorbing_boundary_indices,\
            reflecting_boundary_positions, reflecting_boundary_indices
 
-def populate_geometric_queries(model_problem_config, bounding_box,
-                               absorbing_boundary_positions, absorbing_boundary_indices,
-                               reflecting_boundary_positions, reflecting_boundary_indices,
-                               min_robin_coeff_values, max_robin_coeff_values,
-                               are_robin_conditions_pure_neumann, solve_double_sided, dim):
+def setup_geometric_queries(model_problem_config, bounding_box,
+                            absorbing_boundary_positions, absorbing_boundary_indices,
+                            reflecting_boundary_positions, reflecting_boundary_indices,
+                            min_robin_coeff_values, max_robin_coeff_values,
+                            are_robin_conditions_pure_neumann, solve_double_sided, dim):
     # load the model problem configuration
     domain_is_watertight = model_problem_config["domainIsWatertight"]\
         if "domainIsWatertight" in model_problem_config else False
@@ -949,14 +949,14 @@ def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_
                                         reflecting_boundary_positions, reflecting_boundary_indices,
                                         pde, robin_coeff, dim, channels)
 
-    # populate the geometric queries for the inverted absorbing and reflecting boundary
+    # set up the geometric queries for the inverted absorbing and reflecting boundary
     geometric_queries_inverted_domain, sdf_grid_for_inverted_absorbing_boundary,\
         inverted_absorbing_boundary_handler, inverted_reflecting_boundary_handler =\
-            populate_geometric_queries(model_problem_config, inverted_bounding_box,
-                                       inverted_absorbing_boundary_positions, absorbing_boundary_indices,
-                                       inverted_reflecting_boundary_positions, reflecting_boundary_indices,
-                                       min_robin_coeff_values_inverted_domain, max_robin_coeff_values_inverted_domain,
-                                       pde_inverted_domain.are_robin_conditions_pure_neumann, solve_double_sided, dim)
+            setup_geometric_queries(model_problem_config, inverted_bounding_box,
+                                    inverted_absorbing_boundary_positions, absorbing_boundary_indices,
+                                    inverted_reflecting_boundary_positions, reflecting_boundary_indices,
+                                    min_robin_coeff_values_inverted_domain, max_robin_coeff_values_inverted_domain,
+                                    pde_inverted_domain.are_robin_conditions_pure_neumann, solve_double_sided, dim)
 
     # invert the solve locations and update the distance info
     inverted_solve_locations = invert_solve_locations(kelvin_transform, solve_locations, dim)
@@ -1008,16 +1008,16 @@ if __name__ == "__main__":
         min_robin_coeff_values = zombie.FloatList([abs(robin_coeff)] * len(reflecting_boundary_indices))
         max_robin_coeff_values = zombie.FloatList([abs(robin_coeff)] * len(reflecting_boundary_indices))
 
-        # populate the geometric queries for the absorbing and reflecting boundary
+        # set up the geometric queries for the absorbing and reflecting boundary
         solve_double_sided = model_problem_config["solveDoubleSided"]\
             if "solveDoubleSided" in model_problem_config else False
         geometric_queries, sdf_grid_for_absorbing_boundary,\
             absorbing_boundary_handler, reflecting_boundary_handler =\
-                populate_geometric_queries(model_problem_config, bounding_box,
-                                           absorbing_boundary_positions, absorbing_boundary_indices,
-                                           reflecting_boundary_positions, reflecting_boundary_indices,
-                                           min_robin_coeff_values, max_robin_coeff_values,
-                                           pde.are_robin_conditions_pure_neumann, solve_double_sided, dim)
+                setup_geometric_queries(model_problem_config, bounding_box,
+                                        absorbing_boundary_positions, absorbing_boundary_indices,
+                                        reflecting_boundary_positions, reflecting_boundary_indices,
+                                        min_robin_coeff_values, max_robin_coeff_values,
+                                        pde.are_robin_conditions_pure_neumann, solve_double_sided, dim)
 
         # create solve locations on a grid for this demo
         output_config = config["output"]

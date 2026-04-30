@@ -5,8 +5,6 @@
 #include "model_problem.h"
 #include "grid.h"
 
-using json = nlohmann::json;
-
 template <size_t DIM>
 void computeDistanceInfo(const std::vector<zombie::Vector<DIM>>& solveLocations,
                          const zombie::GeometricQueries<DIM>& queries,
