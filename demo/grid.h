@@ -48,7 +48,7 @@ void saveGridValues(const json& config, std::string directoryPath,
     static constexpr size_t IMAGE_CHANNELS = ValueTraits<T>::imageChannels;
     const int gridRes = getRequired<int>(config, "gridRes");
     const float boundaryDistanceMask = getOptional<float>(config, "boundaryDistanceMask", 0.0f);
-    const std::string solutionFile = directoryPath + getOptional<std::string>(config, "solutionFile", "solution.pfm");
+    const std::string solutionFile = directoryPath + "/" + getOptional<std::string>(config, "solutionFile", "solution.pfm");
     const bool saveColormapped = getOptional<bool>(config, "saveColormapped", true);
     const std::string colormap = getOptional<std::string>(config, "colormap", "");
     const float colormapMinVal = getOptional<float>(config, "colormapMinVal", 0.0f);

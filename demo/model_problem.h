@@ -134,7 +134,7 @@ mSdfGridForInvertedAbsorbingBoundary(nullptr)
 {
     // load config settings
     auto getFilePath = [config, directoryPath](const std::string& fileName) -> std::string {
-        return directoryPath + getRequired<std::string>(config, fileName);
+        return directoryPath + "/" + getRequired<std::string>(config, fileName);
     };
 
     std::string geometryFile = getFilePath("geometry");
@@ -155,7 +155,7 @@ mSdfGridForInvertedAbsorbingBoundary(nullptr)
             exit(EXIT_FAILURE);
         }
     }
-    mIsReflectingBoundary = Image<1>(directoryPath + getRequired<std::string>(config, "isReflectingBoundary"));
+    mIsReflectingBoundary = Image<1>(getFilePath("isReflectingBoundary"));
     mSolveExterior = getOptional<bool>(config, "solveExterior", false);
     mDomainIsWatertight = getOptional<bool>(config, "domainIsWatertight", false);
     mUseSdfForAbsorbingBoundary = getOptional<bool>(config, "useSdfForAbsorbingBoundary", false);

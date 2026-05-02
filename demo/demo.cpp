@@ -551,10 +551,10 @@ int runDemo(const json& config)
     const json modelProblemConfig = getRequired<json>(config, "modelProblem");
     const json solverConfig = getRequired<json>(config, "solver");
     const json outputConfig = getRequired<json>(config, "output");
-    const std::string zombieDirectoryPath = "../"; // local path to zombie directory
+    std::filesystem::path zombieDirectoryPath = std::filesystem::current_path().parent_path();
 
     // initialize the model problem
-    ModelProblem<T> modelProblem(modelProblemConfig, zombieDirectoryPath);
+    ModelProblem<T> modelProblem(modelProblemConfig, zombieDirectoryPath.string());
     const std::vector<Vector2i>& absorbingBoundaryIndices = modelProblem.getAbsorbingBoundaryIndices();
     const std::vector<Vector2i>& reflectingBoundaryIndices = modelProblem.getReflectingBoundaryIndices();
     const std::pair<Vector2, Vector2>& boundingBox = modelProblem.getBoundingBox();
@@ -613,7 +613,7 @@ int runDemo(const json& config)
     }
 
     // save the solution to disk
-    saveGridValues<T>(outputConfig, zombieDirectoryPath, distanceInfo, solution);
+    saveGridValues<T>(outputConfig, zombieDirectoryPath.string(), distanceInfo, solution);
     return 0;
 }
 
