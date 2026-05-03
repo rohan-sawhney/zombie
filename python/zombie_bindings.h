@@ -714,6 +714,11 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
                "positions"_a, "make_square"_a, "scale"_a,
                "Computes the bounding box of a boundary mesh.");
 
+    utils_m.def(("build_bounding_box_mesh" + typeStr).c_str(),
+               &zombie::buildBoundingBoxMesh<DIM>,
+               "bounding_box_min"_a, "bounding_box_max"_a, "positions"_a, "indices"_a,
+               "Builds a bounding box mesh.");
+
     utils_m.def(("add_bounding_box_to_boundary_mesh" + typeStr).c_str(),
                &zombie::addBoundingBoxToBoundaryMesh<DIM>,
                "bounding_box_min"_a, "bounding_box_max"_a, "positions"_a, "indices"_a,

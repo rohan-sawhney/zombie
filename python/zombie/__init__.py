@@ -191,6 +191,7 @@ try:
         "apply_shift",
         "flip_orientation",
         "compute_bounding_box",
+        "build_bounding_box_mesh",
         "add_bounding_box_to_boundary_mesh",
         "compute_signed_volume",
         "compute_dist_to_boundary",
