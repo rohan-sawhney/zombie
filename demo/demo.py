@@ -974,7 +974,7 @@ def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_
     # map the solution values back to the exterior domain
     return compute_exterior_solution(kelvin_transform, solution, inverted_solve_locations, channels)
 
-def runDemo():
+def run_demo():
     # parse arguments
     parser = argparse.ArgumentParser(description="zombie 2d demo application")
     parser.add_argument("--config", type=str, help="path to the configuration file")
@@ -1059,4 +1059,4 @@ def runDemo():
         print(error)
 
 if __name__ == "__main__":
-    runDemo()
+    run_demo()
