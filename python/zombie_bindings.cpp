@@ -2,7 +2,7 @@
 
 #include "zombie_bindings.h"
 
-// Helper function to bind all callback, PDE, solver, and sampler resources for a given type T and dimension DIM.
+// Helper functions to bind all callback, PDE, solver, and sampler resources for a given type T and dimension DIM.
 // The typeStr is used internally by nanobind to create unique Python class names (hidden from user by __init__.py).
 template <typename T, size_t DIM>
 void bindTypedResources(nb::module_ m, const std::string& typeStr, const std::string& dimStr) {
@@ -33,7 +33,7 @@ void bindTypedResources(nb::module_ m, const std::string& typeStr, const std::st
     bindKelvinTransform<T, DIM>(m, suffix);
 }
 
-// Helper function to bind all channel variants for a given dimension.
+// Helper functions to bind all channel variants for a given dimension.
 template <size_t DIM>
 void bindAllChannels(nb::module_ m, const std::string& dimStr) {
     bindTypedResources<float, DIM>(m, "float", dimStr);

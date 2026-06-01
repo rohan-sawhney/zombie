@@ -38,6 +38,8 @@ public:
     // constructor
     UniformLineSegmentBoundarySampler(const std::vector<Vector2>& positions_,
                                       const std::vector<Vector2i>& indices_,
+                                      const std::vector<float>& primitiveWeights_,
+                                      const std::vector<float>& primitiveWeightsNormalAligned_,
                                       std::function<bool(const Vector2&)> insideSolveRegion_,
                                       bool computeWeightedNormals=false);
 
@@ -61,8 +63,11 @@ public:
     const CDFTable& getCDFTable(bool returnBoundaryNormalAligned) const {
         return returnBoundaryNormalAligned ? cdfTableNormalAligned : cdfTable;
     }
-    float getBoundaryArea(bool returnBoundaryNormalAligned) const {
-        return returnBoundaryNormalAligned ? boundaryAreaNormalAligned : boundaryArea;
+    float getBoundarySamplingMass(bool returnBoundaryNormalAligned) const {
+        return returnBoundaryNormalAligned ? boundarySamplingMassNormalAligned : boundarySamplingMass;
+    }
+    const std::vector<float>& getPrimitiveWeights(bool returnBoundaryNormalAligned) const {
+        return returnBoundaryNormalAligned ? primitiveWeightsNormalAligned : primitiveWeights;
     }
 
 private:
@@ -70,13 +75,16 @@ private:
     void computeNormals(bool computeWeighted);
 
     // builds a cdf table for sampling
-    void buildCDFTable(CDFTable& table, float& area, float normalOffsetForBoundary);
+    void buildCDFTable(CDFTable& table, float& samplingMass,
+                       float normalOffsetForBoundary,
+                       const std::vector<float>& weights);
 
     // generates uniformly distributed sample points on the boundary
     void generateSamples(int nSamples, SampleType sampleType,
                          float normalOffsetForBoundary,
                          const GeometricQueries<2>& queries,
-                         const CDFTable& table, float area,
+                         const CDFTable& table, float samplingMass,
+                         const std::vector<float>& weights,
                          std::vector<SamplePoint<T, 2>>& samplePts);
 
     // members
@@ -85,14 +93,30 @@ private:
     const std::vector<Vector2i>& indices;
     std::function<bool(const Vector2&)> insideSolveRegion;
     std::vector<Vector2> normals;
+    std::vector<float> primitiveWeights, primitiveWeightsNormalAligned;
     CDFTable cdfTable, cdfTableNormalAligned;
-    float boundaryArea, boundaryAreaNormalAligned;
+    float boundarySamplingMass, boundarySamplingMassNormalAligned;
 };
 
 template <typename T>
 std::shared_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
                                         const std::vector<Vector2>& positions,
                                         const std::vector<Vector2i>& indices,
+                                        std::function<bool(const Vector2&)> insideSolveRegion,
+                                        bool computeWeightedNormals=false);
+template <typename T>
+std::shared_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
+                                        const std::vector<Vector2>& positions,
+                                        const std::vector<Vector2i>& indices,
+                                        const std::vector<float>& primitiveWeights,
+                                        std::function<bool(const Vector2&)> insideSolveRegion,
+                                        bool computeWeightedNormals=false);
+template <typename T>
+std::shared_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
+                                        const std::vector<Vector2>& positions,
+                                        const std::vector<Vector2i>& indices,
+                                        const std::vector<float>& primitiveWeights,
+                                        const std::vector<float>& primitiveWeightsNormalAligned,
                                         std::function<bool(const Vector2&)> insideSolveRegion,
                                         bool computeWeightedNormals=false);
 
@@ -102,6 +126,8 @@ public:
     // constructor
     UniformTriangleBoundarySampler(const std::vector<Vector3>& positions_,
                                    const std::vector<Vector3i>& indices_,
+                                   const std::vector<float>& primitiveWeights_,
+                                   const std::vector<float>& primitiveWeightsNormalAligned_,
                                    std::function<bool(const Vector3&)> insideSolveRegion_,
                                    bool computeWeightedNormals=false);
 
@@ -125,8 +151,11 @@ public:
     const CDFTable& getCDFTable(bool returnBoundaryNormalAligned) const {
         return returnBoundaryNormalAligned ? cdfTableNormalAligned : cdfTable;
     }
-    float getBoundaryArea(bool returnBoundaryNormalAligned) const {
-        return returnBoundaryNormalAligned ? boundaryAreaNormalAligned : boundaryArea;
+    float getBoundarySamplingMass(bool returnBoundaryNormalAligned) const {
+        return returnBoundaryNormalAligned ? boundarySamplingMassNormalAligned : boundarySamplingMass;
+    }
+    const std::vector<float>& getPrimitiveWeights(bool returnBoundaryNormalAligned) const {
+        return returnBoundaryNormalAligned ? primitiveWeightsNormalAligned : primitiveWeights;
     }
 
 private:
@@ -134,13 +163,16 @@ private:
     void computeNormals(bool computeWeighted);
 
     // builds a cdf table for sampling
-    void buildCDFTable(CDFTable& table, float& area, float normalOffsetForBoundary);
+    void buildCDFTable(CDFTable& table, float& samplingMass,
+                       float normalOffsetForBoundary,
+                       const std::vector<float>& weights);
 
     // generates uniformly distributed sample points on the boundary
     void generateSamples(int nSamples, SampleType sampleType,
                          float normalOffsetForBoundary,
                          const GeometricQueries<3>& queries,
-                         const CDFTable& table, float area,
+                         const CDFTable& table, float samplingMass,
+                         const std::vector<float>& weights,
                          std::vector<SamplePoint<T, 3>>& samplePts);
 
     // members
@@ -149,14 +181,30 @@ private:
     const std::vector<Vector3i>& indices;
     std::function<bool(const Vector3&)> insideSolveRegion;
     std::vector<Vector3> normals;
+    std::vector<float> primitiveWeights, primitiveWeightsNormalAligned;
     CDFTable cdfTable, cdfTableNormalAligned;
-    float boundaryArea, boundaryAreaNormalAligned;
+    float boundarySamplingMass, boundarySamplingMassNormalAligned;
 };
 
 template <typename T>
 std::shared_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
                                         const std::vector<Vector3>& positions,
                                         const std::vector<Vector3i>& indices,
+                                        std::function<bool(const Vector3&)> insideSolveRegion,
+                                        bool computeWeightedNormals=false);
+template <typename T>
+std::shared_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
+                                        const std::vector<Vector3>& positions,
+                                        const std::vector<Vector3i>& indices,
+                                        const std::vector<float>& primitiveWeights,
+                                        std::function<bool(const Vector3&)> insideSolveRegion,
+                                        bool computeWeightedNormals=false);
+template <typename T>
+std::shared_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
+                                        const std::vector<Vector3>& positions,
+                                        const std::vector<Vector3i>& indices,
+                                        const std::vector<float>& primitiveWeights,
+                                        const std::vector<float>& primitiveWeightsNormalAligned,
                                         std::function<bool(const Vector3&)> insideSolveRegion,
                                         bool computeWeightedNormals=false);
 
@@ -169,12 +217,32 @@ std::shared_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
 template <typename T>
 inline UniformLineSegmentBoundarySampler<T>::UniformLineSegmentBoundarySampler(const std::vector<Vector2>& positions_,
                                                                                const std::vector<Vector2i>& indices_,
+                                                                               const std::vector<float>& primitiveWeights_,
+                                                                               const std::vector<float>& primitiveWeightsNormalAligned_,
                                                                                std::function<bool(const Vector2&)> insideSolveRegion_,
                                                                                bool computeWeightedNormals):
-                                                                               positions(positions_), indices(indices_),
-                                                                               insideSolveRegion(insideSolveRegion_),
-                                                                               boundaryArea(0.0f), boundaryAreaNormalAligned(0.0f)
+positions(positions_),
+indices(indices_),
+primitiveWeights(primitiveWeights_),
+primitiveWeightsNormalAligned(primitiveWeightsNormalAligned_),
+insideSolveRegion(insideSolveRegion_),
+boundarySamplingMass(0.0f),
+boundarySamplingMassNormalAligned(0.0f)
 {
+    if (primitiveWeights.size() != indices.size() ||
+        primitiveWeightsNormalAligned.size() != indices.size()) {
+        std::cerr << "UniformLineSegmentBoundarySampler(): weights must be the same size as the number of line segments" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < (int)indices.size(); i++) {
+        if (!std::isfinite(primitiveWeights[i]) || primitiveWeights[i] < 0.0f ||
+            !std::isfinite(primitiveWeightsNormalAligned[i]) || primitiveWeightsNormalAligned[i] < 0.0f) {
+            std::cerr << "UniformLineSegmentBoundarySampler(): weights must be non-negative and finite" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     rng = pcg32(seed);
@@ -204,11 +272,12 @@ inline void UniformLineSegmentBoundarySampler<T>::computeNormals(bool computeWei
 }
 
 template <typename T>
-inline void UniformLineSegmentBoundarySampler<T>::buildCDFTable(CDFTable& table, float& area,
-                                                                float normalOffsetForBoundary)
+inline void UniformLineSegmentBoundarySampler<T>::buildCDFTable(CDFTable& table, float& samplingMass,
+                                                                float normalOffsetForBoundary,
+                                                                const std::vector<float>& weights)
 {
     int nPrimitives = (int)indices.size();
-    std::vector<float> weights(nPrimitives, 0.0f);
+    std::vector<float> cdfWeights(nPrimitives, 0.0f);
 
     for (int i = 0; i < nPrimitives; i++) {
         const Vector2i& index = indices[i];
@@ -221,42 +290,46 @@ inline void UniformLineSegmentBoundarySampler<T>::buildCDFTable(CDFTable& table,
         if (insideSolveRegion(pMid + normalOffsetForBoundary*n)) {
             p0 += normalOffsetForBoundary*normals[index[0]];
             p1 += normalOffsetForBoundary*normals[index[1]];
-            weights[i] = computeLineSegmentSurfaceArea(p0, p1);
+            cdfWeights[i] = computeLineSegmentSurfaceArea(p0, p1)*weights[i];
         }
     }
 
-    area = table.build(weights);
+    samplingMass = table.build(cdfWeights);
 }
 
 template <typename T>
 inline void UniformLineSegmentBoundarySampler<T>::initialize(float normalOffsetForBoundary, bool solveDoubleSided)
 {
     // build a cdf table for boundary vertices displaced along inward normals
-    buildCDFTable(cdfTable, boundaryArea, -1.0f*normalOffsetForBoundary);
+    buildCDFTable(cdfTable, boundarySamplingMass, -1.0f*normalOffsetForBoundary, primitiveWeights);
 
     if (solveDoubleSided) {
         // build a cdf table for boundary vertices displaced along outward normals
-        buildCDFTable(cdfTableNormalAligned, boundaryAreaNormalAligned, normalOffsetForBoundary);
+        buildCDFTable(cdfTableNormalAligned, boundarySamplingMassNormalAligned,
+                      normalOffsetForBoundary, primitiveWeightsNormalAligned);
     }
 }
 
 template <typename T>
 inline int UniformLineSegmentBoundarySampler<T>::getSampleCount(int nTotalSamples, bool boundaryNormalAlignedSamples) const
 {
-    float totalBoundaryArea = boundaryArea + boundaryAreaNormalAligned;
-    return boundaryNormalAlignedSamples ? std::ceil(nTotalSamples*boundaryAreaNormalAligned/totalBoundaryArea) :
-                                          std::ceil(nTotalSamples*boundaryArea/totalBoundaryArea);
+    float totalSamplingMass = boundarySamplingMass + boundarySamplingMassNormalAligned;
+    if (totalSamplingMass <= 0.0f) return 0;
+
+    return boundaryNormalAlignedSamples ? std::ceil(nTotalSamples*boundarySamplingMassNormalAligned/totalSamplingMass) :
+                                          std::ceil(nTotalSamples*boundarySamplingMass/totalSamplingMass);
 }
 
 template <typename T>
 inline void UniformLineSegmentBoundarySampler<T>::generateSamples(int nSamples, SampleType sampleType,
                                                                   float normalOffsetForBoundary,
                                                                   const GeometricQueries<2>& queries,
-                                                                  const CDFTable& table, float area,
+                                                                  const CDFTable& table, float samplingMass,
+                                                                  const std::vector<float>& weights,
                                                                   std::vector<SamplePoint<T, 2>>& samplePts)
 {
     samplePts.clear();
-    if (area > 0.0f) {
+    if (samplingMass > 0.0f) {
         // generate stratified samples for CDF table sampling
         std::vector<float> stratifiedSamples;
         generateStratifiedSamples<1>(stratifiedSamples, nSamples, rng);
@@ -275,11 +348,11 @@ inline void UniformLineSegmentBoundarySampler<T>::generateSamples(int nSamples, 
             }
         }
 
-        float pdf = 1.0f/area;
         for (auto& kv: indexCount) {
             // generate samples for selected mesh face
             std::vector<float> indexSamples;
             const Vector2i& index = indices[kv.first];
+            float pdf = weights[kv.first]/samplingMass;
             if (kv.second == 1) {
                 indexSamples.emplace_back(rng.nextFloat());
 
@@ -318,14 +391,16 @@ inline void UniformLineSegmentBoundarySampler<T>::generateSamples(int nSamples, 
 {
     if (generateBoundaryNormalAlignedSamples) {
         generateSamples(nSamples, sampleType, normalOffsetForBoundary, queries,
-                        cdfTableNormalAligned, boundaryAreaNormalAligned, samplePts);
+                        cdfTableNormalAligned, boundarySamplingMassNormalAligned,
+                        primitiveWeightsNormalAligned, samplePts);
 
     } else {
         generateSamples(nSamples, sampleType, -1.0f*normalOffsetForBoundary,
-                        queries, cdfTable, boundaryArea, samplePts);
+                        queries, cdfTable, boundarySamplingMass,
+                        primitiveWeights, samplePts);
     }
 
-    for (int i = 0; i < nSamples; i++) {
+    for (int i = 0; i < (int)samplePts.size(); i++) {
         samplePts[i].estimateBoundaryNormalAligned = generateBoundaryNormalAlignedSamples;
     }
 }
@@ -337,19 +412,70 @@ std::shared_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
                                         std::function<bool(const Vector2&)> insideSolveRegion,
                                         bool computeWeightedNormals)
 {
+    std::vector<float> constantPrimitiveWeights(indices.size(), 1.0f);
     return std::make_shared<UniformLineSegmentBoundarySampler<T>>(
-            positions, indices, insideSolveRegion, computeWeightedNormals);
+        positions, indices, constantPrimitiveWeights, constantPrimitiveWeights,
+        insideSolveRegion, computeWeightedNormals);
+}
+
+template <typename T>
+std::shared_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
+                                        const std::vector<Vector2>& positions,
+                                        const std::vector<Vector2i>& indices,
+                                        const std::vector<float>& primitiveWeights,
+                                        std::function<bool(const Vector2&)> insideSolveRegion,
+                                        bool computeWeightedNormals)
+{
+    return std::make_shared<UniformLineSegmentBoundarySampler<T>>(
+        positions, indices, primitiveWeights, primitiveWeights,
+        insideSolveRegion, computeWeightedNormals);
+}
+
+template <typename T>
+std::shared_ptr<BoundarySampler<T, 2>> createUniformLineSegmentBoundarySampler(
+                                        const std::vector<Vector2>& positions,
+                                        const std::vector<Vector2i>& indices,
+                                        const std::vector<float>& primitiveWeights,
+                                        const std::vector<float>& primitiveWeightsNormalAligned,
+                                        std::function<bool(const Vector2&)> insideSolveRegion,
+                                        bool computeWeightedNormals)
+{
+    return std::make_shared<UniformLineSegmentBoundarySampler<T>>(
+        positions, indices, primitiveWeights, primitiveWeightsNormalAligned,
+        insideSolveRegion, computeWeightedNormals);
 }
 
 template <typename T>
 inline UniformTriangleBoundarySampler<T>::UniformTriangleBoundarySampler(const std::vector<Vector3>& positions_,
                                                                          const std::vector<Vector3i>& indices_,
+                                                                         const std::vector<float>& primitiveWeights_,
+                                                                         const std::vector<float>& primitiveWeightsNormalAligned_,
                                                                          std::function<bool(const Vector3&)> insideSolveRegion_,
                                                                          bool computeWeightedNormals):
-                                                                         positions(positions_), indices(indices_),
-                                                                         insideSolveRegion(insideSolveRegion_),
-                                                                         boundaryArea(0.0f), boundaryAreaNormalAligned(0.0f)
+positions(positions_),
+indices(indices_),
+primitiveWeights(primitiveWeights_),
+primitiveWeightsNormalAligned(primitiveWeightsNormalAligned_),
+insideSolveRegion(insideSolveRegion_),
+boundarySamplingMass(0.0f),
+boundarySamplingMassNormalAligned(0.0f)
 {
+    if (primitiveWeights.size() != indices.size() ||
+        primitiveWeightsNormalAligned.size() != indices.size()) {
+        std::cerr << "UniformTriangleBoundarySampler(): weights must be the same size as the number of triangles" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < (int)indices.size(); i++) {
+        if (!std::isfinite(primitiveWeights[i]) || primitiveWeights[i] < 0.0f ||
+            !std::isfinite(primitiveWeightsNormalAligned[i]) || primitiveWeightsNormalAligned[i] < 0.0f) {
+            std::cout << "primitiveWeights[i]: " << primitiveWeights[i] << std::endl;
+            std::cout << "primitiveWeightsNormalAligned[i]: " << primitiveWeightsNormalAligned[i] << std::endl;
+            std::cerr << "UniformTriangleBoundarySampler(): weights must be non-negative and finite" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     rng = pcg32(seed);
@@ -386,11 +512,12 @@ inline void UniformTriangleBoundarySampler<T>::computeNormals(bool computeWeight
 }
 
 template <typename T>
-inline void UniformTriangleBoundarySampler<T>::buildCDFTable(CDFTable& table, float& area,
-                                                             float normalOffsetForBoundary)
+inline void UniformTriangleBoundarySampler<T>::buildCDFTable(CDFTable& table, float& samplingMass,
+                                                             float normalOffsetForBoundary,
+                                                             const std::vector<float>& weights)
 {
     int nPrimitives = (int)indices.size();
-    std::vector<float> weights(nPrimitives, 0.0f);
+    std::vector<float> cdfWeights(nPrimitives, 0.0f);
 
     for (int i = 0; i < nPrimitives; i++) {
         const Vector3i& index = indices[i];
@@ -405,42 +532,46 @@ inline void UniformTriangleBoundarySampler<T>::buildCDFTable(CDFTable& table, fl
             p0 += normalOffsetForBoundary*normals[index[0]];
             p1 += normalOffsetForBoundary*normals[index[1]];
             p2 += normalOffsetForBoundary*normals[index[2]];
-            weights[i] = computeTriangleSurfaceArea(p0, p1, p2);
+            cdfWeights[i] = computeTriangleSurfaceArea(p0, p1, p2)*weights[i];
         }
     }
 
-    area = table.build(weights);
+    samplingMass = table.build(cdfWeights);
 }
 
 template <typename T>
 inline void UniformTriangleBoundarySampler<T>::initialize(float normalOffsetForBoundary, bool solveDoubleSided)
 {
     // build a cdf table for boundary vertices displaced along inward normals
-    buildCDFTable(cdfTable, boundaryArea, -1.0f*normalOffsetForBoundary);
+    buildCDFTable(cdfTable, boundarySamplingMass, -1.0f*normalOffsetForBoundary, primitiveWeights);
 
     if (solveDoubleSided) {
         // build a cdf table for boundary vertices displaced along outward normals
-        buildCDFTable(cdfTableNormalAligned, boundaryAreaNormalAligned, normalOffsetForBoundary);
+        buildCDFTable(cdfTableNormalAligned, boundarySamplingMassNormalAligned,
+                      normalOffsetForBoundary, primitiveWeightsNormalAligned);
     }
 }
 
 template <typename T>
 inline int UniformTriangleBoundarySampler<T>::getSampleCount(int nTotalSamples, bool boundaryNormalAlignedSamples) const
 {
-    float totalBoundaryArea = boundaryArea + boundaryAreaNormalAligned;
-    return boundaryNormalAlignedSamples ? std::ceil(nTotalSamples*boundaryAreaNormalAligned/totalBoundaryArea) :
-                                          std::ceil(nTotalSamples*boundaryArea/totalBoundaryArea);
+    float totalSamplingMass = boundarySamplingMass + boundarySamplingMassNormalAligned;
+    if (totalSamplingMass <= 0.0f) return 0;
+
+    return boundaryNormalAlignedSamples ? std::ceil(nTotalSamples*boundarySamplingMassNormalAligned/totalSamplingMass) :
+                                          std::ceil(nTotalSamples*boundarySamplingMass/totalSamplingMass);
 }
 
 template <typename T>
 inline void UniformTriangleBoundarySampler<T>::generateSamples(int nSamples, SampleType sampleType,
                                                                float normalOffsetForBoundary,
                                                                const GeometricQueries<3>& queries,
-                                                               const CDFTable& table, float area,
+                                                               const CDFTable& table, float samplingMass,
+                                                               const std::vector<float>& weights,
                                                                std::vector<SamplePoint<T, 3>>& samplePts)
 {
     samplePts.clear();
-    if (area > 0.0f) {
+    if (samplingMass > 0.0f) {
         // generate stratified samples for CDF table sampling
         std::vector<float> stratifiedSamples;
         generateStratifiedSamples<1>(stratifiedSamples, nSamples, rng);
@@ -459,11 +590,11 @@ inline void UniformTriangleBoundarySampler<T>::generateSamples(int nSamples, Sam
             }
         }
 
-        float pdf = 1.0f/area;
         for (auto& kv: indexCount) {
             // generate samples for selected mesh face
             std::vector<float> indexSamples;
             const Vector3i& index = indices[kv.first];
+            float pdf = weights[kv.first]/samplingMass;
             if (kv.second == 1) {
                 indexSamples.emplace_back(rng.nextFloat());
                 indexSamples.emplace_back(rng.nextFloat());
@@ -504,14 +635,16 @@ inline void UniformTriangleBoundarySampler<T>::generateSamples(int nSamples, Sam
 {
     if (generateBoundaryNormalAlignedSamples) {
         generateSamples(nSamples, sampleType, normalOffsetForBoundary, queries,
-                        cdfTableNormalAligned, boundaryAreaNormalAligned, samplePts);
+                        cdfTableNormalAligned, boundarySamplingMassNormalAligned,
+                        primitiveWeightsNormalAligned, samplePts);
 
     } else {
         generateSamples(nSamples, sampleType, -1.0f*normalOffsetForBoundary,
-                        queries, cdfTable, boundaryArea, samplePts);
+                        queries, cdfTable, boundarySamplingMass,
+                        primitiveWeights, samplePts);
     }
 
-    for (int i = 0; i < nSamples; i++) {
+    for (int i = 0; i < (int)samplePts.size(); i++) {
         samplePts[i].estimateBoundaryNormalAligned = generateBoundaryNormalAlignedSamples;
     }
 }
@@ -523,8 +656,37 @@ std::shared_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
                                         std::function<bool(const Vector3&)> insideSolveRegion,
                                         bool computeWeightedNormals)
 {
+    std::vector<float> constantPrimitiveWeights(indices.size(), 1.0f);
     return std::make_shared<UniformTriangleBoundarySampler<T>>(
-            positions, indices, insideSolveRegion, computeWeightedNormals);
+        positions, indices, constantPrimitiveWeights, constantPrimitiveWeights,
+        insideSolveRegion, computeWeightedNormals);
+}
+
+template <typename T>
+std::shared_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
+                                        const std::vector<Vector3>& positions,
+                                        const std::vector<Vector3i>& indices,
+                                        const std::vector<float>& primitiveWeights,
+                                        std::function<bool(const Vector3&)> insideSolveRegion,
+                                        bool computeWeightedNormals)
+{
+    return std::make_shared<UniformTriangleBoundarySampler<T>>(
+        positions, indices, primitiveWeights, primitiveWeights,
+        insideSolveRegion, computeWeightedNormals);
+}
+
+template <typename T>
+std::shared_ptr<BoundarySampler<T, 3>> createUniformTriangleBoundarySampler(
+                                        const std::vector<Vector3>& positions,
+                                        const std::vector<Vector3i>& indices,
+                                        const std::vector<float>& primitiveWeights,
+                                        const std::vector<float>& primitiveWeightsNormalAligned,
+                                        std::function<bool(const Vector3&)> insideSolveRegion,
+                                        bool computeWeightedNormals)
+{
+    return std::make_shared<UniformTriangleBoundarySampler<T>>(
+        positions, indices, primitiveWeights, primitiveWeightsNormalAligned,
+        insideSolveRegion, computeWeightedNormals);
 }
 
 } // zombie

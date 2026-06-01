@@ -759,13 +759,15 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
         .def(nb::init<>())
         .def("build_acceleration_structure", &zombie::FcpwDirichletBoundaryHandler<DIM>::buildAccelerationStructure,
             "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions and indices.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
-            "positions"_a, "indices"_a, "build_bvh"_a=true, "enable_bvh_vectorization"_a=false);
+            "positions"_a, "indices"_a, "build_bvh"_a=true,
+            "enable_bvh_vectorization"_a=false, "print_stats"_a=true);
 
     nb::class_<zombie::FcpwNeumannBoundaryHandler<DIM>>(utils_m, ("FcpwNeumannBoundaryHandler" + typeStr).c_str())
         .def(nb::init<>())
         .def("build_acceleration_structure", &zombie::FcpwNeumannBoundaryHandler<DIM>::buildAccelerationStructure,
             "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions and indices.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
-            "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a, "build_bvh"_a=true, "enable_bvh_vectorization"_a=false);
+            "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a,
+            "build_bvh"_a=true, "enable_bvh_vectorization"_a=false, "print_stats"_a=true);
 
     nb::class_<zombie::FcpwRobinBoundaryHandler<DIM>>(utils_m, ("FcpwRobinBoundaryHandler" + typeStr).c_str())
         .def(nb::init<>())
@@ -773,7 +775,7 @@ void bindGeometryUtilityFunctions(nb::module_ m, std::string typeStr)
             "Builds an FCPW acceleration structure (specifically a BVH) from a set of positions, indices, and min and max absolute coefficient values per mesh face.\nUses a simple list of mesh faces for brute-force geometric queries when build_bvh is false.",
             "positions"_a, "indices"_a, "ignore_candidate_silhouette"_a,
             "min_robin_coeff_values"_a, "max_robin_coeff_values"_a,
-            "build_bvh"_a=true, "enable_bvh_vectorization"_a=false)
+            "build_bvh"_a=true, "enable_bvh_vectorization"_a=false, "print_stats"_a=true)
         .def("update_coefficient_values", &zombie::FcpwRobinBoundaryHandler<DIM>::updateCoefficientValues,
             "updates the Robin coefficients on the boundary mesh.",
             "min_robin_coeff_values"_a, "max_robin_coeff_values"_a);
@@ -1291,17 +1293,53 @@ void bindSamplers(nb::module_ m, std::string typeStr)
 
     if (DIM == 2) {
         samplers_m.def(("create_uniform_line_segment_boundary_sampler" + typeStr).c_str(),
-                      &zombie::createUniformLineSegmentBoundarySampler<T>,
+                      nb::overload_cast<const FloatNList<2>&, const IntNList<2>&,
+                                        FloatNToTypeFunc<bool, 2>, bool>(
+                                            &zombie::createUniformLineSegmentBoundarySampler<T>),
                       "positions"_a, "indices"_a, "inside_solve_region"_a,
                       "compute_weighted_normals"_a=false,
                       "Creates a uniform line segment boundary sampler.");
+        samplers_m.def(("create_uniform_line_segment_boundary_sampler" + typeStr).c_str(),
+                      nb::overload_cast<const FloatNList<2>&, const IntNList<2>&,
+                                        const FloatList&, FloatNToTypeFunc<bool, 2>, bool>(
+                                            &zombie::createUniformLineSegmentBoundarySampler<T>),
+                      "positions"_a, "indices"_a, "primitive_weights"_a,
+                      "inside_solve_region"_a, "compute_weighted_normals"_a=false,
+                      "Creates a uniform line segment boundary sampler with primitive weights.");
+        samplers_m.def(("create_uniform_line_segment_boundary_sampler" + typeStr).c_str(),
+                      nb::overload_cast<const FloatNList<2>&, const IntNList<2>&,
+                                        const FloatList&, const FloatList&,
+                                        FloatNToTypeFunc<bool, 2>, bool>(
+                                            &zombie::createUniformLineSegmentBoundarySampler<T>),
+                      "positions"_a, "indices"_a, "primitive_weights"_a,
+                      "primitive_weights_normal_aligned"_a, "inside_solve_region"_a,
+                      "compute_weighted_normals"_a=false,
+                      "Creates a uniform line segment boundary sampler with side-specific primitive weights.");
 
     } else if (DIM == 3) {
         samplers_m.def(("create_uniform_triangle_boundary_sampler" + typeStr).c_str(),
-                      &zombie::createUniformTriangleBoundarySampler<T>,
+                      nb::overload_cast<const FloatNList<3>&, const IntNList<3>&,
+                                        FloatNToTypeFunc<bool, 3>, bool>(
+                                            &zombie::createUniformTriangleBoundarySampler<T>),
                       "positions"_a, "indices"_a, "inside_solve_region"_a,
                       "compute_weighted_normals"_a=false,
                       "Creates a uniform triangle boundary sampler.");
+        samplers_m.def(("create_uniform_triangle_boundary_sampler" + typeStr).c_str(),
+                      nb::overload_cast<const FloatNList<3>&, const IntNList<3>&,
+                                        const FloatList&, FloatNToTypeFunc<bool, 3>, bool>(
+                                            &zombie::createUniformTriangleBoundarySampler<T>),
+                      "positions"_a, "indices"_a, "primitive_weights"_a,
+                      "inside_solve_region"_a, "compute_weighted_normals"_a=false,
+                      "Creates a uniform triangle boundary sampler with primitive weights.");
+        samplers_m.def(("create_uniform_triangle_boundary_sampler" + typeStr).c_str(),
+                      nb::overload_cast<const FloatNList<3>&, const IntNList<3>&,
+                                        const FloatList&, const FloatList&,
+                                        FloatNToTypeFunc<bool, 3>, bool>(
+                                            &zombie::createUniformTriangleBoundarySampler<T>),
+                      "positions"_a, "indices"_a, "primitive_weights"_a,
+                      "primitive_weights_normal_aligned"_a, "inside_solve_region"_a,
+                      "compute_weighted_normals"_a=false,
+                      "Creates a uniform triangle boundary sampler with side-specific primitive weights.");
     }
 
     nb::class_<zombie::DomainSampler<T, DIM>>(samplers_m, ("DomainSampler" + typeStr).c_str())
@@ -1426,28 +1464,84 @@ void bindKelvinTransform(nb::module_ m, std::string typeStr)
 {
     nb::module_ solvers_m = m.def_submodule("Solvers", "Solvers module");
 
-    nb::class_<zombie::KelvinTransform<T, DIM>>(solvers_m, ("KelvinTransform" + typeStr).c_str())
-        .def(nb::init<const zombie::Vector<DIM>&>(),
-            "origin"_a=zombie::Vector<DIM>::Zero())
-        .def("set_origin", &zombie::KelvinTransform<T, DIM>::setOrigin,
-            "Sets the origin of the Kelvin transform.",
-            "origin"_a)
-        .def("get_origin", &zombie::KelvinTransform<T, DIM>::getOrigin,
-            "Returns the origin of the Kelvin transform.")
-        .def("transform_point", &zombie::KelvinTransform<T, DIM>::transformPoint,
-            "Applies the Kelvin transform to a point in the exterior domain.",
-            "x"_a)
-        .def("transform_pde", &zombie::KelvinTransform<T, DIM>::transformPde,
-            "Sets up the PDE for the inverted domain given the PDE for the exterior domain.",
-            "pde_exterior_domain"_a, "pde_inverted_domain"_a)
-        .def("transform_solution_estimate", &zombie::KelvinTransform<T, DIM>::transformSolutionEstimate,
-            "Returns the estimated solution in the exterior domain, given the solution estimate at a transformed point.",
-            "V"_a, "y"_a)
-        .def("transform_points", &zombie::KelvinTransform<T, DIM>::transformPoints,
-            "Applies the Kelvin transform to a set of points in the exterior domain.",
-            "points"_a, "transformed_points"_a)
-        .def("compute_robin_coefficients", &zombie::KelvinTransform<T, DIM>::computeRobinCoefficients,
-            "Computes the modified Robin coefficients for the transformed reflecting boundary represented by line segments in 2D and triangles in 3D:\na boundary with Neumann conditions typically has non-zero Robin coefficients on the inverted domain in 3D, but it continues to have\nNeumann conditions in 2D.",
-            "transformed_points"_a, "indices"_a, "min_robin_coeff_values"_a, "max_robin_coeff_values"_a,
-            "transformed_min_robin_coeff_values"_a, "transformed_max_robin_coeff_values"_a);
+    nb::class_<zombie::KelvinTransform<T, DIM>> kelvinTransform(solvers_m, ("KelvinTransform" + typeStr).c_str());
+    kelvinTransform.def(nb::init<const zombie::Vector<DIM>&>(),
+                        "origin"_a=zombie::Vector<DIM>::Zero())
+                    .def("set_origin", &zombie::KelvinTransform<T, DIM>::setOrigin,
+                        "Sets the origin of the Kelvin transform.",
+                        "origin"_a)
+                    .def("get_origin", &zombie::KelvinTransform<T, DIM>::getOrigin,
+                        "Returns the origin of the Kelvin transform.")
+                    .def("transform_point", &zombie::KelvinTransform<T, DIM>::transformPoint,
+                        "Applies the Kelvin transform to a point in the exterior domain.",
+                        "x"_a)
+                    .def("transform_pde", &zombie::KelvinTransform<T, DIM>::transformPde,
+                        "Sets up the PDE for the inverted domain given the PDE for the exterior domain.",
+                        "pde_exterior_domain"_a, "pde_inverted_domain"_a)
+                    .def("transform_solution_estimate", &zombie::KelvinTransform<T, DIM>::transformSolutionEstimate,
+                        "Returns the estimated solution in the exterior domain, given the solution estimate at a transformed point.",
+                        "V"_a, "y"_a);
+
+    if constexpr (std::is_same_v<T, float>) {
+        kelvinTransform.def("transform_gradient_estimate",
+            [](const zombie::KelvinTransform<T, DIM>& self,
+               const T& V,
+               const zombie::Vector<DIM>& dV,
+               const zombie::Vector<DIM>& y) {
+                FloatList dVList(DIM);
+                for (size_t i = 0; i < DIM; i++) {
+                    dVList[i] = dV[i];
+                }
+
+                FloatList gradientList(DIM);
+                self.transformGradientEstimate(V, dVList, y, gradientList);
+
+                zombie::Vector<DIM> gradient;
+                for (size_t i = 0; i < DIM; i++) {
+                    gradient[i] = gradientList[i];
+                }
+
+                return gradient;
+            },
+            "Returns the estimated gradient in the exterior domain, given solution and gradient estimates at a transformed point.",
+            "V"_a, "dV"_a, "y"_a);
+
+    } else {
+        using GradientMatrix = Eigen::Matrix<float, Eigen::Dynamic, T::RowsAtCompileTime, Eigen::RowMajor>;
+        kelvinTransform.def("transform_gradient_estimate",
+            [](const zombie::KelvinTransform<T, DIM>& self,
+               const T& V,
+               const GradientMatrix& dV,
+               const zombie::Vector<DIM>& y) {
+                std::vector<T> dVList(DIM);
+                constexpr int channels = GradientMatrix::ColsAtCompileTime;
+                for (size_t i = 0; i < DIM; i++) {
+                    for (int c = 0; c < channels; c++) {
+                        dVList[i][c] = dV((Eigen::Index)i, c);
+                    }
+                }
+
+                std::vector<T> gradientList(DIM);
+                self.transformGradientEstimate(V, dVList, y, gradientList);
+
+                GradientMatrix gradient(DIM, channels);
+                for (size_t i = 0; i < DIM; i++) {
+                    for (int c = 0; c < channels; c++) {
+                        gradient((Eigen::Index)i, c) = gradientList[i][c];
+                    }
+                }
+
+                return gradient;
+            },
+            "Returns the estimated gradient in the exterior domain, given solution and gradient estimates at a transformed point.",
+            "V"_a, "dV"_a, "y"_a);
+    }
+
+    kelvinTransform.def("transform_points", &zombie::KelvinTransform<T, DIM>::transformPoints,
+                        "Applies the Kelvin transform to a set of points in the exterior domain.",
+                        "points"_a, "transformed_points"_a)
+                    .def("compute_robin_coefficients", &zombie::KelvinTransform<T, DIM>::computeRobinCoefficients,
+                        "Computes the modified Robin coefficients for the transformed reflecting boundary represented by line segments in 2D and triangles in 3D:\na boundary with Neumann conditions typically has non-zero Robin coefficients on the inverted domain in 3D, but it continues to have\nNeumann conditions in 2D.",
+                        "transformed_points"_a, "indices"_a, "min_robin_coeff_values"_a, "max_robin_coeff_values"_a,
+                        "transformed_min_robin_coeff_values"_a, "transformed_max_robin_coeff_values"_a);
 }

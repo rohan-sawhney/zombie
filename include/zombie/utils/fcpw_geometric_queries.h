@@ -83,7 +83,9 @@ public:
     // queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
                                     const std::vector<Vectori<DIM>>& indices,
-                                    bool buildBvh=true, bool enableBvhVectorization=false);
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true);
 };
 
 template <size_t DIM>
@@ -98,7 +100,9 @@ public:
     void buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
                                     const std::vector<Vectori<DIM>>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,
-                                    bool buildBvh=true, bool enableBvhVectorization=false);
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true);
 };
 
 template <size_t DIM>
@@ -115,7 +119,9 @@ public:
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,
                                     const std::vector<float>& minRobinCoeffValues,
                                     const std::vector<float>& maxRobinCoeffValues,
-                                    bool buildBvh=true, bool enableBvhVectorization=false);
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true);
 
     // updates the Robin coefficients on the boundary mesh
     void updateCoefficientValues(const std::vector<float>& minRobinCoeffValues,
@@ -513,7 +519,7 @@ FcpwDirichletBoundaryHandler<DIM>::FcpwDirichletBoundaryHandler()
 template <size_t DIM>
 void FcpwDirichletBoundaryHandler<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
                                                                    const std::vector<Vectori<DIM>>& indices,
-                                                                   bool buildBvh, bool enableBvhVectorization)
+                                                                   bool buildBvh, bool enableBvhVectorization, bool printStats)
 {
     std::cerr << "FcpwDirichletBoundaryHandler::buildAccelerationStructure: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
@@ -530,7 +536,9 @@ public:
     // queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
                                     const std::vector<Vector2i>& indices,
-                                    bool buildBvh=true, bool enableBvhVectorization=false) {
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true) {
         if (positions.size() > 0) {
             // load positions and indices
             scene.setObjectCount(1);
@@ -541,7 +549,7 @@ public:
             fcpw::AggregateType aggregateType = buildBvh ?
                                                 fcpw::AggregateType::Bvh_SurfaceArea :
                                                 fcpw::AggregateType::Baseline;
-            scene.build(aggregateType, enableBvhVectorization, true, true);
+            scene.build(aggregateType, enableBvhVectorization, printStats, true);
         }
     }
 
@@ -560,7 +568,9 @@ public:
     // queries when buildBvh is false.
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
                                     const std::vector<Vector3i>& indices,
-                                    bool buildBvh=true, bool enableBvhVectorization=false) {
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true) {
         if (positions.size() > 0) {
             // load positions and indices
             scene.setObjectCount(1);
@@ -571,7 +581,7 @@ public:
             fcpw::AggregateType aggregateType = buildBvh ?
                                                 fcpw::AggregateType::Bvh_SurfaceArea :
                                                 fcpw::AggregateType::Baseline;
-            scene.build(aggregateType, enableBvhVectorization, true, true);
+            scene.build(aggregateType, enableBvhVectorization, printStats, true);
         }
     }
 
@@ -590,7 +600,7 @@ template <size_t DIM>
 void FcpwNeumannBoundaryHandler<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& positions,
                                                                  const std::vector<Vectori<DIM>>& indices,
                                                                  std::function<bool(float, int)> ignoreCandidateSilhouette,
-                                                                 bool buildBvh, bool enableBvhVectorization)
+                                                                 bool buildBvh, bool enableBvhVectorization, bool printStats)
 {
     std::cerr << "FcpwNeumannBoundaryHandler::buildAccelerationStructure: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
@@ -608,7 +618,9 @@ public:
     void buildAccelerationStructure(const std::vector<Vector2>& positions,
                                     const std::vector<Vector2i>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,
-                                    bool buildBvh=true, bool enableBvhVectorization=false) {
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true) {
         if (positions.size() > 0) {
             // load positions and indices
             scene.setObjectCount(1);
@@ -622,7 +634,7 @@ public:
             fcpw::AggregateType aggregateType = buildBvh ?
                                                 fcpw::AggregateType::Bvh_SurfaceArea :
                                                 fcpw::AggregateType::Baseline;
-            scene.build(aggregateType, enableBvhVectorization, true, true);
+            scene.build(aggregateType, enableBvhVectorization, printStats, true);
         }
     }
 
@@ -642,7 +654,9 @@ public:
     void buildAccelerationStructure(const std::vector<Vector3>& positions,
                                     const std::vector<Vector3i>& indices,
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,
-                                    bool buildBvh=true, bool enableBvhVectorization=false) {
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true) {
         if (positions.size() > 0) {
             // load positions and indices
             scene.setObjectCount(1);
@@ -656,7 +670,7 @@ public:
             fcpw::AggregateType aggregateType = buildBvh ?
                                                 fcpw::AggregateType::Bvh_SurfaceArea :
                                                 fcpw::AggregateType::Baseline;
-            scene.build(aggregateType, enableBvhVectorization, true, true);
+            scene.build(aggregateType, enableBvhVectorization, printStats, true);
         }
     }
 
@@ -677,7 +691,7 @@ void FcpwRobinBoundaryHandler<DIM>::buildAccelerationStructure(const std::vector
                                                                std::function<bool(float, int)> ignoreCandidateSilhouette,
                                                                const std::vector<float>& minRobinCoeffValues,
                                                                const std::vector<float>& maxRobinCoeffValues,
-                                                               bool buildBvh, bool enableBvhVectorization)
+                                                               bool buildBvh, bool enableBvhVectorization, bool printStats)
 {
     std::cerr << "FcpwRobinBoundaryHandler::buildAccelerationStructure: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
@@ -711,7 +725,9 @@ public:
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,
                                     const std::vector<float>& minRobinCoeffValues,
                                     const std::vector<float>& maxRobinCoeffValues,
-                                    bool buildBvh=true, bool enableBvhVectorization=false) {
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true) {
         if (positions.size() > 0) {
             struct VertexFaceAdjacency {
                 VertexFaceAdjacency(): adjacentFaceIndices{-1, -1} {}
@@ -787,15 +803,15 @@ public:
                 if (enableBvhVectorization) {
 #ifdef FCPW_USE_ENOKI
                     bvh = createReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub,
-                                                                                                     true, true, FCPW_SIMD_WIDTH);
+                                                                                                     printStats, true, FCPW_SIMD_WIDTH);
                     mbvh = createVectorizedReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, WideNodeBound, NodeBound>(
                                                                                                      bvh.get(), lineSegmentPtrs,
-                                                                                                     silhouettePtrsStub, true);
+                                                                                                     silhouettePtrsStub, printStats);
 #else
-                    bvh = createReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub);
+                    bvh = createReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub, printStats);
 #endif
                 } else {
-                    bvh = createReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub);
+                    bvh = createReflectanceBvh<2, ReflectanceLineSegment<PrimitiveBound>, NodeBound>(soup, lineSegmentPtrs, silhouettePtrsStub, printStats);
                 }
 
             } else {
@@ -856,7 +872,9 @@ public:
                                     std::function<bool(float, int)> ignoreCandidateSilhouette,
                                     const std::vector<float>& minRobinCoeffValues,
                                     const std::vector<float>& maxRobinCoeffValues,
-                                    bool buildBvh=true, bool enableBvhVectorization=false) {
+                                    bool buildBvh=true,
+                                    bool enableBvhVectorization=false,
+                                    bool printStats=true) {
         if (positions.size() > 0) {
             struct EdgeFaceAdjacency {
                 EdgeFaceAdjacency(): adjacentFaceIndices{-1, -1} {}
@@ -959,15 +977,15 @@ public:
                 if (enableBvhVectorization) {
 #ifdef FCPW_USE_ENOKI
                     bvh = createReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub,
-                                                                                                  true, true, FCPW_SIMD_WIDTH);
+                                                                                                  printStats, true, FCPW_SIMD_WIDTH);
                     mbvh = createVectorizedReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, WideNodeBound, NodeBound>(
                                                                                                   bvh.get(), trianglePtrs,
-                                                                                                  silhouettePtrsStub, true);
+                                                                                                  silhouettePtrsStub, printStats);
 #else
-                    bvh = createReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub);
+                    bvh = createReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub, printStats);
 #endif
                 } else {
-                    bvh = createReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub);
+                    bvh = createReflectanceBvh<3, ReflectanceTriangle<PrimitiveBound>, NodeBound>(soup, trianglePtrs, silhouettePtrsStub, printStats);
                 }
 
             } else {
