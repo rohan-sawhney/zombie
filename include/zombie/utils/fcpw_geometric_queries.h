@@ -1096,9 +1096,9 @@ void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<D
         };
         geometricQueries.intersectAbsorbingBoundary = [&geometricQueries, absorbingBoundaryAggregate](
                                                       const Vector<DIM>& origin, const Vector<DIM>& normal,
-                                                      const Vector<DIM>& dir, float tMax, bool onAborbingBoundary,
+                                                      const Vector<DIM>& dir, float tMax, bool onAbsorbingBoundary,
                                                       IntersectionPoint<DIM>& intersectionPt) -> bool {
-            Vector<DIM> queryOrigin = onAborbingBoundary ?
+            Vector<DIM> queryOrigin = onAbsorbingBoundary ?
                                       geometricQueries.offsetPointAlongDirection(origin, -normal) :
                                       origin;
             Vector<DIM> queryDir = dir;
@@ -1115,9 +1115,9 @@ void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<D
         };
         geometricQueries.intersectAbsorbingBoundaryAllHits = [&geometricQueries, absorbingBoundaryAggregate](
                                                              const Vector<DIM>& origin, const Vector<DIM>& normal,
-                                                             const Vector<DIM>& dir, float tMax, bool onAborbingBoundary,
+                                                             const Vector<DIM>& dir, float tMax, bool onAbsorbingBoundary,
                                                              std::vector<IntersectionPoint<DIM>>& intersectionPts) -> int {
-            Vector<DIM> queryOrigin = onAborbingBoundary ?
+            Vector<DIM> queryOrigin = onAbsorbingBoundary ?
                                       geometricQueries.offsetPointAlongDirection(origin, -normal) :
                                       origin;
             Vector<DIM> queryDir = dir;

@@ -1,7 +1,7 @@
 '''
 This file is the entry point for a 2D demo application demonstrating how to use Zombie.
 It reads a 'model problem' description from a JSON file, runs the WalkOnSpheres, WalkOnStars,
-BoundaryValueCaching or ReverseWalkonOnStars solvers, and saves the result as a PNG file.
+BoundaryValueCaching or ReverseWalkOnStars solvers, and saves the result as a PNG file.
 
 The full Zombie API, including treatment of 3D domains and/or vector-valued PDEs, can be viewed
 using the following commands in the Python console:

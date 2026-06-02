@@ -267,7 +267,7 @@ inline void GeometricQueries<DIM>::populate()
         return offsetPointAlongDirectionImpl<DIM>(x, dir);
     };
     intersectAbsorbingBoundary = [](const Vector<DIM>& origin, const Vector<DIM>& normal,
-                                    const Vector<DIM>& dir, float tMax, bool onAborbingBoundary,
+                                    const Vector<DIM>& dir, float tMax, bool onAbsorbingBoundary,
                                     IntersectionPoint<DIM>& intersectionPt) -> bool {
         return false;
     };
@@ -278,11 +278,11 @@ inline void GeometricQueries<DIM>::populate()
     };
     intersectBoundary = [this](const Vector<DIM>& origin, const Vector<DIM>& normal,
                                const Vector<DIM>& dir, float tMax,
-                               bool onAborbingBoundary, bool onReflectingBoundary,
+                               bool onAbsorbingBoundary, bool onReflectingBoundary,
                                IntersectionPoint<DIM>& intersectionPt) -> bool {
         IntersectionPoint<DIM> absorbingBoundaryIntersectionPt;
         bool intersectedAbsorbingBoundary = this->intersectAbsorbingBoundary(
-            origin, normal, dir, tMax, onAborbingBoundary, absorbingBoundaryIntersectionPt);
+            origin, normal, dir, tMax, onAbsorbingBoundary, absorbingBoundaryIntersectionPt);
 
         IntersectionPoint<DIM> reflectingBoundaryIntersectionPt;
         bool intersectedReflectingBoundary = this->intersectReflectingBoundary(
@@ -306,7 +306,7 @@ inline void GeometricQueries<DIM>::populate()
         return intersectedAbsorbingBoundary || intersectedReflectingBoundary;
     };
     intersectAbsorbingBoundaryAllHits = [](const Vector<DIM>& origin, const Vector<DIM>& normal,
-                                           const Vector<DIM>& dir, float tMax, bool onAborbingBoundary,
+                                           const Vector<DIM>& dir, float tMax, bool onAbsorbingBoundary,
                                            std::vector<IntersectionPoint<DIM>>& intersectionPts) -> int {
         intersectionPts.clear();
         return 0;
@@ -319,11 +319,11 @@ inline void GeometricQueries<DIM>::populate()
     };
     intersectBoundaryAllHits = [this](const Vector<DIM>& origin, const Vector<DIM>& normal,
                                       const Vector<DIM>& dir, float tMax,
-                                      bool onAborbingBoundary, bool onReflectingBoundary,
+                                      bool onAbsorbingBoundary, bool onReflectingBoundary,
                                       std::vector<IntersectionPoint<DIM>>& intersectionPts) -> int {
         std::vector<IntersectionPoint<DIM>> absorbingBoundaryIntersectionPts;
         int nAbsorbingBoundaryIntersections = this->intersectAbsorbingBoundaryAllHits(
-            origin, normal, dir, tMax, onAborbingBoundary, absorbingBoundaryIntersectionPts);
+            origin, normal, dir, tMax, onAbsorbingBoundary, absorbingBoundaryIntersectionPts);
 
         std::vector<IntersectionPoint<DIM>> reflectingBoundaryIntersectionPts;
         int nReflectingBoundaryIntersections = this->intersectReflectingBoundaryAllHits(
