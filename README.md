@@ -3,35 +3,68 @@
 </p>
 <h1 align="center"><em></em></h1>
 
-<img src="imgs/WoS.png" width="234.25" height="173.5" align="right">
-Zombie is a C++ header-only library, with Python bindings, for solving fundamental partial differential equations (PDEs) like the Poisson equation using the <a href="https://en.wikipedia.org/wiki/Walk-on-spheres_method"><em>walk on spheres (WoS)</em></a> algorithm and its recent <a href="https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/index.html"><em>extensions</em></a>. Unlike finite element, boundary element, or finite difference methods, WoS does not require a volumetric grid or mesh, nor a high-quality boundary mesh. Instead, it uses random walks and the Monte Carlo method to solve the problem directly on the original boundary representation. It can also provide accurate solution values at a single query point, rather than needing to solve the problem over the entire domain. This <a href="https://www.youtube.com/watch?v=cmgNqCwaPYc"><em>talk</em></a> provides an overview of WoS, while the following papers discuss its present capabilities in greater detail:<br><br/>
+<img src="imgs/WoS.png" width="270" height="200" align="right">
 
-> Monte Carlo Geometry Processing [[_Project_](https://www.cs.cmu.edu/~kmcrane/Projects/MonteCarloGeometryProcessing/index.html), [_Talk_](https://www.youtube.com/watch?v=zl9GtPX0LjM&feature=youtu.be)]<br>
-> Walk on Stars: A Grid-Free Monte Carlo Method for PDEs with Neumann Boundary Conditions [[_Project_](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/index.html), [_Talk_](https://youtu.be/InWVU68KhMs)]<br>
-> Walkin' Robin: Walk on Stars with Robin Boundary Conditions [[_Project_](https://imaging.cs.cmu.edu/walk_on_stars_robin/)]<br>
-> Grid-Free Monte Carlo for PDEs with Spatially Varying Coefficients [[_Project_](https://cs.dartmouth.edu/wjarosz/publications/sawhneyseyb22gridfree.html), [_Talk_](https://www.youtube.com/watch?v=dXROl0KGPXc)]<br>
-> Boundary Value Caching for Walk on Spheres [[_Paper_](http://www.rohansawhney.io/BoundaryValueCaching.pdf), [_Talk_](https://www.youtube.com/watch?v=J9o7kgrpco0)]
+Zombie is a C++17 header-only library with Python bindings for solving partial
+differential equations with [Walk on Spheres](https://en.wikipedia.org/wiki/Walk-on-spheres_method)-style
+Monte Carlo methods. It is designed for problems where creating a volume mesh is
+awkward, expensive, or unnecessary: the solver queries the original boundary
+representation directly and estimates the solution only where values are needed.
 
-WoS is a relatively new concept in graphics, rendering and simulation, and is an active area of research, e.g., [1](https://cseweb.ucsd.edu/~viscomp/projects/SIG21KelvinTransform/), [2](https://cs.dartmouth.edu/wjarosz/publications/qi22bidirectional.html), [3](https://diglib.eg.org/handle/10.2312/sr20231120), [4](https://riouxld21.github.io/research/publication/2022-mcfluid/), [5](https://arxiv.org/pdf/2208.02114.pdf), [6](https://rsugimoto.net/WoBforBVPsProject/), [7](https://www.irit.fr/STORM/site/coupling-conduction-convection-and-radiative-transfer-in-a-single-path-space/). Therefore, the algorithms provided in this library are by no means optimal: further work is needed not just to make the Monte Carlo estimators more sample efficient, but also to extend the class of PDEs they can handle. Zombie aims to serve as a reference implementation for the current state of the art. Visit this [repository](https://github.com/GeometryCollective/wost-simple) for a step-by-step [tutorial](https://github.com/GeometryCollective/wost-simple/blob/main/WoSt-tutorial.pdf) on the solver. A more optimized GPU implementation is currently in the works.
+Zombie is research software. The algorithms are still an active area of research,
+and the implementations are meant to be clear reference implementations rather
+than final word on performance or variance reduction. For a broader introduction
+to Walk on Spheres and its recent extensions, see this
+[overview talk](https://www.youtube.com/watch?v=cmgNqCwaPYc) and this
+[webpage](https://rohan-sawhney.github.io/mcgp-resources/) for in-depth resources
+such as recent publications and tutorials.
 
-# Concepts
+## Getting Started
 
-At its core, Zombie solves PDEs of the form:
+The best way to get started is through the demo application in [`demo/`](demo/).
+It provides compact 2D reference problems for Laplace, Poisson, screened Poisson,
+and multiple solvers. The folder has its own README with the problem setup,
+expected outputs, and C++ and Python run commands.
 
-$$
-   \begin{array}{rcll}
-      \Delta u &=& f & \text{on}\ \Omega, \\
-             u &=& g & \text{on}\ \partial\Omega_D, \\
-             \tfrac{\partial u}{\partial n} &=& h & \text{on}\ \partial\Omega_N, \\
-             \tfrac{\partial u}{\partial n} - \mu u &=& k & \text{on}\ \partial\Omega_R, \\
-   \end{array}
-$$
+## Core Workflow
 
-where $\Omega$ is a domain in $\mathbb{R}^2$ or $\mathbb{R}^3$, and $f$, $g$, $h$ and $k$ are real-valued functions in $\Omega$, the Dirichlet part of the boundary $\partial\Omega_D$, and the complimentary Neumann and Robin parts of the boundary $\partial\Omega_N$ and $\partial\Omega_R$ respectively. Zombie also supports [screened Poisson equations](https://en.wikipedia.org/wiki/Screened_Poisson_equation) with a constant absorption term ([variable coefficients](https://cs.dartmouth.edu/wjarosz/publications/sawhneyseyb22gridfree.html) are not currently supported). Boundary conditions and source terms are provided as user-defined [callback routines](https://github.com/rohan-sawhney/zombie/blob/main/include/zombie/core/pde.h) that return a value for any query point in the domain. Likewise, the domain boundary is queried using [callbacks](https://github.com/rohan-sawhney/zombie/blob/main/include/zombie/core/geometric_queries.h); Zombie currently supports boundaries represented as triangle meshes in 3D and line segments in 2D (see [here](https://github.com/rohan-sawhney/zombie/blob/main/include/zombie/utils/fcpw_scene_loader.h)), and uses the [*FCPW*](https://github.com/rohan-sawhney/fcpw) library to perform its geometric queries. The PDE solution (and optionally its spatial gradient) can then be evaluated at a set of user-specified evaluation points [indepedently](https://github.com/rohan-sawhney/zombie/blob/main/include/zombie/point_estimation/walk_on_stars.h) or through [sample caching](https://github.com/rohan-sawhney/zombie/tree/main/include/zombie/variance_reduction). The [demo](https://github.com/rohan-sawhney/zombie/tree/main/demo) application demonstrates how to use the concepts defined in the library.
+Most Zombie applications follow the same high-level workflow:
+
+1. Define geometric queries for the domain boundary, such as distance,
+   intersection, and projection queries.
+2. Define PDE data: source term, screening, and Dirichlet,
+   Neumann, or Robin boundary conditions.
+3. Choose sample/evaluation points where the solution and its
+   spatial gradient should be estimated.
+4. Choose a solver, run the random walks, and write or visualize the resulting values.
+
+The same conceptual workflow applies in C++ and Python.
 
 <p align="center"><img src="imgs/system-design.png" width="831.6" height="467.775"></p>
 
-# Compiling from source on Mac & Linux
+## Capabilities
+
+Zombie targets scalar and vector-valued PDEs in 2D and 3D, including Laplace,
+Poisson, and screened Poisson equations. Boundary conditions may be mixed
+across the same boundary:
+
+- Dirichlet: prescribed solution value.
+- Neumann: prescribed normal derivative.
+- Robin: linear combination of solution value and normal derivative.
+
+Screened Poisson problems currently use a constant absorption coefficient.
+Geometric queries are backed by [FCPW](https://github.com/rohan-sawhney/fcpw),
+with line-segment boundaries in 2D and triangle-mesh boundaries in 3D. Exterior
+problems can be handled through a [Kelvin transform](https://cseweb.ucsd.edu/~viscomp/projects/SIG21KelvinTransform/).
+
+Available solver families include [Walk on Spheres](https://www.cs.cmu.edu/~kmcrane/Projects/MonteCarloGeometryProcessing/)
+for Dirichlet conditions, Walk on Stars for [Neumann](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/) and
+[Robin](https://imaging.cs.cmu.edu/walk_on_stars_robin/) conditions, and
+[Boundary Value Caching](http://www.rohansawhney.io/BoundaryValueCaching.pdf) and
+[Reverse Walk on Stars](https://cs.dartmouth.edu/~wjarosz/publications/qi22bidirectional.html)
+for noise reduction.
+
+## Compiling from source on Mac & Linux
 
 ```
 git clone https://github.com/rohan-sawhney/zombie.git
@@ -40,16 +73,18 @@ mkdir build && cd build && cmake ..
 make -j4
 ```
 
-# Python Installation
+## Python Installation
 
-After cloning Zombie and updating the submodules, build and install the Python bindings in the project root directory using:
+After cloning Zombie and updating its submodules, build and install
+the Python bindings from the project root using:
 
 ```
 mkdir build
 pip install . --force-reinstall
 ```
 
-The full Zombie API can be viewed in the Python console using:
+The Python API can be inspected from a Python console:
+
 ```
 >>> import zombie
 >>> help(zombie)
@@ -66,11 +101,11 @@ year = {2023}
 }
 ```
 
-# Contributors
+## Contributors
 
 [Rohan Sawhney](http://www.rohansawhney.io)\
 [Bailey Miller](https://www.bailey-miller.com)
 
-# License
+## License
 
 Code is released under an [MIT License](https://github.com/rohan-sawhney/zombie/blob/main/LICENSE).
