@@ -1,28 +1,62 @@
 # Zombie 2D Demo
 
-To run the C++ demo, first build the Zombie library:
+This demo is a compact 2D reference application. It reads a model problem from
+JSON, builds the corresponding geometry and PDE data, and evaluates the solution
+on a regular output grid. The demo supports Laplace, Poisson, and screened Poisson
+equations with Dirichlet, Neumann, and Robin boundary conditions.
+
+The engine model problem below compares Walk on Stars, Boundary Value Caching,
+and Reverse Walk on Stars using the same boundary geometry and texture data.
+
+<div align="center">
+
+<table>
+  <tr>
+    <th>Walk on Stars</th>
+    <th>Boundary Value Caching</th>
+    <th>Reverse Walk on Stars</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="model_problems/engine/solutions/wost_color.png" alt="Walk on Stars engine solution" height="220"></td>
+    <td align="center"><img src="model_problems/engine/solutions/bvc_color.png" alt="Boundary Value Caching engine solution" height="220"></td>
+    <td align="center"><img src="model_problems/engine/solutions/rws_color.png" alt="Reverse Walk on Stars engine solution" height="220"></td>
+  </tr>
+</table>
+
+</div>
+
+## Technical Details
+
+Model problems combine boundary geometry, boundary masks, boundary/source
+textures, and solver settings. The JSON field `solverType` selects the solver:
+`wos`, `wost`, `bvc`, or `rws`. Walk on Stars, Boundary Value Caching and
+Reverse Walk on Stars are available in both C++ and Python. The demo also
+includes a Walk on Spheres path for simpler absorbing-boundary problems.
+
+The PDE data can represent Dirichlet, Neumann, and Robin boundary conditions,
+with optional source and absorption terms for Poisson and screened Poisson
+variants. Outputs can be written as PNG or PFM files, with optional colormapped
+PNGs for quick inspection.
+
+## Running the C++ Demo
+
+Run solver configurations from the build directory as follows:
 
 ```bash
-mkdir build
-cd build && cmake ..
-make -j4
-```
-
-Next you can run the [Walk on Spheres](https://www.cs.cmu.edu/~kmcrane/Projects/MonteCarloGeometryProcessing/), [Walk on Stars](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/index.html), [Boundary Value Caching](http://www.rohansawhney.io/BoundaryValueCaching.pdf) or [reverse WoSt](https://imaging.cs.cmu.edu/walk_on_stars_robin/) from the build directory:
-
-```
-./demo/demo ../demo/model_problems/nautilus/wos.json
+cd build
 ./demo/demo ../demo/model_problems/engine/wost.json
 ./demo/demo ../demo/model_problems/engine/bvc.json
 ./demo/demo ../demo/model_problems/engine/rws.json
 ```
 
-The results will be saved to `demo/model_problems/engine/solutions`.
+The engine results are written to
+`demo/model_problems/engine/solutions`.
 
-To run the Python demo, use the following commands from the project root directory after building the Zombie bindings:
+## Running the Python Demo
 
-```
-python demo/demo.py --config=demo/model_problems/nautilus/wos.json
+Run the Python demo from the repository root:
+
+```bash
 python demo/demo.py --config=demo/model_problems/engine/wost.json
 python demo/demo.py --config=demo/model_problems/engine/bvc.json
 python demo/demo.py --config=demo/model_problems/engine/rws.json
@@ -42,6 +76,7 @@ These model problem components are specified along with solver and output option
 ```
 {
     "solverType": "wost",
+    "deviceBackend": "cuda",
     "solver": {
         "nWalks": 128,
         "maxWalkLength": 1024,
@@ -51,7 +86,8 @@ These model problem components are specified along with solver and output option
         "splittingThreshold": 1.5,
         "ignoreAbsorbingBoundaryContribution": false,
         "ignoreReflectingBoundaryContribution": true,
-        "ignoreSourceContribution": true
+        "ignoreSourceContribution": true,
+        "disablePersistentThreads": false
     },
     "modelProblem": {
         "geometry": "demo/model_problems/engine/data/geometry.obj",
@@ -79,17 +115,17 @@ These model problem components are specified along with solver and output option
 }
 ```
 
-You can use a 2D illustration tool to create geometry, a reflecting boundary indicator mask, and boundary and source textures. Assign each asset to a different layer and ensure that the size of the canvas matches the square bounding box for your boundary geometry as shown below
+You can use a 2D illustration tool to create geometry, a reflecting boundary indicator mask, and boundary and source textures. Assign each asset to a different layer and ensure that the size of the canvas matches the square bounding box for your boundary geometry as shown below.
 
 <div align='center'>
   <img src='./imgs/model_problem_builder.png'/>
 </div>
 
 
-Next export the geometry as an SVG and the reflecting boundary indicator and boundary and source textures as PNGs. You can then use the `svg2obj.py` script to convert the SVG to an OBJ.
+Next export the geometry as an SVG and the reflecting boundary indicator, boundary textures, and source textures as PNGs. You can then use the `svg2obj.py` script to convert the SVG to an OBJ.
 
 ```
 ./svg2obj.py engine/data/geometry.svg --normalize --auto_orient_curves
 ```
 
-By changing the file extensions used in the config, you can use either PNGs or [PFMs](https://www.pauldebevec.com/Research/HDR/PFM/) for the texture data and solution outputs. Note that PNGs only support values between 0 and 255, which are clipped when writing out solutions whereas PFMs support arbitrary floating point values.
+By changing the file extensions used in the config, you can use either PNGs or [PFM files](https://www.pauldebevec.com/Research/HDR/PFM/) for the texture data and solution outputs. Note that PNGs only support values between 0 and 255, which are clipped when writing out solutions whereas PFMs support arbitrary floating point values.
