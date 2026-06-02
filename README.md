@@ -58,7 +58,7 @@ with line-segment boundaries in 2D and triangle-mesh boundaries in 3D. Exterior
 problems can be handled through a [Kelvin transform](https://cseweb.ucsd.edu/~viscomp/projects/SIG21KelvinTransform/).
 
 Available solver families include [Walk on Spheres](https://www.cs.cmu.edu/~kmcrane/Projects/MonteCarloGeometryProcessing/)
-for Dirichlet conditions, Walk on Stars for [Neumann](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/) and
+for Dirichlet conditions, [Walk on Stars for Neumann](https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/) and
 [Robin](https://imaging.cs.cmu.edu/walk_on_stars_robin/) conditions, and
 [Boundary Value Caching](http://www.rohansawhney.io/BoundaryValueCaching.pdf) and
 [Reverse Walk on Stars](https://cs.dartmouth.edu/~wjarosz/publications/qi22bidirectional.html)
