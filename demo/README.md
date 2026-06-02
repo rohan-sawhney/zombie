@@ -17,9 +17,9 @@ and Reverse Walk on Stars using the same boundary geometry and texture data.
     <th>Reverse Walk on Stars</th>
   </tr>
   <tr>
-    <td align="center"><img src="model_problems/engine/solutions/wost_color.png" alt="Walk on Stars engine solution" height="220"></td>
-    <td align="center"><img src="model_problems/engine/solutions/bvc_color.png" alt="Boundary Value Caching engine solution" height="220"></td>
-    <td align="center"><img src="model_problems/engine/solutions/rws_color.png" alt="Reverse Walk on Stars engine solution" height="220"></td>
+    <td align="center"><img src="model_problems/engine/solutions/wost_color.pmf" alt="Walk on Stars engine solution" height="220"></td>
+    <td align="center"><img src="model_problems/engine/solutions/bvc_color.pmf" alt="Boundary Value Caching engine solution" height="220"></td>
+    <td align="center"><img src="model_problems/engine/solutions/rws_color.pmf" alt="Reverse Walk on Stars engine solution" height="220"></td>
   </tr>
 </table>
 
