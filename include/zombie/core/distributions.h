@@ -374,10 +374,11 @@ protected:
     virtual Vector<DIM> rejectionSampleGreensFn(const Vector<DIM>& dir, float bound,
                                                 pcg32& rng, float& r, float& pdf) {
         int iter = 0;
+        float fnNorm = norm();
         do {
             float u = rng.nextFloat();
             r = rng.nextFloat()*R;
-            pdf = evaluate(r)/norm();
+            pdf = evaluate(r)/fnNorm;
             float pdfRadius = pdf/SphereSampler<DIM>::pdfSampleSphereUniform(r);
             iter++;
 

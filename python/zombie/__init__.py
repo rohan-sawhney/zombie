@@ -79,6 +79,19 @@ def _dim_func(cpp_submodule, cpp_base_name):
     )
     return func
 
+def _3d_func(cpp_submodule, cpp_base_name):
+    def func(*args, dim, **kwargs):
+        if dim != 3:
+            raise ValueError(f"{cpp_base_name} is only supported for dim=3, got {dim}")
+        fn = getattr(cpp_submodule, _resolve_dim_name(cpp_base_name, dim))
+        return fn(*args, **kwargs)
+    func.__name__ = func.__qualname__ = cpp_base_name
+    func.__doc__ = (
+        f"Calls {cpp_base_name}, which is only supported for dim=3.\n"
+        f"Additional arguments are forwarded to {cpp_base_name}."
+    )
+    return func
+
 try:
     from . import _zombie
 
@@ -186,7 +199,6 @@ try:
 
     for _name in [
         "load_boundary_mesh",
-        "load_textured_boundary_mesh",
         "normalize",
         "apply_shift",
         "flip_orientation",
@@ -203,6 +215,11 @@ try:
         "get_spatially_sorted_point_indices",
     ]:
         setattr(Utils, _name, _dim_func(Utils, _name))
+
+    # load_textured_boundary_mesh is only registered for 3D, since texturing applies
+    # to 3D triangle meshes and not 2D line-segment boundaries; a dedicated 3D-only
+    # dispatcher raises a clear error for a 2D call instead of an AttributeError
+    Utils.load_textured_boundary_mesh = _3d_func(Utils, "load_textured_boundary_mesh")
 
     for _name in [
         "get_dense_grid_source_callback",

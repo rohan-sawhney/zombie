@@ -105,9 +105,14 @@ inline Vector<DIM> SdfGrid<DIM>::computeGradient(const Vector<DIM>& x) const
         float spacing = this->extent[i]/static_cast<float>(this->shape[i]);
         Vector<DIM> offset = Vector<DIM>::Zero();
         offset[i] = spacing;
-        float sdfMinus = (*this)(clampInGrid(x - offset))(0);
-        float sdfPlus = (*this)(clampInGrid(x + offset))(0);
-        gradient[i] = (sdfPlus - sdfMinus)/(2.0f*spacing);
+        Vector<DIM> xMinus = clampInGrid(x - offset);
+        Vector<DIM> xPlus = clampInGrid(x + offset);
+        float sdfMinus = (*this)(xMinus)(0);
+        float sdfPlus = (*this)(xPlus)(0);
+        // divide by the actual sample separation, which collapses to a one-sided
+        // difference (spacing instead of 2*spacing) when clamping near a grid face
+        float denom = xPlus[i] - xMinus[i];
+        gradient[i] = denom > 0.0f ? (sdfPlus - sdfMinus)/denom : 0.0f;
     }
 
     return gradient;

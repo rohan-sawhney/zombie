@@ -369,7 +369,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
 
         // update the walk length and break if the max walk length is exceeded
         state.walkLength++;
-        if (state.walkLength > walkSettings.maxWalkLength) {
+        if (state.walkLength >= walkSettings.maxWalkLength) {
             if (walkSettings.printLogs) {
                 std::cout << "Maximum walk length exceeded!" << std::endl;
             }

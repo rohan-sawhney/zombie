@@ -267,8 +267,12 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 2>& grid,
     Array<T, CHANNELS> f01 = data.row(i0*shape[1] + j1);
     Array<T, CHANNELS> f10 = data.row(i1*shape[1] + j0);
     Array<T, CHANNELS> f11 = data.row(i1*shape[1] + j1);
-    float x = u - static_cast<float>(i0);
-    float y = v - static_cast<float>(j0);
+
+    // clamp the blend fractions to [0, 1] so queries within half a texel of the
+    // grid border clamp to the edge value instead of extrapolating (matches the
+    // GPU texture sampler's clamp-to-edge behavior)
+    float x = std::clamp(u - static_cast<float>(i0), 0.0f, 1.0f);
+    float y = std::clamp(v - static_cast<float>(j0), 0.0f, 1.0f);
 
     return f00*(1.0f - x)*(1.0f - y) + f10*x*(1.0f - y) + f01*(1.0f - x)*y + f11*x*y;
 }
@@ -299,9 +303,13 @@ inline Array<T, CHANNELS> interpolate(const DenseGrid<T, CHANNELS, 3>& grid,
     Array<T, CHANNELS> f101 = data.row((i1*shape[1] + j0)*shape[2] + k1);
     Array<T, CHANNELS> f110 = data.row((i1*shape[1] + j1)*shape[2] + k0);
     Array<T, CHANNELS> f111 = data.row((i1*shape[1] + j1)*shape[2] + k1);
-    float x = u - static_cast<float>(i0);
-    float y = v - static_cast<float>(j0);
-    float z = w - static_cast<float>(k0);
+
+    // clamp the blend fractions to [0, 1] so queries within half a texel of the
+    // grid border clamp to the edge value instead of extrapolating (matches the
+    // GPU texture sampler's clamp-to-edge behavior)
+    float x = std::clamp(u - static_cast<float>(i0), 0.0f, 1.0f);
+    float y = std::clamp(v - static_cast<float>(j0), 0.0f, 1.0f);
+    float z = std::clamp(w - static_cast<float>(k0), 0.0f, 1.0f);
 
     return f000*(1.0f - x)*(1.0f - y)*(1.0f - z) + f100*x*(1.0f - y)*(1.0f - z) +
            f010*(1.0f - x)*y*(1.0f - z) + f110*x*y*(1.0f - z) +

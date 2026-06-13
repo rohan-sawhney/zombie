@@ -10,6 +10,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <atomic>
 #include <chrono>
 #include <random>
 #include <Eigen/Core>
@@ -28,6 +29,16 @@ template <size_t DIM>
 using Vectori = Eigen::Matrix<int, DIM, 1>;
 using Vector2i = Vectori<2>;
 using Vector3i = Vectori<3>;
+
+// returns a pcg32 generator seeded from the clock, with a unique stream per call;
+// the distinct stream guarantees independent sequences even when generators are
+// constructed within the same clock tick (which would otherwise yield identical seeds)
+inline pcg32 seedRng() {
+    static std::atomic<uint64_t> streamCounter{0};
+    auto now = std::chrono::high_resolution_clock::now();
+    uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+    return pcg32(seed, streamCounter.fetch_add(1, std::memory_order_relaxed));
+}
 
 template <size_t DIM>
 class SphereSampler {

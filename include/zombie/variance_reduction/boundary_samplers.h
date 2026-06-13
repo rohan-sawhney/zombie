@@ -238,14 +238,14 @@ boundarySamplingMassNormalAligned(0.0f)
     for (int i = 0; i < (int)indices.size(); i++) {
         if (!std::isfinite(primitiveWeights[i]) || primitiveWeights[i] < 0.0f ||
             !std::isfinite(primitiveWeightsNormalAligned[i]) || primitiveWeightsNormalAligned[i] < 0.0f) {
+            std::cout << "primitiveWeights[i]: " << primitiveWeights[i] << std::endl;
+            std::cout << "primitiveWeightsNormalAligned[i]: " << primitiveWeightsNormalAligned[i] << std::endl;
             std::cerr << "UniformLineSegmentBoundarySampler(): weights must be non-negative and finite" << std::endl;
             exit(EXIT_FAILURE);
         }
     }
 
-    auto now = std::chrono::high_resolution_clock::now();
-    uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    rng = pcg32(seed);
+    rng = seedRng();
     computeNormals(computeWeightedNormals);
 }
 
@@ -476,9 +476,7 @@ boundarySamplingMassNormalAligned(0.0f)
         }
     }
 
-    auto now = std::chrono::high_resolution_clock::now();
-    uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    rng = pcg32(seed);
+    rng = seedRng();
     computeNormals(computeWeightedNormals);
 }
 

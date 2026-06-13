@@ -206,9 +206,10 @@ public:
                 solutionM2 = other.solutionM2;
 
             } else {
+                float fN1 = N1, fN2 = N2, fN = N;
                 T delta = other.solutionMean - solutionMean;
-                solutionMean = solutionMean + delta*((float)N2/N);
-                solutionM2 = solutionM2 + other.solutionM2 + delta*delta*((float)(N1*N2)/N);
+                solutionMean = solutionMean + delta*(fN2/fN);
+                solutionM2 = solutionM2 + other.solutionM2 + delta*delta*(fN1*fN2/fN);
             }
             nSolutionEstimates = N;
         }
@@ -217,6 +218,7 @@ public:
             int N1 = nGradientEstimates;
             int N2 = other.nGradientEstimates;
             int N = N1 + N2;
+            float fN1 = N1, fN2 = N2, fN = N;
             for (int i = 0; i < DIM; i++) {
                 if (N1 == 0) {
                     gradientMean[i] = other.gradientMean[i];
@@ -224,8 +226,8 @@ public:
 
                 } else {
                     T delta = other.gradientMean[i] - gradientMean[i];
-                    gradientMean[i] = gradientMean[i] + delta*((float)N2/N);
-                    gradientM2[i] = gradientM2[i] + other.gradientM2[i] + delta*delta*((float)(N1*N2)/N);
+                    gradientMean[i] = gradientMean[i] + delta*(fN2/fN);
+                    gradientM2[i] = gradientM2[i] + other.gradientM2[i] + delta*delta*(fN1*fN2/fN);
                 }
             }
             nGradientEstimates = N;
@@ -352,9 +354,7 @@ struct SamplePoint {
 
     // resets solution data
     void reset() {
-        auto now = std::chrono::high_resolution_clock::now();
-        uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-        rng = pcg32(seed);
+        rng = seedRng();
         firstSphereRadius = 0.0f;
         robinCoeff = 0.0f;
         solution = T(0.0f);

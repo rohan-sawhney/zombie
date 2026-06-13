@@ -38,10 +38,9 @@ protected:
         std::cout << std::flush;
     }
 
-    bool finished;
-    int displayWidth;
-    int totalWork;
     std::atomic_int completedWork;
+    int totalWork;
+    int displayWidth;
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 };
 

@@ -67,9 +67,7 @@ inline UniformDomainSampler<T, DIM>::UniformDomainSampler(std::function<bool(con
                                                           solveRegionMax(solveRegionMax_),
                                                           solveRegionVolume(solveRegionVolume_)
 {
-    auto now = std::chrono::high_resolution_clock::now();
-    uint64_t seed = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    rng = pcg32(seed);
+    rng = seedRng();
 }
 
 template <typename T, size_t DIM>
