@@ -23,6 +23,16 @@ install(TARGETS _zombie
     RUNTIME DESTINATION zombie
 )
 
+# Bundle the TBB runtime used by the extension. The vendored oneTBB
+# install rules are disabled globally, so install the shared library next
+# to _zombie where Python can find it on Windows and via RPATH elsewhere.
+if(TARGET tbb)
+    install(TARGETS tbb
+        LIBRARY DESTINATION zombie
+        RUNTIME DESTINATION zombie
+    )
+endif()
+
 if(MSVC)
     target_compile_options(_zombie PRIVATE /bigobj)
 endif()
