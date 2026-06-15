@@ -259,6 +259,7 @@ void ModelProblem<T>::setupPDE()
         return this->mSolveExterior ? this->mReflectingBoundaryValue.get(uv)[0] > 0 :
                                       this->mIsReflectingBoundary.get(uv)[0] > 0;
     };
+    mPde.isSourceConstant = false;
     mPde.areRobinConditionsPureNeumann = mRobinCoeff == 0.0f;
     mPde.areRobinCoeffsNonnegative = mRobinCoeff >= 0.0f;
     mPde.absorptionCoeff = mAbsorptionCoeff;

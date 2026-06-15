@@ -200,6 +200,7 @@ def setup_pde(model_problem_config, bounding_box, dim, channels):
         domain_min, domain_max, dim=dim)
     pde.robin_coeff = zombie.Core.get_constant_robin_coefficient_callback(robin_coeff, dim=dim)
     pde.absorption_coeff = absorption_coeff
+    pde.is_source_constant = False
     pde.are_robin_conditions_pure_neumann = robin_coeff == 0.0
     pde.are_robin_coeffs_nonnegative = robin_coeff >= 0.0
 

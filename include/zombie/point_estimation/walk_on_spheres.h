@@ -175,9 +175,16 @@ inline void WalkOnSpheres<T, DIM>::computeSourceContribution(const PDE<T, DIM>& 
 {
     if (!walkSettings.ignoreSourceContribution) {
         // compute source contribution inside the sphere
-        float sourceRadius, sourcePdf;
-        Vector<DIM> sourcePt = greensFn->sampleVolume(rng, sourceRadius, sourcePdf);
-        T sourceContribution = greensFn->norm()*pde.source(sourcePt);
+        T sourceContribution;
+        if (pde.isSourceConstant) {
+            sourceContribution = greensFn->norm()*pde.source(state.currentPt);
+
+        } else {
+            float sourceRadius, sourcePdf;
+            Vector<DIM> sourcePt = greensFn->sampleVolume(rng, sourceRadius, sourcePdf);
+            sourceContribution = greensFn->norm()*pde.source(sourcePt);
+        }
+
         state.totalSourceContribution += state.throughput*sourceContribution;
     }
 }
@@ -464,21 +471,26 @@ inline void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>
             T firstSourceContribution(0.0f);
             Vector<DIM> sourceGradientDirection = Vector<DIM>::Zero();
             if (!walkSettings.ignoreSourceContribution) {
-                if (antitheticIter == 0) {
-                    float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
-                    Vector<DIM> sourceDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
-                    sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.rng, sourceRadius, sourcePdf);
+                float greensFnNorm = greensFn->norm();
+                if (pde.isSourceConstant) {
+                    firstSourceContribution = greensFnNorm*pde.source(state.currentPt);
 
                 } else {
-                    Vector<DIM> sourceDirection = sourcePt - state.currentPt;
-                    sourcePt = state.currentPt - sourceDirection;
+                    if (antitheticIter == 0) {
+                        float *u = &stratifiedSamples[(DIM - 1)*(2*w + 0)];
+                        Vector<DIM> sourceDirection = SphereSampler<DIM>::sampleUnitSphereUniform(u);
+                        sourcePt = greensFn->sampleVolume(sourceDirection, samplePt.rng, sourceRadius, sourcePdf);
+
+                    } else {
+                        Vector<DIM> sourceDirection = sourcePt - state.currentPt;
+                        sourcePt = state.currentPt - sourceDirection;
+                    }
+
+                    firstSourceContribution = greensFnNorm*pde.source(sourcePt);
+                    sourceGradientDirection = greensFn->gradient(sourceRadius, sourcePt)/(sourcePdf*greensFnNorm);
                 }
 
-                float greensFnNorm = greensFn->norm();
-                T sourceContribution = greensFnNorm*pde.source(sourcePt);
-                state.totalSourceContribution += state.throughput*sourceContribution;
-                firstSourceContribution = sourceContribution;
-                sourceGradientDirection = greensFn->gradient(sourceRadius, sourcePt)/(sourcePdf*greensFnNorm);
+                state.totalSourceContribution += state.throughput*firstSourceContribution;
             }
 
             // sample a point uniformly on the sphere; update the current position

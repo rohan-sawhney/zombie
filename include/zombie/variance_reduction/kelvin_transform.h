@@ -339,6 +339,7 @@ inline void KelvinTransform<T, DIM>::transformPde(const PDE<T, DIM>& pdeExterior
 
         return pdeExteriorDomain.hasReflectingBoundaryConditions(x);
     };
+    pdeInvertedDomain.isSourceConstant = false; // return false for simplicity (true only when source is zero for exterior problem)
     pdeInvertedDomain.areRobinConditionsPureNeumann =
         DIM == 2 ? pdeExteriorDomain.areRobinConditionsPureNeumann : false;
     pdeInvertedDomain.areRobinCoeffsNonnegative =

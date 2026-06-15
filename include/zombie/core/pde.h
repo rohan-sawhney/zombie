@@ -23,6 +23,7 @@ struct PDE {
 
     // members
     float absorptionCoeff; // must be positive or equal to zero
+    bool isSourceConstant; // set to true if source term is constant
     bool areRobinConditionsPureNeumann; // set to false if Robin coefficients are non-zero anywhere
     bool areRobinCoeffsNonnegative; // set to false if Robin coefficients are negative anywhere
 
@@ -49,6 +50,7 @@ struct PDE {
 template <typename T, size_t DIM>
 inline PDE<T, DIM>::PDE():
 absorptionCoeff(0.0f),
+isSourceConstant(false),
 areRobinConditionsPureNeumann(true),
 areRobinCoeffsNonnegative(true),
 source({}),
