@@ -10,6 +10,51 @@
 namespace zombie {
 
 template <size_t DIM>
+class KernelRegularization {
+public:
+    // returns regularization for the Green's function
+    static float regularizationForGreensFn(float r) {
+        return 1.0f;
+    }
+
+    // returns regularization for the Poisson Kernel
+    static float regularizationForPoissonKernel(float r) {
+        return 1.0f;
+    }
+};
+
+template <>
+class KernelRegularization<2> {
+public:
+    // returns regularization for the Green's function
+    static float regularizationForGreensFn(float r) {
+        return 1.0f;
+    }
+
+    // returns regularization for the Poisson Kernel
+    static float regularizationForPoissonKernel(float r) {
+        // source: https://epubs.siam.org/doi/abs/10.1137/S0036142999362845
+        return 1.0f - std::exp(-r*r);
+    }
+};
+
+template <>
+class KernelRegularization<3> {
+public:
+    // returns regularization for the Green's function
+    static float regularizationForGreensFn(float r) {
+        // source: https://arxiv.org/pdf/1508.00265.pdf
+        return std::erf(r);
+    }
+
+    // returns regularization for the Poisson Kernel
+    static float regularizationForPoissonKernel(float r) {
+        // source: https://arxiv.org/pdf/1508.00265.pdf
+        return std::erf(r) - 2.0f*r*std::exp(-r*r)/std::sqrt(M_PI);
+    }
+};
+
+template <size_t DIM>
 class GreensFnFreeSpace {
 public:
     // constructor
@@ -957,51 +1002,6 @@ protected:
     // members
     float sqrtLambda; // potential
     float muR, expmuR, sinhmuR, K32muR, I32muR;
-};
-
-template <size_t DIM>
-class KernelRegularization {
-public:
-    // returns regularization for the Green's function
-    static float regularizationForGreensFn(float r) {
-        return 1.0f;
-    }
-
-    // returns regularization for the Poisson Kernel
-    static float regularizationForPoissonKernel(float r) {
-        return 1.0f;
-    }
-};
-
-template <>
-class KernelRegularization<2> {
-public:
-    // returns regularization for the Green's function
-    static float regularizationForGreensFn(float r) {
-        return 1.0f;
-    }
-
-    // returns regularization for the Poisson Kernel
-    static float regularizationForPoissonKernel(float r) {
-        // source: https://epubs.siam.org/doi/abs/10.1137/S0036142999362845
-        return 1.0f - std::exp(-r*r);
-    }
-};
-
-template <>
-class KernelRegularization<3> {
-public:
-    // returns regularization for the Green's function
-    static float regularizationForGreensFn(float r) {
-        // source: https://arxiv.org/pdf/1508.00265.pdf
-        return std::erf(r);
-    }
-
-    // returns regularization for the Poisson Kernel
-    static float regularizationForPoissonKernel(float r) {
-        // source: https://arxiv.org/pdf/1508.00265.pdf
-        return std::erf(r) - 2.0f*r*std::exp(-r*r)/std::sqrt(M_PI);
-    }
 };
 
 } // zombie

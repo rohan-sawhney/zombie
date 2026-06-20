@@ -20,7 +20,8 @@ struct WalkSettings {
     // constructors
     WalkSettings(float epsilonShellForAbsorbingBoundary_,
                  float epsilonShellForReflectingBoundary_,
-                 int maxWalkLength_, bool solveDoubleSided_):
+                 int maxWalkLength_,
+                 bool solveDoubleSided_):
                  epsilonShellForAbsorbingBoundary(epsilonShellForAbsorbingBoundary_),
                  epsilonShellForReflectingBoundary(epsilonShellForReflectingBoundary_),
                  silhouettePrecision(1e-3f),
@@ -39,13 +40,20 @@ struct WalkSettings {
                  printLogs(false) {}
     WalkSettings(float epsilonShellForAbsorbingBoundary_,
                  float epsilonShellForReflectingBoundary_,
-                 float silhouettePrecision_, float russianRouletteThreshold_,
-                 float splittingThreshold_, int maxWalkLength_,
-                 int stepsBeforeApplyingTikhonov_, int stepsBeforeUsingMaximalSpheres_,
-                 bool solveDoubleSided_, bool useGradientControlVariates_,
-                 bool useGradientAntitheticVariates_, bool useCosineSamplingForDerivatives_,
-                 bool ignoreAbsorbingBoundaryContribution_, bool ignoreReflectingBoundaryContribution_,
-                 bool ignoreSourceContribution_, bool printLogs_):
+                 float silhouettePrecision_,
+                 float russianRouletteThreshold_,
+                 float splittingThreshold_,
+                 int maxWalkLength_,
+                 int stepsBeforeApplyingTikhonov_,
+                 int stepsBeforeUsingMaximalSpheres_,
+                 bool solveDoubleSided_,
+                 bool useGradientControlVariates_,
+                 bool useGradientAntitheticVariates_,
+                 bool useCosineSamplingForDerivatives_,
+                 bool ignoreAbsorbingBoundaryContribution_,
+                 bool ignoreReflectingBoundaryContribution_,
+                 bool ignoreSourceContribution_,
+                 bool printLogs_):
                  epsilonShellForAbsorbingBoundary(epsilonShellForAbsorbingBoundary_),
                  epsilonShellForReflectingBoundary(epsilonShellForReflectingBoundary_),
                  silhouettePrecision(silhouettePrecision_),
@@ -92,9 +100,13 @@ struct WalkState {
                  prevDirection(Vector<DIM>::Zero()),
                  prevDistance(0.0f), throughput(1.0f),
                  walkLength(0), onReflectingBoundary(false) {}
-    WalkState(const Vector<DIM>& currentPt_, const Vector<DIM>& currentNormal_,
-              const Vector<DIM>& prevDirection_, float prevDistance_,
-              float throughput_, int walkLength_, bool onReflectingBoundary_):
+    WalkState(const Vector<DIM>& currentPt_,
+              const Vector<DIM>& currentNormal_,
+              const Vector<DIM>& prevDirection_,
+              float prevDistance_,
+              float throughput_,
+              int walkLength_,
+              bool onReflectingBoundary_):
               totalReflectingBoundaryContribution(0.0f),
               totalSourceContribution(0.0f),
               currentPt(currentPt_),
@@ -122,6 +134,64 @@ enum class WalkCompletionCode {
     TerminatedWithRussianRoulette,
     ExceededMaxWalkLength,
     EscapedDomain
+};
+
+enum class SampleType {
+    InDomain, // applies to both interior and exterior sample points for watertight domains
+    OnAbsorbingBoundary,
+    OnReflectingBoundary
+};
+
+enum class EstimationQuantity {
+    Solution,
+    SolutionAndGradient,
+    Skip
+};
+
+template <typename T, size_t DIM>
+struct SamplePoint {
+    // constructor
+    SamplePoint(const Vector<DIM>& pt_,
+                const Vector<DIM>& normal_,
+                SampleType type_,
+                EstimationQuantity estimationQuantity_,
+                float pdf_,
+                float distToAbsorbingBoundary_,
+                float distToReflectingBoundary_):
+                pt(pt_), normal(normal_), type(type_),
+                estimationQuantity(estimationQuantity_), pdf(pdf_),
+                distToAbsorbingBoundary(distToAbsorbingBoundary_),
+                distToReflectingBoundary(distToReflectingBoundary_),
+                estimateBoundaryNormalAligned(false) {
+        directionForDerivative = Vector<DIM>::Zero();
+        directionForDerivative(0) = 1.0f;
+        reset();
+    }
+
+    // resets solution data
+    void reset() {
+        rng = seedRng();
+        firstSphereRadius = 0.0f;
+        robinCoeff = 0.0f;
+        solution = T(0.0f);
+        normalDerivative = T(0.0f);
+        contribution = T(0.0f);
+    }
+
+    // members
+    pcg32 rng;
+    Vector<DIM> pt;
+    Vector<DIM> normal;
+    Vector<DIM> directionForDerivative;          // needed only for computing directional derivatives
+    SampleType type;
+    EstimationQuantity estimationQuantity;
+    float pdf;
+    float distToAbsorbingBoundary;
+    float distToReflectingBoundary;
+    float firstSphereRadius;                     // populated by WoSt
+    float robinCoeff;                            // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
+    T solution, normalDerivative, contribution;  // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
+    bool estimateBoundaryNormalAligned;
 };
 
 // NOTE: For data with multiple channels (e.g., 2D or 3D positions, rgb etc.),
@@ -322,60 +392,6 @@ protected:
     T totalDerivativeContribution;
     int nSolutionEstimates, nGradientEstimates;
     int totalWalkLength, totalSplits;
-};
-
-enum class SampleType {
-    InDomain, // applies to both interior and exterior sample points for watertight domains
-    OnAbsorbingBoundary,
-    OnReflectingBoundary
-};
-
-enum class EstimationQuantity {
-    Solution,
-    SolutionAndGradient,
-    Skip
-};
-
-template <typename T, size_t DIM>
-struct SamplePoint {
-    // constructor
-    SamplePoint(const Vector<DIM>& pt_, const Vector<DIM>& normal_,
-                SampleType type_, EstimationQuantity estimationQuantity_,
-                float pdf_, float distToAbsorbingBoundary_, float distToReflectingBoundary_):
-                pt(pt_), normal(normal_), type(type_),
-                estimationQuantity(estimationQuantity_), pdf(pdf_),
-                distToAbsorbingBoundary(distToAbsorbingBoundary_),
-                distToReflectingBoundary(distToReflectingBoundary_),
-                estimateBoundaryNormalAligned(false) {
-        directionForDerivative = Vector<DIM>::Zero();
-        directionForDerivative(0) = 1.0f;
-        reset();
-    }
-
-    // resets solution data
-    void reset() {
-        rng = seedRng();
-        firstSphereRadius = 0.0f;
-        robinCoeff = 0.0f;
-        solution = T(0.0f);
-        normalDerivative = T(0.0f);
-        contribution = T(0.0f);
-    }
-
-    // members
-    pcg32 rng;
-    Vector<DIM> pt;
-    Vector<DIM> normal;
-    Vector<DIM> directionForDerivative;          // needed only for computing directional derivatives
-    SampleType type;
-    EstimationQuantity estimationQuantity;
-    float pdf;
-    float distToAbsorbingBoundary;
-    float distToReflectingBoundary;
-    float firstSphereRadius;                     // populated by WoSt
-    float robinCoeff;                            // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
-    T solution, normalDerivative, contribution;  // not populated by WoSt, but available for downstream use (e.g. BVC, RWS)
-    bool estimateBoundaryNormalAligned;
 };
 
 } // zombie

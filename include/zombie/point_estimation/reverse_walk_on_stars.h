@@ -306,7 +306,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
             // distance does not impact correctness
             if (walkSettings.epsilonShellForReflectingBoundary <= distToAbsorbingBoundary) {
                 starRadius = std::max(RADIUS_SHRINK_PERCENTAGE*starRadius,
-                                        walkSettings.epsilonShellForReflectingBoundary);
+                                      walkSettings.epsilonShellForReflectingBoundary);
             }
         }
 

@@ -27,7 +27,8 @@ using Vector3 = Vector<3>;
 template <size_t DIM>
 struct IntersectionPoint {
     // constructors
-    IntersectionPoint(): pt(Vector<DIM>::Zero()), normal(Vector<DIM>::Zero()),
+    IntersectionPoint(): pt(Vector<DIM>::Zero()),
+                         normal(Vector<DIM>::Zero()),
                          dist(std::numeric_limits<float>::max()) {}
     IntersectionPoint(const Vector<DIM>& pt_, const Vector<DIM>& normal_, float dist_):
                       pt(pt_), normal(normal_), dist(dist_) {}
@@ -41,7 +42,9 @@ struct IntersectionPoint {
 template <size_t DIM>
 struct BoundarySample {
     // constructors
-    BoundarySample(): pt(Vector<DIM>::Zero()), normal(Vector<DIM>::Zero()), pdf(0.0f) {}
+    BoundarySample(): pt(Vector<DIM>::Zero()),
+                      normal(Vector<DIM>::Zero()),
+                      pdf(0.0f) {}
     BoundarySample(const Vector<DIM>& pt_, const Vector<DIM>& normal_, float pdf_):
                    pt(pt_), normal(normal_), pdf(pdf_) {}
 
