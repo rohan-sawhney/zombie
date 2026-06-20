@@ -345,12 +345,13 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
             intersectionPt.dist = starRadius;
         }
 
-        // update walk position
+        // update walk position, normal and throughput
         state.prevDistance = intersectionPt.dist;
         state.prevDirection = direction;
         state.currentPt = intersectionPt.pt;
         state.currentNormal = intersectionPt.normal; // NOTE: stale unless intersectedReflectingBoundary is true
         state.onReflectingBoundary = intersectedReflectingBoundary;
+        state.throughput *= computeWalkStepThroughput(pde, walkSettings, greensFn, state);
 
         // check if the current pt lies outside the domain; for interior problems,
         // this tests for walks that escape due to numerical error
@@ -362,8 +363,7 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
             return WalkCompletionCode::EscapedDomain;
         }
 
-        // update the walk throughput and apply a weight window to decide whether to split or terminate the walk
-        state.throughput *= computeWalkStepThroughput(pde, walkSettings, greensFn, state);
+        // apply a weight window to decide whether to split or terminate the walk
         bool terminateWalk = applyWeightWindow(walkSettings, rng, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
 
@@ -378,7 +378,8 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
         }
 
         // check whether to start applying Tikhonov regularization
-        if (pde.absorptionCoeff > 0.0f && walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
+        if (pde.absorptionCoeff > 0.0f &&
+            walkSettings.stepsBeforeApplyingTikhonov == state.walkLength) {
             greensFn = std::make_unique<YukawaGreensFnBall<DIM>>(pde.absorptionCoeff);
         }
 

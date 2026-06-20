@@ -249,8 +249,9 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
         // sample a direction uniformly
         Vector<DIM> direction = SphereSampler<DIM>::sampleUnitSphereUniform(rng);
 
-        // update walk position
+        // update walk position and throughput
         state.currentPt += distToAbsorbingBoundary*direction;
+        state.throughput *= greensFn->directionSampledPoissonKernel(state.currentPt);
 
         // check if the current pt lies outside the domain; for interior problems,
         // this tests for walks that escape due to numerical error
@@ -262,9 +263,7 @@ inline WalkCompletionCode WalkOnSpheres<T, DIM>::walk(const PDE<T, DIM>& pde,
             return WalkCompletionCode::EscapedDomain;
         }
 
-        // update the walk throughput and apply a weight window to decide whether
-        // to split or terminate the walk
-        state.throughput *= greensFn->directionSampledPoissonKernel(state.currentPt);
+        // apply a weight window to decide whether to split or terminate the walk
         bool terminateWalk = applyWeightWindow(walkSettings, rng, state, stateQueue);
         if (terminateWalk) return WalkCompletionCode::TerminatedWithRussianRoulette;
 
