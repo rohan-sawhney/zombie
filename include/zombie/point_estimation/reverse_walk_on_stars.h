@@ -111,7 +111,8 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
                !walkSettings.ignoreReflectingBoundaryContribution) {
         bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                 samplePt.estimateBoundaryNormalAligned;
-        samplePt.contribution = pde.robin(samplePt.pt, samplePt.normal, returnBoundaryNormalAlignedValue);
+        samplePt.contribution = pde.robin(samplePt.pt, samplePt.normal,
+                                          returnBoundaryNormalAlignedValue);
 
     } else {
         didSetContribution = false;
@@ -299,8 +300,9 @@ inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pd
             // query can result in a smaller than maximal star-shaped region: should ideally
             // use the distance to the closest visible point on the absorbing boundary
             starRadius = queries.computeStarRadiusForReflectingBoundary(
-                state.currentPt, walkSettings.epsilonShellForReflectingBoundary, distToAbsorbingBoundary,
-                walkSettings.silhouettePrecision, flipNormalOrientation);
+                state.currentPt, walkSettings.epsilonShellForReflectingBoundary,
+                distToAbsorbingBoundary, walkSettings.silhouettePrecision,
+                flipNormalOrientation);
 
             // shrink the radius slightly for numerical robustness---using a conservative
             // distance does not impact correctness
