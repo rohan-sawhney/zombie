@@ -58,21 +58,21 @@ std::shared_ptr<DomainSampler<T, DIM>> createUniformDomainSampler(
 // - sample points in the domain in proportion to source values
 
 template <typename T, size_t DIM>
-inline UniformDomainSampler<T, DIM>::UniformDomainSampler(std::function<bool(const Vector<DIM>&)> insideSolveRegion_,
-                                                          const Vector<DIM>& solveRegionMin_,
-                                                          const Vector<DIM>& solveRegionMax_,
-                                                          float solveRegionVolume_):
-                                                          insideSolveRegion(insideSolveRegion_),
-                                                          solveRegionMin(solveRegionMin_),
-                                                          solveRegionMax(solveRegionMax_),
-                                                          solveRegionVolume(solveRegionVolume_)
+UniformDomainSampler<T, DIM>::UniformDomainSampler(std::function<bool(const Vector<DIM>&)> insideSolveRegion_,
+                                                   const Vector<DIM>& solveRegionMin_,
+                                                   const Vector<DIM>& solveRegionMax_,
+                                                   float solveRegionVolume_):
+                                                   insideSolveRegion(insideSolveRegion_),
+                                                   solveRegionMin(solveRegionMin_),
+                                                   solveRegionMax(solveRegionMax_),
+                                                   solveRegionVolume(solveRegionVolume_)
 {
     rng = seedRng();
 }
 
 template <typename T, size_t DIM>
-inline void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, const GeometricQueries<DIM>& queries,
-                                                          std::vector<SamplePoint<T, DIM>>& samplePts)
+void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, const GeometricQueries<DIM>& queries,
+                                                   std::vector<SamplePoint<T, DIM>>& samplePts)
 {
     // initialize sample points
     samplePts.clear();

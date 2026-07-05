@@ -12,7 +12,7 @@ using Vector = Eigen::Matrix<float, DIM, 1>;
 using Vector2 = Vector<2>;
 using Vector3 = Vector<3>;
 
-Vector2 computeLineSegmentNormal(const Vector2& pa, const Vector2& pb, bool normalize)
+inline Vector2 computeLineSegmentNormal(const Vector2& pa, const Vector2& pb, bool normalize)
 {
     Vector2 s = pb - pa;
     Vector2 n(s[1], -s[0]);
@@ -20,13 +20,13 @@ Vector2 computeLineSegmentNormal(const Vector2& pa, const Vector2& pb, bool norm
     return normalize ? n.normalized() : n;
 }
 
-float computeLineSegmentSurfaceArea(const Vector2& pa, const Vector2& pb)
+inline float computeLineSegmentSurfaceArea(const Vector2& pa, const Vector2& pb)
 {
     return computeLineSegmentNormal(pa, pb, false).norm();
 }
 
-float computeClosestPointOnLineSegment(const Vector2& pa, const Vector2& pb,
-                                       const Vector2& x, Vector2& pt)
+inline float computeClosestPointOnLineSegment(const Vector2& pa, const Vector2& pb,
+                                              const Vector2& x, Vector2& pt)
 {
     Vector2 u = pb - pa;
     Vector2 v = x - pa;
@@ -48,8 +48,8 @@ float computeClosestPointOnLineSegment(const Vector2& pa, const Vector2& pb,
     return (x - pt).norm();
 }
 
-float computeFarthestPointOnLineSegment(const Vector2& pa, const Vector2& pb,
-                                        const Vector2& x, Vector2& pt) {
+inline float computeFarthestPointOnLineSegment(const Vector2& pa, const Vector2& pb,
+                                               const Vector2& x, Vector2& pt) {
     float da = (x - pa).squaredNorm();
     float db = (x - pb).squaredNorm();
 
@@ -62,8 +62,8 @@ float computeFarthestPointOnLineSegment(const Vector2& pa, const Vector2& pb,
     return std::sqrt(db);
 }
 
-Vector2 samplePointOnLineSegment(const Vector2& pa, const Vector2& pb, float *u,
-                                 Vector2& n, float& pdf) {
+inline Vector2 samplePointOnLineSegment(const Vector2& pa, const Vector2& pb, float *u,
+                                        Vector2& n, float& pdf) {
     Vector2 s = pb - pa;
     Vector2 pt = pa + u[0]*s;
     n = Vector2(s[1], -s[0]);
@@ -74,24 +74,25 @@ Vector2 samplePointOnLineSegment(const Vector2& pa, const Vector2& pb, float *u,
     return pt;
 }
 
-Vector3 computeTriangleNormal(const Vector3& pa, const Vector3& pb, const Vector3& pc, bool normalize) {
+inline Vector3 computeTriangleNormal(const Vector3& pa, const Vector3& pb, const Vector3& pc,
+                                     bool normalize) {
     Vector3 n = (pb - pa).cross(pc - pa);
     return normalize ? n.normalized() : n;
 }
 
-float computeTriangleSurfaceArea(const Vector3& pa, const Vector3& pb, const Vector3& pc) {
+inline float computeTriangleSurfaceArea(const Vector3& pa, const Vector3& pb, const Vector3& pc) {
     return 0.5f*computeTriangleNormal(pa, pb, pc, false).norm();
 }
 
-float computeTriangleAngle(const Vector3& pa, const Vector3& pb, const Vector3& pc) {
+inline float computeTriangleAngle(const Vector3& pa, const Vector3& pb, const Vector3& pc) {
     Vector3 u = (pb - pa).normalized();
     Vector3 v = (pc - pa).normalized();
 
     return std::acos(std::max(-1.0f, std::min(1.0f, u.dot(v))));
 }
 
-float computeClosestPointOnTriangle(const Vector3& pa, const Vector3& pb, const Vector3& pc,
-                                    const Vector3& x, Vector3& pt) {
+inline float computeClosestPointOnTriangle(const Vector3& pa, const Vector3& pb, const Vector3& pc,
+                                           const Vector3& x, Vector3& pt) {
     // check if x in vertex region outside pa
     Vector3 ab = pb - pa;
     Vector3 ac = pc - pa;
@@ -159,8 +160,8 @@ float computeClosestPointOnTriangle(const Vector3& pa, const Vector3& pb, const 
     return (x - pt).norm();
 }
 
-float computeFarthestPointOnTriangle(const Vector3& pa, const Vector3& pb, const Vector3& pc,
-                                     const Vector3& x, Vector3& pt) {
+inline float computeFarthestPointOnTriangle(const Vector3& pa, const Vector3& pb, const Vector3& pc,
+                                            const Vector3& x, Vector3& pt) {
     float da = (x - pa).squaredNorm();
     float db = (x - pb).squaredNorm();
     float dc = (x - pc).squaredNorm();
@@ -178,8 +179,8 @@ float computeFarthestPointOnTriangle(const Vector3& pa, const Vector3& pb, const
     return std::sqrt(dc);
 }
 
-Vector3 samplePointOnTriangle(const Vector3& pa, const Vector3& pb, const Vector3& pc,
-                              float *u, Vector3& n, float& pdf) {
+inline Vector3 samplePointOnTriangle(const Vector3& pa, const Vector3& pb, const Vector3& pc,
+                                     float *u, Vector3& n, float& pdf) {
     float u1 = std::sqrt(u[0]);
     float u2 = u[1];
     float a = 1.0f - u1;

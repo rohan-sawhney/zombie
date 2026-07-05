@@ -78,17 +78,17 @@ public:
 // Implementation
 
 template <typename T, size_t DIM>
-inline ReverseWalkOnStars<T, DIM>::ReverseWalkOnStars(const GeometricQueries<DIM>& queries_,
-                                                      SplatContributionCallback<T, DIM> splatContribution_):
-                                                      queries(queries_), splatContribution(splatContribution_)
+ReverseWalkOnStars<T, DIM>::ReverseWalkOnStars(const GeometricQueries<DIM>& queries_,
+                                               SplatContributionCallback<T, DIM> splatContribution_):
+                                               queries(queries_), splatContribution(splatContribution_)
 {
     // do nothing
 }
 
 template <typename T, size_t DIM>
-inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
-                                              const WalkSettings& walkSettings,
-                                              SamplePoint<T, DIM>& samplePt) const
+void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
+                                       const WalkSettings& walkSettings,
+                                       SamplePoint<T, DIM>& samplePt) const
 {
     // set sample contribution
     bool didSetContribution = true;
@@ -166,11 +166,11 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 }
 
 template <typename T, size_t DIM>
-inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
-                                              const WalkSettings& walkSettings,
-                                              std::vector<SamplePoint<T, DIM>>& samplePts,
-                                              bool runSingleThreaded,
-                                              std::function<void(int, int)> reportProgress) const
+void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
+                                       const WalkSettings& walkSettings,
+                                       std::vector<SamplePoint<T, DIM>>& samplePts,
+                                       bool runSingleThreaded,
+                                       std::function<void(int, int)> reportProgress) const
 {
     int nPoints = (int)samplePts.size();
     if (runSingleThreaded || walkSettings.printLogs) {
@@ -197,10 +197,10 @@ inline void ReverseWalkOnStars<T, DIM>::solve(const PDE<T, DIM>& pde,
 }
 
 template <typename T, size_t DIM>
-inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& pde,
-                                                                   const WalkSettings& walkSettings,
-                                                                   const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
-                                                                   const WalkState<T, DIM>& state) const
+float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, DIM>& pde,
+                                                            const WalkSettings& walkSettings,
+                                                            const std::unique_ptr<GreensFnBall<DIM>>& greensFn,
+                                                            const WalkState<T, DIM>& state) const
 {
     if (state.onReflectingBoundary && state.prevDistance > std::numeric_limits<float>::epsilon()) {
         float robinCoeff = 0.0f;
@@ -229,9 +229,9 @@ inline float ReverseWalkOnStars<T, DIM>::computeWalkStepThroughput(const PDE<T, 
 }
 
 template <typename T, size_t DIM>
-inline bool ReverseWalkOnStars<T, DIM>::applyWeightWindow(const WalkSettings& walkSettings,
-                                                          pcg32& rng, WalkState<T, DIM>& state,
-                                                          std::queue<WalkState<T, DIM>>& stateQueue) const
+bool ReverseWalkOnStars<T, DIM>::applyWeightWindow(const WalkSettings& walkSettings,
+                                                   pcg32& rng, WalkState<T, DIM>& state,
+                                                   std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     if (state.throughput > walkSettings.splittingThreshold) {
         // split the walk
@@ -265,13 +265,13 @@ inline bool ReverseWalkOnStars<T, DIM>::applyWeightWindow(const WalkSettings& wa
 }
 
 template <typename T, size_t DIM>
-inline WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
-                                                           const WalkSettings& walkSettings,
-                                                           const SamplePoint<T, DIM>& samplePt,
-                                                           float distToAbsorbingBoundary,
-                                                           std::unique_ptr<GreensFnBall<DIM>>& greensFn,
-                                                           pcg32& rng, WalkState<T, DIM>& state,
-                                                           std::queue<WalkState<T, DIM>>& stateQueue) const
+WalkCompletionCode ReverseWalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
+                                                    const WalkSettings& walkSettings,
+                                                    const SamplePoint<T, DIM>& samplePt,
+                                                    float distToAbsorbingBoundary,
+                                                    std::unique_ptr<GreensFnBall<DIM>>& greensFn,
+                                                    pcg32& rng, WalkState<T, DIM>& state,
+                                                    std::queue<WalkState<T, DIM>>& stateQueue) const
 {
     // recursively perform a random walk till it reaches the absorbing boundary
     while (distToAbsorbingBoundary > walkSettings.epsilonShellForAbsorbingBoundary) {

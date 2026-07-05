@@ -145,11 +145,11 @@ struct RobinBvhNodeBound<3> {
 #ifdef FCPW_USE_ENOKI
 
 template <size_t WIDTH>
-inline void RobinLineSegmentBound::computeSquaredStarRadiusBound(const enokiVector2& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
-                                                                 const MaskP<WIDTH> activeRobin, const Vector2P<WIDTH>& viewDirClosest,
-                                                                 const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
-                                                                 const Vector2P<WIDTH>& viewDirFarthest, const FloatP<WIDTH>& farthestPtDist,
-                                                                 const Vector2P<WIDTH>& planePt, const Vector2P<WIDTH>& planeNormal) {
+void RobinLineSegmentBound::computeSquaredStarRadiusBound(const enokiVector2& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
+                                                          const MaskP<WIDTH> activeRobin, const Vector2P<WIDTH>& viewDirClosest,
+                                                          const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
+                                                          const Vector2P<WIDTH>& viewDirFarthest, const FloatP<WIDTH>& farthestPtDist,
+                                                          const Vector2P<WIDTH>& planePt, const Vector2P<WIDTH>& planeNormal) {
     Vector2P<WIDTH> planeClosestPt;
     FloatP<WIDTH> h = findClosestPointWidePlane<WIDTH, 2>(planePt, planeNormal, sc, planeClosestPt);
     FloatP<WIDTH> cosUpperBound = enoki::abs(enoki::dot(viewDirClosest*enoki::rcp(closestPtDist), planeNormal));
@@ -164,11 +164,11 @@ inline void RobinLineSegmentBound::computeSquaredStarRadiusBound(const enokiVect
 }
 
 template <size_t WIDTH>
-inline void RobinTriangleBound::computeSquaredStarRadiusBound(const enokiVector3& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
-                                                              const MaskP<WIDTH> activeRobin, const Vector3P<WIDTH>& viewDirClosest,
-                                                              const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
-                                                              const Vector3P<WIDTH>& viewDirFarthest, const FloatP<WIDTH>& farthestPtDist,
-                                                              const Vector3P<WIDTH>& planePt, const Vector3P<WIDTH>& planeNormal) {
+void RobinTriangleBound::computeSquaredStarRadiusBound(const enokiVector3& sc, FloatP<WIDTH>& r2, const FloatP<WIDTH>& maxRobinCoeff,
+                                                       const MaskP<WIDTH> activeRobin, const Vector3P<WIDTH>& viewDirClosest,
+                                                       const FloatP<WIDTH>& closestPtDist, const FloatP<WIDTH>& closestPtDist2,
+                                                       const Vector3P<WIDTH>& viewDirFarthest, const FloatP<WIDTH>& farthestPtDist,
+                                                       const Vector3P<WIDTH>& planePt, const Vector3P<WIDTH>& planeNormal) {
     Vector3P<WIDTH> planeClosestPt;
     FloatP<WIDTH> h = findClosestPointWidePlane<WIDTH, 3>(planePt, planeNormal, sc, planeClosestPt);
     FloatP<WIDTH> cosUpperBound = enoki::abs(enoki::dot(viewDirClosest*enoki::rcp(closestPtDist), planeNormal));

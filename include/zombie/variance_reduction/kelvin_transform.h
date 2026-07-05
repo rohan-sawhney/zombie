@@ -87,42 +87,42 @@ protected:
 // Implementation
 
 template <typename T, size_t DIM>
-inline KelvinTransform<T, DIM>::KelvinTransform(const Vector<DIM>& origin_):
+KelvinTransform<T, DIM>::KelvinTransform(const Vector<DIM>& origin_):
 origin(origin_)
 {
     // do nothing
 }
 
 template <typename T, size_t DIM>
-inline void KelvinTransform<T, DIM>::setOrigin(const Vector<DIM>& origin_)
+void KelvinTransform<T, DIM>::setOrigin(const Vector<DIM>& origin_)
 {
     origin = origin_;
 }
 
 template <typename T, size_t DIM>
-inline Vector<DIM> KelvinTransform<T, DIM>::getOrigin() const
+Vector<DIM> KelvinTransform<T, DIM>::getOrigin() const
 {
     return origin;
 }
 
 template <typename T, size_t DIM>
-inline Vector<DIM> KelvinTransform<T, DIM>::transformPoint(const Vector<DIM>& x) const
+Vector<DIM> KelvinTransform<T, DIM>::transformPoint(const Vector<DIM>& x) const
 {
     Vector<DIM> xShifted = x - origin;
     return xShifted/xShifted.squaredNorm();
 }
 
 template <typename T, size_t DIM>
-inline Vector<DIM> KelvinTransform<T, DIM>::transformNormal(const Vector<DIM>& x,
-                                                            const Vector<DIM>& n) const
+Vector<DIM> KelvinTransform<T, DIM>::transformNormal(const Vector<DIM>& x,
+                                                     const Vector<DIM>& n) const
 {
     Vector<DIM> xShifted = x - origin;
     return n - 2.0f*n.dot(xShifted)*xShifted/xShifted.squaredNorm();
 }
 
 template <typename T, size_t DIM>
-inline void KelvinTransform<T, DIM>::transformPoints(const std::vector<Vector<DIM>>& points,
-                                                     std::vector<Vector<DIM>>& transformedPoints) const
+void KelvinTransform<T, DIM>::transformPoints(const std::vector<Vector<DIM>>& points,
+                                              std::vector<Vector<DIM>>& transformedPoints) const
 {
     int nPoints = (int)points.size();
     transformedPoints.resize(nPoints);
@@ -133,10 +133,10 @@ inline void KelvinTransform<T, DIM>::transformPoints(const std::vector<Vector<DI
 }
 
 template <size_t DIM>
-inline float computeClosestPointOnPrimitive(const std::vector<Vector<DIM>>& positions,
-                                            const std::vector<Vectori<DIM>>& indices,
-                                            int elementIndex, const Vector<DIM>& x,
-                                            Vector<DIM>& pt)
+float computeClosestPointOnPrimitive(const std::vector<Vector<DIM>>& positions,
+                                     const std::vector<Vectori<DIM>>& indices,
+                                     int elementIndex, const Vector<DIM>& x,
+                                     Vector<DIM>& pt)
 {
     std::cerr << "computeClosestPointOnPrimitive: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
@@ -170,10 +170,10 @@ inline float computeClosestPointOnPrimitive<3>(const std::vector<Vector3>& posit
 }
 
 template <size_t DIM>
-inline float computeFarthestPointOnPrimitive(const std::vector<Vector<DIM>>& positions,
-                                             const std::vector<Vectori<DIM>>& indices,
-                                             int elementIndex, const Vector<DIM>& x,
-                                             Vector<DIM>& pt)
+float computeFarthestPointOnPrimitive(const std::vector<Vector<DIM>>& positions,
+                                      const std::vector<Vectori<DIM>>& indices,
+                                      int elementIndex, const Vector<DIM>& x,
+                                      Vector<DIM>& pt)
 {
     std::cerr << "computeFarthestPointOnPrimitive: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
@@ -207,9 +207,9 @@ inline float computeFarthestPointOnPrimitive<3>(const std::vector<Vector3>& posi
 }
 
 template <size_t DIM>
-inline Vector<DIM> computePrimitiveNormal(const std::vector<Vector<DIM>>& positions,
-                                          const std::vector<Vectori<DIM>>& indices,
-                                          int elementIndex)
+Vector<DIM> computePrimitiveNormal(const std::vector<Vector<DIM>>& positions,
+                                   const std::vector<Vectori<DIM>>& indices,
+                                   int elementIndex)
 {
     std::cerr << "computePrimitiveNormal: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
@@ -241,12 +241,12 @@ inline Vector3 computePrimitiveNormal<3>(const std::vector<Vector3>& positions,
 }
 
 template <typename T, size_t DIM>
-inline void KelvinTransform<T, DIM>::computeRobinCoefficients(const std::vector<Vector<DIM>>& transformedPoints,
-                                                              const std::vector<Vectori<DIM>>& indices,
-                                                              const std::vector<float>& minRobinCoeffValues,
-                                                              const std::vector<float>& maxRobinCoeffValues,
-                                                              std::vector<float>& transformedMinRobinCoeffValues,
-                                                              std::vector<float>& transformedMaxRobinCoeffValues) const
+void KelvinTransform<T, DIM>::computeRobinCoefficients(const std::vector<Vector<DIM>>& transformedPoints,
+                                                       const std::vector<Vectori<DIM>>& indices,
+                                                       const std::vector<float>& minRobinCoeffValues,
+                                                       const std::vector<float>& maxRobinCoeffValues,
+                                                       std::vector<float>& transformedMinRobinCoeffValues,
+                                                       std::vector<float>& transformedMaxRobinCoeffValues) const
 {
     int nIndices = (int)indices.size();
     transformedMinRobinCoeffValues.resize(nIndices, 0.0f);
@@ -279,8 +279,8 @@ inline void KelvinTransform<T, DIM>::computeRobinCoefficients(const std::vector<
 }
 
 template <typename T, size_t DIM>
-inline void KelvinTransform<T, DIM>::transformPde(const PDE<T, DIM>& pdeExteriorDomain,
-                                                  PDE<T, DIM>& pdeInvertedDomain) const
+void KelvinTransform<T, DIM>::transformPde(const PDE<T, DIM>& pdeExteriorDomain,
+                                           PDE<T, DIM>& pdeInvertedDomain) const
 {
     if (pdeExteriorDomain.absorptionCoeff > 0.0f) {
         std::cout << "KelvinTransform::transformPde(): non-zero absorption coefficients are not supported" << std::endl;
@@ -348,18 +348,18 @@ inline void KelvinTransform<T, DIM>::transformPde(const PDE<T, DIM>& pdeExterior
 }
 
 template <typename T, size_t DIM>
-inline T KelvinTransform<T, DIM>::transformSolutionEstimate(const T& V,
-                                                            const Vector<DIM>& y) const
+T KelvinTransform<T, DIM>::transformSolutionEstimate(const T& V,
+                                                     const Vector<DIM>& y) const
 {
     float rPow = DIM == 3 ? y.norm() : 1.0f;
     return rPow*V;
 }
 
 template <typename T, size_t DIM>
-inline void KelvinTransform<T, DIM>::transformGradientEstimate(const T& V,
-                                                               const std::vector<T>& dV,
-                                                               const Vector<DIM>& y,
-                                                               std::vector<T>& gradient) const
+void KelvinTransform<T, DIM>::transformGradientEstimate(const T& V,
+                                                        const std::vector<T>& dV,
+                                                        const Vector<DIM>& y,
+                                                        std::vector<T>& gradient) const
 {
     std::vector<T> dU(DIM);
     float r2 = y.squaredNorm();

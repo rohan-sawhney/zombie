@@ -128,8 +128,8 @@ public:
                                  const std::vector<float>& maxRobinCoeffValues);
 };
 
-std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided=false,
-                                                                     float silhouettePrecision=1e-3f);
+inline std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided=false,
+                                                                            float silhouettePrecision=1e-3f);
 
 template <size_t DIM>
 void populateSdfGrid(FcpwDirichletBoundaryHandler<DIM>& dirichletBoundaryHandler,
@@ -149,7 +149,7 @@ void populateGeometricQueriesForRobinBoundary(FcpwRobinBoundaryHandler<DIM>& rob
                                               std::function<float(float)> branchTraversalWeight,
                                               GeometricQueries<DIM>& geometricQueries);
 
-std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist=1e-2f);
+inline std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist=1e-2f);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -165,9 +165,9 @@ void loadBoundaryMesh(const std::string& objFile,
 }
 
 template <>
-void loadBoundaryMesh<2>(const std::string& objFile,
-                         std::vector<Vector2>& positions,
-                         std::vector<Vector2i>& indices)
+inline void loadBoundaryMesh<2>(const std::string& objFile,
+                                std::vector<Vector2>& positions,
+                                std::vector<Vector2i>& indices)
 {
     // load file
     fcpw::PolygonSoup<2> soup;
@@ -187,9 +187,9 @@ void loadBoundaryMesh<2>(const std::string& objFile,
 }
 
 template <>
-void loadBoundaryMesh<3>(const std::string& objFile,
-                         std::vector<Vector3>& positions,
-                         std::vector<Vector3i>& indices)
+inline void loadBoundaryMesh<3>(const std::string& objFile,
+                                std::vector<Vector3>& positions,
+                                std::vector<Vector3i>& indices)
 {
     // load file
     fcpw::PolygonSoup<3> soup;
@@ -221,11 +221,11 @@ void loadTexturedBoundaryMesh(const std::string& objFile,
 }
 
 template <>
-void loadTexturedBoundaryMesh<3>(const std::string& objFile,
-                                 std::vector<Vector3>& positions,
-                                 std::vector<Vector2>& textureCoordinates,
-                                 std::vector<Vector3i>& indices,
-                                 std::vector<Vector3i>& textureIndices)
+inline void loadTexturedBoundaryMesh<3>(const std::string& objFile,
+                                        std::vector<Vector3>& positions,
+                                        std::vector<Vector2>& textureCoordinates,
+                                        std::vector<Vector3i>& indices,
+                                        std::vector<Vector3i>& textureIndices)
 {
     // load file
     fcpw::PolygonSoup<3> soup;
@@ -326,10 +326,10 @@ void buildBoundingBoxMesh(const Vector<DIM>& boundingBoxMin,
 }
 
 template <>
-void buildBoundingBoxMesh<2>(const Vector2& boundingBoxMin,
-                             const Vector2& boundingBoxMax,
-                             std::vector<Vector2>& positions,
-                             std::vector<Vector2i>& indices)
+inline void buildBoundingBoxMesh<2>(const Vector2& boundingBoxMin,
+                                    const Vector2& boundingBoxMax,
+                                    std::vector<Vector2>& positions,
+                                    std::vector<Vector2i>& indices)
 {
     positions.clear();
     positions.emplace_back(boundingBoxMin);
@@ -345,10 +345,10 @@ void buildBoundingBoxMesh<2>(const Vector2& boundingBoxMin,
 }
 
 template <>
-void buildBoundingBoxMesh<3>(const Vector3& boundingBoxMin,
-                             const Vector3& boundingBoxMax,
-                             std::vector<Vector3>& positions,
-                             std::vector<Vector3i>& indices)
+inline void buildBoundingBoxMesh<3>(const Vector3& boundingBoxMin,
+                                    const Vector3& boundingBoxMax,
+                                    std::vector<Vector3>& positions,
+                                    std::vector<Vector3i>& indices)
 {
     positions.clear();
     positions.emplace_back(boundingBoxMin);
@@ -429,8 +429,8 @@ float computeSignedVolume(const std::vector<Vector<DIM>>& boundaryPositions,
 }
 
 template <>
-float computeSignedVolume<2>(const std::vector<Vector2>& boundaryPositions,
-                             const std::vector<Vector2i>& boundaryIndices)
+inline float computeSignedVolume<2>(const std::vector<Vector2>& boundaryPositions,
+                                    const std::vector<Vector2i>& boundaryIndices)
 {
     float volume = 0.0f;
     for (const auto& index: boundaryIndices) {
@@ -443,8 +443,8 @@ float computeSignedVolume<2>(const std::vector<Vector2>& boundaryPositions,
 }
 
 template <>
-float computeSignedVolume<3>(const std::vector<Vector3>& boundaryPositions,
-                             const std::vector<Vector3i>& boundaryIndices)
+inline float computeSignedVolume<3>(const std::vector<Vector3>& boundaryPositions,
+                                    const std::vector<Vector3i>& boundaryIndices)
 {
     float volume = 0.0f;
     for (const auto& index: boundaryIndices) {
@@ -1026,8 +1026,8 @@ public:
     std::vector<fcpw::SilhouettePrimitive<3> *> silhouettePtrsStub;
 };
 
-std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided,
-                                                                     float silhouettePrecision) {
+inline std::function<bool(float, int)> getIgnoreCandidateSilhouetteCallback(bool solveDoubleSided,
+                                                                            float silhouettePrecision) {
     return [solveDoubleSided, silhouettePrecision](float dihedralAngle, int index) -> bool {
         // ignore convex vertices/edges for closest silhouette point tests when solving an interior problem;
         // NOTE: for complex scenes with both open and closed meshes, the primitive index argument
@@ -1313,9 +1313,9 @@ void populateGeometricQueriesForRobinBoundary(FcpwRobinBoundaryHandler<DIM>& rob
 }
 
 template <>
-void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler<2>& robinBoundaryHandler,
-                                                 std::function<float(float)> branchTraversalWeight,
-                                                 GeometricQueries<2>& geometricQueries)
+inline void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler<2>& robinBoundaryHandler,
+                                                        std::function<float(float)> branchTraversalWeight,
+                                                        GeometricQueries<2>& geometricQueries)
 {
     using PrimitiveBound = FcpwRobinBoundaryHandler<2>::PrimitiveBound;
     if (robinBoundaryHandler.baseline) {
@@ -1351,9 +1351,9 @@ void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler<2>& ro
 }
 
 template <>
-void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler<3>& robinBoundaryHandler,
-                                                 std::function<float(float)> branchTraversalWeight,
-                                                 GeometricQueries<3>& geometricQueries)
+inline void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler<3>& robinBoundaryHandler,
+                                                        std::function<float(float)> branchTraversalWeight,
+                                                        GeometricQueries<3>& geometricQueries)
 {
     using PrimitiveBound = FcpwRobinBoundaryHandler<3>::PrimitiveBound;
     if (robinBoundaryHandler.baseline) {
@@ -1388,7 +1388,7 @@ void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler<3>& ro
     }
 }
 
-std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist)
+inline std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist)
 {
     HarmonicGreensFnFreeSpace<3> harmonicGreensFn;
     return [harmonicGreensFn, minRadialDist](float r2) -> float {

@@ -19,8 +19,8 @@ struct PointCloud {
     std::vector<Vector<DIM>> points;
 
     // nanoflann interface
-    inline size_t kdtree_get_point_count() const { return points.size(); }
-    inline float kdtree_get_pt(const size_t idx, size_t dim) const { return points[idx][dim]; }
+    size_t kdtree_get_point_count() const { return points.size(); }
+    float kdtree_get_pt(const size_t idx, size_t dim) const { return points[idx][dim]; }
     template <class BBOX>
     bool kdtree_get_bbox(BBOX& bb) const { return false; }
 };
@@ -63,7 +63,7 @@ void getSpatiallySortedPointIndices(const std::vector<Vector<DIM>>& points,
 // Implementation
 
 template <size_t DIM>
-inline NearestNeighborFinder<DIM>::NearestNeighborFinder():
+NearestNeighborFinder<DIM>::NearestNeighborFinder():
 params(10 /* max leaf */, nanoflann::KDTreeSingleIndexAdaptorFlags::SkipInitialBuildIndex),
 tree(DIM, data, params)
 {
@@ -71,15 +71,15 @@ tree(DIM, data, params)
 }
 
 template <size_t DIM>
-inline void NearestNeighborFinder<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& points)
+void NearestNeighborFinder<DIM>::buildAccelerationStructure(const std::vector<Vector<DIM>>& points)
 {
     data.points = points;
     tree.buildIndex();
 }
 
 template <size_t DIM>
-inline size_t NearestNeighborFinder<DIM>::kNearest(const Vector<DIM>& queryPt, size_t k,
-                                                   std::vector<uint32_t>& outIndices) const
+size_t NearestNeighborFinder<DIM>::kNearest(const Vector<DIM>& queryPt, size_t k,
+                                            std::vector<uint32_t>& outIndices) const
 {
     if (k > data.points.size()) {
         std::cerr << "k is greater than number of points" << std::endl;
@@ -92,8 +92,8 @@ inline size_t NearestNeighborFinder<DIM>::kNearest(const Vector<DIM>& queryPt, s
 }
 
 template <size_t DIM>
-inline size_t NearestNeighborFinder<DIM>::radiusSearch(const Vector<DIM>& queryPt, float radius,
-                                                       std::vector<uint32_t>& outIndices) const
+size_t NearestNeighborFinder<DIM>::radiusSearch(const Vector<DIM>& queryPt, float radius,
+                                                std::vector<uint32_t>& outIndices) const
 {
     float squaredRadius = radius*radius; // nanoflann wants a SQUARED raidus
     std::vector<nanoflann::ResultItem<uint32_t, float>> resultItems;
@@ -108,7 +108,7 @@ inline size_t NearestNeighborFinder<DIM>::radiusSearch(const Vector<DIM>& queryP
 }
 
 template <size_t DIM>
-inline void NearestNeighborFinder<DIM>::getSpatiallySortedIndices(std::vector<uint32_t>& outIndices) const
+void NearestNeighborFinder<DIM>::getSpatiallySortedIndices(std::vector<uint32_t>& outIndices) const
 {
     const auto& vAcc = tree.vAcc_;
     outIndices.resize(vAcc.size());
@@ -118,8 +118,8 @@ inline void NearestNeighborFinder<DIM>::getSpatiallySortedIndices(std::vector<ui
 }
 
 template <size_t DIM>
-inline void getSpatiallySortedPointIndices(const std::vector<Vector<DIM>>& points,
-                                           std::vector<uint32_t>& outIndices)
+void getSpatiallySortedPointIndices(const std::vector<Vector<DIM>>& points,
+                                    std::vector<uint32_t>& outIndices)
 {
     NearestNeighborFinder<DIM> nnFinder;
     nnFinder.buildAccelerationStructure(points);

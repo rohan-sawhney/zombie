@@ -60,31 +60,31 @@ void populateGeometricQueriesForDirichletBoundary(const Sdf& sdf, GeometricQueri
 // Implementation
 
 template <size_t DIM>
-inline SdfGrid<DIM>::SdfGrid(const Vector<DIM>& gridMin, const Vector<DIM>& gridMax):
+SdfGrid<DIM>::SdfGrid(const Vector<DIM>& gridMin, const Vector<DIM>& gridMax):
 DenseGrid<float, 1, DIM>(gridMin, gridMax, true)
 {
     // do nothing
 }
 
 template <size_t DIM>
-inline SdfGrid<DIM>::SdfGrid(const Eigen::VectorXf& sdfData, const Vectori<DIM>& gridShape,
-                             const Vector<DIM>& gridMin, const Vector<DIM>& gridMax):
+SdfGrid<DIM>::SdfGrid(const Eigen::VectorXf& sdfData, const Vectori<DIM>& gridShape,
+                      const Vector<DIM>& gridMin, const Vector<DIM>& gridMax):
 DenseGrid<float, 1, DIM>(sdfData, gridShape, gridMin, gridMax, true)
 {
     // do nothing
 }
 
 template <size_t DIM>
-inline SdfGrid<DIM>::SdfGrid(std::function<Array<float, 1>(const Vector<DIM>&)> sdfDataCallback,
-                             const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
-                             const Vector<DIM>& gridMax):
+SdfGrid<DIM>::SdfGrid(std::function<Array<float, 1>(const Vector<DIM>&)> sdfDataCallback,
+                      const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
+                      const Vector<DIM>& gridMax):
 DenseGrid<float, 1, DIM>(sdfDataCallback, gridShape, gridMin, gridMax, true)
 {
     // do nothing
 }
 
 template <size_t DIM>
-inline Vector<DIM> SdfGrid<DIM>::clampInGrid(const Vector<DIM>& x) const
+Vector<DIM> SdfGrid<DIM>::clampInGrid(const Vector<DIM>& x) const
 {
     Vector<DIM> xClamped = x;
     for (int i = 0; i < DIM; i++) {
@@ -97,7 +97,7 @@ inline Vector<DIM> SdfGrid<DIM>::clampInGrid(const Vector<DIM>& x) const
 }
 
 template <size_t DIM>
-inline Vector<DIM> SdfGrid<DIM>::computeGradient(const Vector<DIM>& x) const
+Vector<DIM> SdfGrid<DIM>::computeGradient(const Vector<DIM>& x) const
 {
     // perform central differencing
     Vector<DIM> gradient = Vector<DIM>::Zero();
@@ -119,7 +119,7 @@ inline Vector<DIM> SdfGrid<DIM>::computeGradient(const Vector<DIM>& x) const
 }
 
 template <size_t DIM>
-inline Vector<DIM> SdfGrid<DIM>::computeNormal(const Vector<DIM>& x) const
+Vector<DIM> SdfGrid<DIM>::computeNormal(const Vector<DIM>& x) const
 {
     Vector<DIM> dSdf = computeGradient(x);
     dSdf /= (dSdf.norm() + 1e-6f);
@@ -128,8 +128,8 @@ inline Vector<DIM> SdfGrid<DIM>::computeNormal(const Vector<DIM>& x) const
 }
 
 template <size_t DIM>
-inline void SdfGrid<DIM>::projectToZeroLevelSet(Vector<DIM>& x, Vector<DIM>& normal,
-                                                int maxIterations, float epsilon) const
+void SdfGrid<DIM>::projectToZeroLevelSet(Vector<DIM>& x, Vector<DIM>& normal,
+                                         int maxIterations, float epsilon) const
 {
     // apply steepest descent to project x to the zero level set
     for (int i = 0; i < maxIterations; i++) {
@@ -144,9 +144,9 @@ inline void SdfGrid<DIM>::projectToZeroLevelSet(Vector<DIM>& x, Vector<DIM>& nor
 }
 
 template <size_t DIM>
-inline bool SdfGrid<DIM>::intersectZeroLevelSet(const Vector<DIM>& origin, const Vector<DIM>& dir,
-                                                float tMax, IntersectionPoint<DIM>& intersectionPt,
-                                                int maxIterations, float epsilon) const
+bool SdfGrid<DIM>::intersectZeroLevelSet(const Vector<DIM>& origin, const Vector<DIM>& dir,
+                                         float tMax, IntersectionPoint<DIM>& intersectionPt,
+                                         int maxIterations, float epsilon) const
 {
     // first determine whether the ray intersects the grid bounds
     Vector<DIM> bMin = this->origin;
@@ -203,9 +203,9 @@ inline bool SdfGrid<DIM>::intersectZeroLevelSet(const Vector<DIM>& origin, const
 }
 
 template <typename SdfLeft, typename SdfRight, size_t DIM>
-inline SdfHierarchy<SdfLeft, SdfRight, DIM>::SdfHierarchy(const SdfLeft& left_,
-                                                          const SdfRight& right_,
-                                                          SdfOperation operation_):
+SdfHierarchy<SdfLeft, SdfRight, DIM>::SdfHierarchy(const SdfLeft& left_,
+                                                   const SdfRight& right_,
+                                                   SdfOperation operation_):
 left(left_),
 right(right_),
 operation(operation_)
@@ -214,7 +214,7 @@ operation(operation_)
 }
 
 template <typename SdfLeft, typename SdfRight, size_t DIM>
-inline Array<float, 1> SdfHierarchy<SdfLeft, SdfRight, DIM>::operator()(const Vector<DIM>& x) const
+Array<float, 1> SdfHierarchy<SdfLeft, SdfRight, DIM>::operator()(const Vector<DIM>& x) const
 {
     Array<float, 1> leftSdf = left(x);
     Array<float, 1> rightSdf = right(x);

@@ -60,7 +60,7 @@ public:
 // Implementation
 
 template <size_t DIM>
-inline float findClosestPointPlane(const Vector<DIM>& p, const Vector<DIM>& n,
+float findClosestPointPlane(const Vector<DIM>& p, const Vector<DIM>& n,
                                    const Vector<DIM>& x, Vector<DIM>& pt)
 {
     float t = n.dot(p - x)/n.dot(n);
@@ -70,7 +70,7 @@ inline float findClosestPointPlane(const Vector<DIM>& p, const Vector<DIM>& n,
 }
 
 template <typename PrimitiveBound>
-inline ReflectanceLineSegment<PrimitiveBound>::ReflectanceLineSegment():
+ReflectanceLineSegment<PrimitiveBound>::ReflectanceLineSegment():
 LineSegment(),
 n{Vector2::Zero(), Vector2::Zero()},
 minCoefficientValue(minFloat),
@@ -83,10 +83,10 @@ maxCoefficientValue(maxFloat)
 }
 
 template <typename PrimitiveBound>
-inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(BoundingSphere<2>& s,
-                                                                             bool flipNormalOrientation,
-                                                                             float silhouettePrecision,
-                                                                             bool performSilhouetteTests) const
+void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(BoundingSphere<2>& s,
+                                                                      bool flipNormalOrientation,
+                                                                      float silhouettePrecision,
+                                                                      bool performSilhouetteTests) const
 {
     const Vector2& pa = soup->positions[indices[0]];
     const Vector2& pb = soup->positions[indices[1]];
@@ -154,7 +154,7 @@ inline void ReflectanceLineSegment<PrimitiveBound>::computeSquaredStarRadius(Bou
 }
 
 template <typename PrimitiveBound>
-inline ReflectanceTriangle<PrimitiveBound>::ReflectanceTriangle():
+ReflectanceTriangle<PrimitiveBound>::ReflectanceTriangle():
 Triangle(),
 n{Vector3::Zero(), Vector3::Zero(), Vector3::Zero()},
 minCoefficientValue(minFloat),
@@ -167,10 +167,10 @@ maxCoefficientValue(maxFloat)
 }
 
 template <typename PrimitiveBound>
-inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(BoundingSphere<3>& s,
-                                                                          bool flipNormalOrientation,
-                                                                          float silhouettePrecision,
-                                                                          bool performSilhouetteTests) const
+void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(BoundingSphere<3>& s,
+                                                                   bool flipNormalOrientation,
+                                                                   float silhouettePrecision,
+                                                                   bool performSilhouetteTests) const
 {
     const Vector3& pa = soup->positions[indices[0]];
     const Vector3& pb = soup->positions[indices[1]];
@@ -241,8 +241,8 @@ inline void ReflectanceTriangle<PrimitiveBound>::computeSquaredStarRadius(Boundi
 #ifdef FCPW_USE_ENOKI
 
 template <size_t WIDTH, size_t DIM>
-inline FloatP<WIDTH> findClosestPointWidePlane(const VectorP<WIDTH, DIM>& p, const VectorP<WIDTH, DIM>& n,
-                                               const VectorP<WIDTH, DIM>& x, VectorP<WIDTH, DIM>& pt)
+FloatP<WIDTH> findClosestPointWidePlane(const VectorP<WIDTH, DIM>& p, const VectorP<WIDTH, DIM>& n,
+                                        const VectorP<WIDTH, DIM>& x, VectorP<WIDTH, DIM>& pt)
 {
     FloatP<WIDTH> t = enoki::dot(n, p - x)*enoki::rcp(enoki::dot(n, n));
     pt = x - t*n;
@@ -251,8 +251,8 @@ inline FloatP<WIDTH> findClosestPointWidePlane(const VectorP<WIDTH, DIM>& p, con
 }
 
 template <size_t WIDTH>
-inline FloatP<WIDTH> findFarthestPointWideLineSegment(const Vector2P<WIDTH>& pa, const Vector2P<WIDTH>& pb,
-                                                      const Vector2P<WIDTH>& x, Vector2P<WIDTH>& pt)
+FloatP<WIDTH> findFarthestPointWideLineSegment(const Vector2P<WIDTH>& pa, const Vector2P<WIDTH>& pb,
+                                               const Vector2P<WIDTH>& x, Vector2P<WIDTH>& pt)
 {
     FloatP<WIDTH> da = enoki::squared_norm(x - pa);
     FloatP<WIDTH> db = enoki::squared_norm(x - pb);
@@ -267,9 +267,9 @@ inline FloatP<WIDTH> findFarthestPointWideLineSegment(const Vector2P<WIDTH>& pa,
 }
 
 template <size_t WIDTH>
-inline FloatP<WIDTH> findFarthestPointWideTriangle(const Vector3P<WIDTH>& pa, const Vector3P<WIDTH>& pb,
-                                                   const Vector3P<WIDTH>& pc, const Vector3P<WIDTH>& x,
-                                                   Vector3P<WIDTH>& pt)
+FloatP<WIDTH> findFarthestPointWideTriangle(const Vector3P<WIDTH>& pa, const Vector3P<WIDTH>& pb,
+                                            const Vector3P<WIDTH>& pc, const Vector3P<WIDTH>& x,
+                                            Vector3P<WIDTH>& pt)
 {
     FloatP<WIDTH> da = enoki::squared_norm(x - pa);
     FloatP<WIDTH> db = enoki::squared_norm(x - pb);
@@ -290,8 +290,8 @@ inline FloatP<WIDTH> findFarthestPointWideTriangle(const Vector3P<WIDTH>& pa, co
 }
 
 template <size_t WIDTH>
-inline Vector2P<WIDTH> computeNormalWideLineSegment(const Vector2P<WIDTH>& pa,
-                                                    const Vector2P<WIDTH>& pb)
+Vector2P<WIDTH> computeNormalWideLineSegment(const Vector2P<WIDTH>& pa,
+                                             const Vector2P<WIDTH>& pb)
 {
     Vector2P<WIDTH> v = pb - pa;
     Vector2P<WIDTH> n;
@@ -302,9 +302,9 @@ inline Vector2P<WIDTH> computeNormalWideLineSegment(const Vector2P<WIDTH>& pa,
 }
 
 template <size_t WIDTH>
-inline Vector3P<WIDTH> computeNormalWideTriangle(const Vector3P<WIDTH>& pa,
-                                                 const Vector3P<WIDTH>& pb,
-                                                 const Vector3P<WIDTH>& pc)
+Vector3P<WIDTH> computeNormalWideTriangle(const Vector3P<WIDTH>& pa,
+                                          const Vector3P<WIDTH>& pb,
+                                          const Vector3P<WIDTH>& pc)
 {
     Vector3P<WIDTH> v1 = pb - pa;
     Vector3P<WIDTH> v2 = pc - pa;

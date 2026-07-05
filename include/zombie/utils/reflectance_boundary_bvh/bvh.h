@@ -74,9 +74,9 @@ std::unique_ptr<ReflectanceBvh<DIM, ReflectanceBvhNode<DIM>, PrimitiveType, Node
 // Implementation
 
 template <size_t DIM, typename NodeType, typename PrimitiveType>
-inline void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType *>& primitives,
-                                                const std::vector<Vector<DIM>>& primitiveNormals,
-                                                std::vector<NodeType>& flatTree, int start, int end)
+void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType *>& primitives,
+                                         const std::vector<Vector<DIM>>& primitiveNormals,
+                                         std::vector<NodeType>& flatTree, int start, int end)
 {
     // compute bounding cone axis and min and max coefficient values for node
     BoundingCone<DIM> cone;
@@ -159,7 +159,7 @@ inline void assignGeometricDataToNodesRecursive(const std::vector<PrimitiveType 
 }
 
 template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
-inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::assignGeometricDataToNodes(const std::function<bool(float, int)>& ignoreSilhouette)
+void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::assignGeometricDataToNodes(const std::function<bool(float, int)>& ignoreSilhouette)
 {
     // precompute normals for each primitive
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
@@ -186,11 +186,11 @@ inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::assignGeome
 }
 
 template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
-inline ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::ReflectanceBvh(const CostHeuristic& costHeuristic_,
-                                                                               std::vector<PrimitiveType *>& primitives_,
-                                                                               std::vector<SilhouettePrimitive<DIM> *>& silhouettes_,
-                                                                               SortReflectanceSoupPositions<typename PrimitiveType::Bound, PrimitiveType, NodeType, DIM> sortPositions_,
-                                                                               bool packLeaves_, int leafSize_, int nBuckets_):
+ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::ReflectanceBvh(const CostHeuristic& costHeuristic_,
+                                                                        std::vector<PrimitiveType *>& primitives_,
+                                                                        std::vector<SilhouettePrimitive<DIM> *>& silhouettes_,
+                                                                        SortReflectanceSoupPositions<typename PrimitiveType::Bound, PrimitiveType, NodeType, DIM> sortPositions_,
+                                                                        bool packLeaves_, int leafSize_, int nBuckets_):
 Bvh<DIM, NodeType, PrimitiveType, SilhouettePrimitive<DIM>>(costHeuristic_, primitives_, silhouettes_,
                                                             {}, {}, packLeaves_, leafSize_, nBuckets_)
 {
@@ -203,15 +203,15 @@ Bvh<DIM, NodeType, PrimitiveType, SilhouettePrimitive<DIM>>(costHeuristic_, prim
 }
 
 template <size_t DIM>
-inline void mergeBoundingCones(const ReflectanceBvhNode<DIM>& left, const ReflectanceBvhNode<DIM>& right, ReflectanceBvhNode<DIM>& node)
+void mergeBoundingCones(const ReflectanceBvhNode<DIM>& left, const ReflectanceBvhNode<DIM>& right, ReflectanceBvhNode<DIM>& node)
 {
     node.cone = mergeBoundingCones<DIM>(left.cone, right.cone, left.box.centroid(), right.box.centroid(), node.box.centroid());
 }
 
 template <size_t DIM, typename PrimitiveType>
-inline BoundingCone<DIM> computeBoundingConeForPrimitives(const std::vector<PrimitiveType *>& primitives,
-                                                          const Vector<DIM>& centroid,
-                                                          int nReferences, int referenceOffset)
+BoundingCone<DIM> computeBoundingConeForPrimitives(const std::vector<PrimitiveType *>& primitives,
+                                                   const Vector<DIM>& centroid,
+                                                   int nReferences, int referenceOffset)
 {
     BoundingCone<DIM> cone;
     bool allPrimitivesHaveAdjacentFaces = true;
@@ -268,8 +268,8 @@ inline BoundingCone<DIM> computeBoundingConeForPrimitives(const std::vector<Prim
 }
 
 template <size_t DIM, typename NodeType, typename PrimitiveType>
-inline void refitRecursive(const std::vector<PrimitiveType *>& primitives,
-                           std::vector<NodeType>& flatTree, int nodeIndex)
+void refitRecursive(const std::vector<PrimitiveType *>& primitives,
+                    std::vector<NodeType>& flatTree, int nodeIndex)
 {
     NodeType& node(flatTree[nodeIndex]);
 
@@ -302,7 +302,7 @@ inline void refitRecursive(const std::vector<PrimitiveType *>& primitives,
 }
 
 template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
-inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::refit()
+void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::refit()
 {
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
     int nNodes = (int)BvhBase::flatTree.size();
@@ -313,8 +313,8 @@ inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::refit()
 }
 
 template <size_t DIM, typename NodeType, typename PrimitiveType>
-inline std::pair<float, float> updateCoefficientValuesRecursive(const std::vector<PrimitiveType *>& primitives,
-                                                                std::vector<NodeType>& flatTree, int nodeIndex)
+std::pair<float, float> updateCoefficientValuesRecursive(const std::vector<PrimitiveType *>& primitives,
+                                                         std::vector<NodeType>& flatTree, int nodeIndex)
 {
     NodeType& node(flatTree[nodeIndex]);
     node.minCoefficientValue = maxFloat;
@@ -345,8 +345,8 @@ inline std::pair<float, float> updateCoefficientValuesRecursive(const std::vecto
 }
 
 template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
-inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
-                                                                                             const std::vector<float>& maxCoefficientValues)
+void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
+                                                                                      const std::vector<float>& maxCoefficientValues)
 {
     // update coefficient values for primitives
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
@@ -367,9 +367,9 @@ inline void ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::updateCoeff
 }
 
 template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
-inline bool ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(const BoundingSphere<DIM>& s, int nodeIndex,
-                                                                               float& r2MinBound, float& r2MaxBound,
-                                                                               bool& hasSilhouette) const
+bool ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(const BoundingSphere<DIM>& s, int nodeIndex,
+                                                                        float& r2MinBound, float& r2MaxBound,
+                                                                        bool& hasSilhouette) const
 {
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
     const NodeType& node(BvhBase::flatTree[nodeIndex]);
@@ -412,9 +412,9 @@ inline bool ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::visitNode(c
 }
 
 template <size_t DIM, typename NodeType, typename PrimitiveType, typename NodeBound>
-inline int ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
-                                                                                             bool flipNormalOrientation,
-                                                                                             float silhouettePrecision) const
+int ReflectanceBvh<DIM, NodeType, PrimitiveType, NodeBound>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
+                                                                                      bool flipNormalOrientation,
+                                                                                      float silhouettePrecision) const
 {
     using BvhBase = Bvh<DIM, NodeType, PrimitiveType>;
     TraversalStack subtree[FCPW_BVH_MAX_DEPTH];

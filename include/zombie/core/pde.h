@@ -48,7 +48,7 @@ struct PDE {
 // Implementation
 
 template <typename T, size_t DIM>
-inline PDE<T, DIM>::PDE():
+PDE<T, DIM>::PDE():
 absorptionCoeff(0.0f),
 isSourceConstant(false),
 areRobinConditionsPureNeumann(true),

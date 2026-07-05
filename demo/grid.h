@@ -20,9 +20,9 @@ struct DistanceInfo {
     float distToReflectingBoundary;
 };
 
-void createGridPoints(const json& config,
-                      std::pair<Vector2, Vector2> boundingBox,
-                      std::vector<Vector2>& gridPoints)
+inline void createGridPoints(const json& config,
+                             std::pair<Vector2, Vector2> boundingBox,
+                             std::vector<Vector2>& gridPoints)
 {
     const int gridRes = getRequired<int>(config, "gridRes");
     Vector2 gridMin = boundingBox.first;

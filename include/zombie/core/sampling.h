@@ -433,7 +433,7 @@ protected:
 // source: https://pbr-book.org/3ed-2018/Sampling_and_Reconstruction/Stratified_Sampling#LatinHypercube
 // NOTE: sample quality reduces with increasing dimension
 template <size_t DIM>
-inline void generateStratifiedSamples(std::vector<float>& samples, int nSamples, pcg32& rng)
+void generateStratifiedSamples(std::vector<float>& samples, int nSamples, pcg32& rng)
 {
     const float epsilon = std::numeric_limits<float>::epsilon();
     const float oneMinusEpsilon = 1.0f - epsilon;

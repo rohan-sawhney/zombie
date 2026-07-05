@@ -35,16 +35,16 @@ std::unique_ptr<ReflectanceBaseline<DIM, PrimitiveType>> createReflectanceBaseli
 // Implementation
 
 template <size_t DIM, typename PrimitiveType>
-inline ReflectanceBaseline<DIM, PrimitiveType>::ReflectanceBaseline(std::vector<PrimitiveType *>& primitives_,
-                                                                    std::vector<SilhouettePrimitive<DIM> *>& silhouettes_):
+ReflectanceBaseline<DIM, PrimitiveType>::ReflectanceBaseline(std::vector<PrimitiveType *>& primitives_,
+                                                             std::vector<SilhouettePrimitive<DIM> *>& silhouettes_):
 Baseline<DIM, PrimitiveType>(primitives_, silhouettes_)
 {
     // do nothing
 }
 
 template <size_t DIM, typename PrimitiveType>
-inline void ReflectanceBaseline<DIM, PrimitiveType>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
-                                                                             const std::vector<float>& maxCoefficientValues)
+void ReflectanceBaseline<DIM, PrimitiveType>::updateCoefficientValues(const std::vector<float>& minCoefficientValues,
+                                                                      const std::vector<float>& maxCoefficientValues)
 {
     for (int p = 0; p < (int)Baseline<DIM, PrimitiveType>::primitives.size(); p++) {
         PrimitiveType *prim = Baseline<DIM, PrimitiveType>::primitives[p];
@@ -55,9 +55,9 @@ inline void ReflectanceBaseline<DIM, PrimitiveType>::updateCoefficientValues(con
 }
 
 template <size_t DIM, typename PrimitiveType>
-inline int ReflectanceBaseline<DIM, PrimitiveType>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
-                                                                             bool flipNormalOrientation,
-                                                                             float silhouettePrecision) const
+int ReflectanceBaseline<DIM, PrimitiveType>::computeSquaredStarRadius(BoundingSphere<DIM>& s,
+                                                                      bool flipNormalOrientation,
+                                                                      float silhouettePrecision) const
 {
     int nPrimitives = (int)Baseline<DIM, PrimitiveType>::primitives.size();
     for (int p = 0; p < nPrimitives; p++) {
