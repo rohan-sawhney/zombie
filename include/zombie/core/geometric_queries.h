@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <cstring>
 #include <functional>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -157,18 +158,18 @@ Vector<DIM> offsetPointAlongDirectionImpl(const Vector<DIM>& p, const Vector<DIM
 
 inline float intAsFloat(int a)
 {
-    union {int a; float b;} u;
-    u.a = a;
+    float b;
+    std::memcpy(&b, &a, sizeof(float));
 
-    return u.b;
+    return b;
 }
 
 inline int floatAsInt(float a)
 {
-    union {float a; int b;} u;
-    u.a = a;
+    int b;
+    std::memcpy(&b, &a, sizeof(int));
 
-    return u.b;
+    return b;
 }
 
 template <>

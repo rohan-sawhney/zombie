@@ -79,10 +79,15 @@ void UniformDomainSampler<T, DIM>::generateSamples(int nSamples, const Geometric
     Vector<DIM> regionExtent = solveRegionMax - solveRegionMin;
     float pdf = 1.0f/solveRegionVolume;
 
-    // generate stratified samples
+    // generate stratified samples, oversampling by the expected rejection rate;
+    // compute the candidate count in floating point and clamp it to avoid integer
+    // overflow when the solve region occupies a tiny fraction of its bounding box
     std::vector<float> stratifiedSamples;
     int nStratifiedSamples = nSamples;
-    if (solveRegionVolume > 0.0f) nStratifiedSamples *= regionExtent.prod()*pdf;
+    if (solveRegionVolume > 0.0f) {
+        float nOversampledCandidates = nSamples*regionExtent.prod()*pdf;
+        nStratifiedSamples = (int)std::min(nOversampledCandidates, 1e8f);
+    }
     generateStratifiedSamples<DIM>(stratifiedSamples, nStratifiedSamples, rng);
 
     // generate sample points inside the solve region

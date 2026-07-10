@@ -8,6 +8,8 @@
 #pragma once
 
 #include <zombie/point_estimation/walk_on_stars.h>
+#include <zombie/variance_reduction/boundary_samplers.h>
+#include <zombie/variance_reduction/domain_samplers.h>
 
 namespace zombie {
 
@@ -526,6 +528,9 @@ void BoundaryValueCaching<T, DIM>::estimateSolutionNearBoundary(const PDE<T, DIM
 
         } else if (evalPt.type == SampleType::OnReflectingBoundary) {
             evalPt.reflectingBoundaryStatistics.addSolutionEstimate(solutionEstimate);
+
+        } else {
+            evalPt.sourceStatistics.addSolutionEstimate(solutionEstimate);
         }
     }
 }

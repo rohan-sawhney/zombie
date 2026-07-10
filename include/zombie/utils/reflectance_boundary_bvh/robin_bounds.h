@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <fcpw/fcpw.h>
+#include <zombie/utils/reflectance_boundary_bvh/geometry.h>
 
 namespace zombie {
 
@@ -17,14 +17,21 @@ struct RobinLineSegmentBound {
                                               const Vector2& planePt, const Vector2& planeNormal) {
         Vector2 planeClosestPt;
         float h = findClosestPointPlane<2>(planePt, planeNormal, s.c, planeClosestPt);
-        float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(planeNormal));
-        float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(planeNormal));
-        float cosLine = std::sqrt(h*maxRobinCoeff)/SQRT_2;
-        float cosLineSegment = std::clamp(cosLine, cosLowerBound, cosUpperBound);
-        float cosLineSegment2 = cosLineSegment*cosLineSegment;
-        float lineSegmentRadius = (h/cosLineSegment)*std::exp(cosLineSegment2/(h*maxRobinCoeff));
-        float lineSegmentRadius2 = lineSegmentRadius*lineSegmentRadius;
-        s.r2 = std::min(s.r2, lineSegmentRadius2);
+        if (h > 0.0f) {
+            float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(planeNormal));
+            float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(planeNormal));
+            float cosLine = std::sqrt(h*maxRobinCoeff)/SQRT_2;
+            float cosLineSegment = std::clamp(cosLine, cosLowerBound, cosUpperBound);
+            float cosLineSegment2 = cosLineSegment*cosLineSegment;
+            float lineSegmentRadius = (h/cosLineSegment)*std::exp(cosLineSegment2/(h*maxRobinCoeff));
+            float lineSegmentRadius2 = lineSegmentRadius*lineSegmentRadius;
+            s.r2 = std::min(s.r2, lineSegmentRadius2);
+
+        } else {
+            // the query point lies on the segment's supporting line, where the radius bound
+            // evaluates to 0/0: apply its limit as h -> 0, the distance to the segment itself
+            s.r2 = std::min(s.r2, closestPtDist*closestPtDist);
+        }
     }
 
 #ifdef FCPW_USE_ENOKI
@@ -46,16 +53,23 @@ struct RobinTriangleBound {
                                               const Vector3& planePt, const Vector3& planeNormal) {
         Vector3 planeClosestPt;
         float h = findClosestPointPlane<3>(planePt, planeNormal, s.c, planeClosestPt);
-        float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(planeNormal));
-        float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(planeNormal));
-        float maxCosForBound = std::sqrt(h*maxRobinCoeff);
-        if (maxCosForBound >= cosLowerBound) {
-            float cosPlane = maxCosForBound/SQRT_3;
-            float cosTriangle = std::clamp(cosPlane, cosLowerBound, cosUpperBound);
-            float cosTriangle2 = cosTriangle*cosTriangle;
-            float triangleRadius = h*h*maxRobinCoeff/(cosTriangle*(h*maxRobinCoeff - cosTriangle2));
-            float triangleRadius2 = triangleRadius*triangleRadius;
-            s.r2 = std::min(s.r2, triangleRadius2);
+        if (h > 0.0f) {
+            float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(planeNormal));
+            float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(planeNormal));
+            float maxCosForBound = std::sqrt(h*maxRobinCoeff);
+            if (maxCosForBound >= cosLowerBound) {
+                float cosPlane = maxCosForBound/SQRT_3;
+                float cosTriangle = std::clamp(cosPlane, cosLowerBound, cosUpperBound);
+                float cosTriangle2 = cosTriangle*cosTriangle;
+                float triangleRadius = h*h*maxRobinCoeff/(cosTriangle*(h*maxRobinCoeff - cosTriangle2));
+                float triangleRadius2 = triangleRadius*triangleRadius;
+                s.r2 = std::min(s.r2, triangleRadius2);
+            }
+
+        } else {
+            // the query point lies in the triangle's supporting plane, where the radius bound
+            // evaluates to 0/0: apply its limit as h -> 0, the distance to the triangle itself
+            s.r2 = std::min(s.r2, closestPtDist*closestPtDist);
         }
     }
 
@@ -159,7 +173,9 @@ void RobinLineSegmentBound::computeSquaredStarRadiusBound(const enokiVector2& sc
     FloatP<WIDTH> cosLineSegment = enoki::clamp(cosLine, cosLowerBound, cosUpperBound);
     FloatP<WIDTH> cosLineSegment2 = cosLineSegment*cosLineSegment;
     FloatP<WIDTH> lineSegmentRadius = (h*enoki::rcp(cosLineSegment))*enoki::exp(cosLineSegment2*enoki::rcp(hMaxRobinCoeff));
-    FloatP<WIDTH> lineSegmentRadius2 = lineSegmentRadius*lineSegmentRadius;
+    // for lanes where the query point lies on the segment's supporting line, the radius
+    // bound evaluates to 0/0: apply its limit as h -> 0, the distance to the segment itself
+    FloatP<WIDTH> lineSegmentRadius2 = enoki::select(h > 0.0f, lineSegmentRadius*lineSegmentRadius, closestPtDist2);
     enoki::masked(r2, activeRobin && r2 > closestPtDist2) = enoki::min(r2, lineSegmentRadius2);
 }
 
@@ -179,7 +195,9 @@ void RobinTriangleBound::computeSquaredStarRadiusBound(const enokiVector3& sc, F
     FloatP<WIDTH> cosTriangle = enoki::clamp(cosPlane, cosLowerBound, cosUpperBound);
     FloatP<WIDTH> cosTriangle2 = cosTriangle*cosTriangle;
     FloatP<WIDTH> triangleRadius = h*hMaxRobinCoeff*enoki::rcp(cosTriangle*(hMaxRobinCoeff - cosTriangle2));
-    FloatP<WIDTH> triangleRadius2 = triangleRadius*triangleRadius;
+    // for lanes where the query point lies in the triangle's supporting plane, the radius
+    // bound evaluates to 0/0: apply its limit as h -> 0, the distance to the triangle itself
+    FloatP<WIDTH> triangleRadius2 = enoki::select(h > 0.0f, triangleRadius*triangleRadius, closestPtDist2);
     enoki::masked(r2, activeRobin && maxCosForBound >= cosLowerBound && r2 > closestPtDist2) = enoki::min(r2, triangleRadius2);
 }
 

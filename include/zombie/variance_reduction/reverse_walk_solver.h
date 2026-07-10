@@ -9,6 +9,8 @@
 #pragma once
 
 #include <zombie/point_estimation/reverse_walk_on_stars.h>
+#include <zombie/variance_reduction/boundary_samplers.h>
+#include <zombie/variance_reduction/domain_samplers.h>
 #include "oneapi/tbb/spin_mutex.h"
 
 namespace zombie {

@@ -220,7 +220,7 @@ BoundingCone<DIM> computeBoundingConeForPrimitives(const std::vector<PrimitiveTy
         int referenceIndex = referenceOffset + p;
         const PrimitiveType *prim = primitives[referenceIndex];
 
-        cone.axis += prim->normal();
+        cone.axis += prim->normal(true);
         for (int k = 0; k < DIM; k++) {
             Vector<DIM> p = Vector<DIM>::Zero();
             if (DIM == 2) {
@@ -251,7 +251,7 @@ BoundingCone<DIM> computeBoundingConeForPrimitives(const std::vector<PrimitiveTy
                 int referenceIndex = referenceOffset + p;
                 const PrimitiveType *prim = primitives[referenceIndex];
 
-                Vector<DIM> nj = prim->normal();
+                Vector<DIM> nj = prim->normal(true);
                 float angle = std::acos(std::max(-1.0f, std::min(1.0f, cone.axis.dot(nj))));
                 cone.halfAngle = std::max(cone.halfAngle, angle);
 

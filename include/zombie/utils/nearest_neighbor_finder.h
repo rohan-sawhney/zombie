@@ -3,6 +3,7 @@
 #pragma once
 
 #include <functional>
+#include <iostream>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include "nanoflann.hpp"

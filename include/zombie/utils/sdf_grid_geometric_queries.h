@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <zombie/core/geometric_queries.h>
 #include <zombie/utils/dense_grid.h>
 
@@ -154,10 +155,14 @@ bool SdfGrid<DIM>::intersectZeroLevelSet(const Vector<DIM>& origin, const Vector
     Vector<DIM> invDir = dir.cwiseInverse();
     Vector<DIM> t0 = (bMin - origin).cwiseProduct(invDir);
     Vector<DIM> t1 = (bMax - origin).cwiseProduct(invDir);
-    Vector<DIM> tNear = t0.cwiseMin(t1);
-    Vector<DIM> tFar = t0.cwiseMax(t1);
-    float tEnter = std::max(0.0f, tNear.maxCoeff());
-    float tExit = std::min(tMax, tFar.minCoeff());
+    float tEnter = 0.0f;
+    float tExit = tMax;
+    for (int i = 0; i < DIM; i++) {
+        // use fmin/fmax to suppress NaNs arising from 0*inf when the ray
+        // starts exactly on a slab plane with a zero direction component
+        tEnter = std::fmax(tEnter, std::fmin(t0[i], t1[i]));
+        tExit = std::fmin(tExit, std::fmax(t0[i], t1[i]));
+    }
     if (tEnter > tExit) return false; // ray misses the grid entirely
 
     // sphere trace sdf field

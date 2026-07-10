@@ -11,6 +11,7 @@ using the following commands in the Python console:
 
 import argparse
 import json
+import sys
 import os
 import numpy as np
 import zombie
@@ -978,7 +979,7 @@ def run_solver_exterior(solver_type, solver_config, model_problem_config, solve_
 def run_demo():
     # parse arguments
     parser = argparse.ArgumentParser(description="zombie 2d demo application")
-    parser.add_argument("--config", type=str, help="path to the configuration file")
+    parser.add_argument("--config", type=str, required=True, help="path to the configuration file")
     args = parser.parse_args()
 
     try:
@@ -1051,13 +1052,13 @@ def run_demo():
         save_image_buffer(output_config, solution_file, grid_values, channels)
 
     except FileNotFoundError:
-        print("Configuration file not found")
+        sys.exit("Configuration file not found")
 
     except json.JSONDecodeError:
-        print("Invalid configuration file")
+        sys.exit("Invalid configuration file")
 
     except ValueError as error:
-        print(error)
+        sys.exit(str(error))
 
 if __name__ == "__main__":
     run_demo()

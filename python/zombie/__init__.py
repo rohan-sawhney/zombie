@@ -52,6 +52,19 @@ def _dim_factory(cpp_submodule, cpp_base_name):
     )
     return factory
 
+def _fixed_dim_factory(cpp_submodule, cpp_base_name, required_dim):
+    def factory(*args, dim, **kwargs):
+        if dim != required_dim:
+            raise ValueError(f"{cpp_base_name} is only supported for dim={required_dim}, got {dim}")
+        cls = getattr(cpp_submodule, _resolve_dim_name(cpp_base_name, dim))
+        return cls(*args, **kwargs)
+    factory.__name__ = factory.__qualname__ = cpp_base_name
+    factory.__doc__ = (
+        f"Creates a {cpp_base_name}, which is only supported for dim={required_dim}.\n"
+        f"Additional arguments are forwarded to the {cpp_base_name} constructor."
+    )
+    return factory
+
 def _dim_channels_func(cpp_submodule, cpp_base_name):
     def func(*args, dim, channels=1, **kwargs):
         _validate_dim(dim)
@@ -62,6 +75,21 @@ def _dim_channels_func(cpp_submodule, cpp_base_name):
     func.__doc__ = (
         f"Calls {cpp_base_name} for the given dim and channels.\n\n"
         f"dim must be 2 or 3. channels must be one of {{1, 4, 16, 64, 256}} (default: 1).\n"
+        f"Additional arguments are forwarded to {cpp_base_name}."
+    )
+    return func
+
+def _fixed_dim_channels_func(cpp_submodule, cpp_base_name, required_dim):
+    def func(*args, dim, channels=1, **kwargs):
+        if dim != required_dim:
+            raise ValueError(f"{cpp_base_name} is only supported for dim={required_dim}, got {dim}")
+        _validate_channels(channels)
+        fn = getattr(cpp_submodule, _resolve_dim_channels_name(cpp_base_name, dim, channels))
+        return fn(*args, **kwargs)
+    func.__name__ = func.__qualname__ = cpp_base_name
+    func.__doc__ = (
+        f"Calls {cpp_base_name}, which is only supported for dim={required_dim}.\n\n"
+        f"channels must be one of {{1, 4, 16, 64, 256}} (default: 1).\n"
         f"Additional arguments are forwarded to {cpp_base_name}."
     )
     return func
@@ -79,15 +107,15 @@ def _dim_func(cpp_submodule, cpp_base_name):
     )
     return func
 
-def _3d_func(cpp_submodule, cpp_base_name):
+def _fixed_dim_func(cpp_submodule, cpp_base_name, required_dim):
     def func(*args, dim, **kwargs):
-        if dim != 3:
-            raise ValueError(f"{cpp_base_name} is only supported for dim=3, got {dim}")
+        if dim != required_dim:
+            raise ValueError(f"{cpp_base_name} is only supported for dim={required_dim}, got {dim}")
         fn = getattr(cpp_submodule, _resolve_dim_name(cpp_base_name, dim))
         return fn(*args, **kwargs)
     func.__name__ = func.__qualname__ = cpp_base_name
     func.__doc__ = (
-        f"Calls {cpp_base_name}, which is only supported for dim=3.\n"
+        f"Calls {cpp_base_name}, which is only supported for dim={required_dim}.\n"
         f"Additional arguments are forwarded to {cpp_base_name}."
     )
     return func
@@ -147,8 +175,10 @@ try:
 
     # ==================== Solvers dispatchers ====================
 
+    # NOTE: WalkState is intentionally not dispatched: it binds no constructor, since
+    # instances are only created internally and passed to walk state callbacks; the
+    # suffixed classes (e.g. WalkState_float_2d) remain available for type checks
     for _name in [
-        "WalkState",
         "SampleStatistics",
         "SampleStatisticsList",
         "SamplePoint",
@@ -177,10 +207,10 @@ try:
     Samplers.BoundarySampler = _dim_channels_factory(Samplers, "BoundarySampler")
     Samplers.DomainSampler = _dim_channels_factory(Samplers, "DomainSampler")
 
-    Samplers.create_uniform_line_segment_boundary_sampler = _dim_channels_func(
-        Samplers, "create_uniform_line_segment_boundary_sampler")
-    Samplers.create_uniform_triangle_boundary_sampler = _dim_channels_func(
-        Samplers, "create_uniform_triangle_boundary_sampler")
+    Samplers.create_uniform_line_segment_boundary_sampler = _fixed_dim_channels_func(
+        Samplers, "create_uniform_line_segment_boundary_sampler", 2)
+    Samplers.create_uniform_triangle_boundary_sampler = _fixed_dim_channels_func(
+        Samplers, "create_uniform_triangle_boundary_sampler", 3)
     Samplers.create_uniform_domain_sampler = _dim_channels_func(
         Samplers, "create_uniform_domain_sampler")
 
@@ -216,10 +246,9 @@ try:
     ]:
         setattr(Utils, _name, _dim_func(Utils, _name))
 
-    # load_textured_boundary_mesh is only registered for 3D, since texturing applies
-    # to 3D triangle meshes and not 2D line-segment boundaries; a dedicated 3D-only
-    # dispatcher raises a clear error for a 2D call instead of an AttributeError
-    Utils.load_textured_boundary_mesh = _3d_func(Utils, "load_textured_boundary_mesh")
+    # load_textured_boundary_mesh is only registered for 3D, since texturing
+    # applies to 3D triangle meshes and not 2D line-segment boundaries
+    Utils.load_textured_boundary_mesh = _fixed_dim_func(Utils, "load_textured_boundary_mesh", 3)
 
     for _name in [
         "get_dense_grid_source_callback",

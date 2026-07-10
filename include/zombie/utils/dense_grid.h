@@ -5,12 +5,23 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <vector>
 #include "oneapi/tbb/parallel_for.h"
 
 namespace zombie {
+
+template <size_t DIM>
+using Vector = Eigen::Matrix<float, DIM, 1>;
+using Vector2 = Vector<2>;
+using Vector3 = Vector<3>;
+
+template <size_t DIM>
+using Vectori = Eigen::Matrix<int, DIM, 1>;
+using Vector2i = Vectori<2>;
+using Vector3i = Vectori<3>;
 
 template <typename T, size_t CHANNELS>
 using Array = Eigen::Array<T, CHANNELS, 1>;
@@ -29,7 +40,7 @@ public:
               const Vectori<DIM>& gridShape, const Vector<DIM>& gridMin,
               const Vector<DIM>& gridMax, bool enableInterpolation=false);
 
-    // setters
+    // setters for grid data
     void set(const Eigen::Matrix<T, Eigen::Dynamic, CHANNELS>& gridData,
              const Vectori<DIM>& gridShape);
     void set(std::function<Array<T, CHANNELS>(const Vector<DIM>&)> gridDataCallback,
@@ -37,7 +48,7 @@ public:
     void set(int index, const Array<T, CHANNELS>& value);
     void set(const Vectori<DIM>& index, const Array<T, CHANNELS>& value);
 
-    // getters
+    // getters for cell center position for given cell index
     Vector<DIM> get(int index) const;
     Vector<DIM> get(const Vectori<DIM>& index) const;
 

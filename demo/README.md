@@ -49,8 +49,7 @@ cd build
 ./demo/demo ../demo/model_problems/engine/rws.json
 ```
 
-The engine results are written to
-`demo/model_problems/engine/solutions`.
+The engine results are written to `demo/model_problems/engine/solutions`.
 
 ## Running the Python Demo
 

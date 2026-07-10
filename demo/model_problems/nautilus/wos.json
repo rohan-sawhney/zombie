@@ -1,6 +1,5 @@
 {
     "solverType": "wos",
-    "deviceBackend": "cuda",
     "solver": {
         "nWalks": 128,
         "maxWalkLength": 1024,
@@ -8,8 +7,7 @@
         "russianRouletteThreshold": 0.99,
         "splittingThreshold": 1.5,
         "ignoreAbsorbingBoundaryContribution": false,
-        "ignoreSourceContribution": false,
-        "disablePersistentThreads": false
+        "ignoreSourceContribution": false
     },
     "modelProblem": {
         "channels": 4,

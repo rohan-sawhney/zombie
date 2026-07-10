@@ -453,9 +453,9 @@ void enqueueNodes(const IntP<WIDTH>& child, const FloatP<WIDTH>& tMin, const Flo
 }
 
 template <>
-void enqueueNodes<4>(const IntP<4>& child, const FloatP<4>& tMin, const FloatP<4>& tMax,
-                     const MaskP<4>& hasSilhouettes, const MaskP<4>& mask, float minDist,
-                     float& tMaxMin, int& stackPtr, TraversalStack *subtree)
+inline void enqueueNodes<4>(const IntP<4>& child, const FloatP<4>& tMin, const FloatP<4>& tMax,
+                            const MaskP<4>& hasSilhouettes, const MaskP<4>& mask, float minDist,
+                            float& tMaxMin, int& stackPtr, TraversalStack *subtree)
 {
     // sort nodes
     int order[4] = {0, 1, 2, 3};

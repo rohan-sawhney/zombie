@@ -19,7 +19,7 @@
 #pragma once
 
 #include <zombie/core/geometry_helpers.h>
-#include <zombie/core/pde.h>
+#include <zombie/point_estimation/common.h>
 #include <vector>
 
 namespace zombie {

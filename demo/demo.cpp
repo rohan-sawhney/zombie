@@ -71,8 +71,8 @@ void runWalkOnSpheres(const json& solverConfig,
     const bool runSingleThreaded = getOptional<bool>(solverConfig, "runSingleThreaded", false);
 
     // initialize solver and estimate solution
-    ProgressBar pb(samplePts.size());
-    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
+    zombie::ProgressBar pb(samplePts.size());
+    std::function<void(int, int)> reportProgress = zombie::getReportProgressCallback(pb);
 
     zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
                                       0.0f, 0.0f, russianRouletteThreshold,
@@ -121,8 +121,8 @@ void runWalkOnStars(const json& solverConfig,
     const bool runSingleThreaded = getOptional<bool>(solverConfig, "runSingleThreaded", false);
 
     // initialize solver and estimate solution
-    ProgressBar pb(samplePts.size());
-    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
+    zombie::ProgressBar pb(samplePts.size());
+    std::function<void(int, int)> reportProgress = zombie::getReportProgressCallback(pb);
 
     zombie::WalkSettings walkSettings(epsilonShellForAbsorbingBoundary,
                                       epsilonShellForReflectingBoundary,
@@ -272,8 +272,8 @@ void runBoundaryValueCaching(const json& solverConfig,
 
     // solve using boundary value caching
     int totalWork = 2*(absorbingBoundaryCacheSize + reflectingBoundaryCacheSize) + domainCacheSize;
-    ProgressBar pb(totalWork);
-    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
+    zombie::ProgressBar pb(totalWork);
+    std::function<void(int, int)> reportProgress = zombie::getReportProgressCallback(pb);
 
     zombie::bvc::BoundaryValueCachingSolver<T, DIM> boundaryValueCaching(
         queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);
@@ -417,8 +417,8 @@ void runReverseWalkOnStars(const json& solverConfig,
 
     // solve using reverse walk on stars
     int totalWork = absorbingBoundarySampleCount + reflectingBoundarySampleCount + domainSampleCount;
-    ProgressBar pb(totalWork);
-    std::function<void(int, int)> reportProgress = getReportProgressCallback(pb);
+    zombie::ProgressBar pb(totalWork);
+    std::function<void(int, int)> reportProgress = zombie::getReportProgressCallback(pb);
 
     zombie::rws::ReverseWalkOnStarsSolver<T, DIM, zombie::NearestNeighborFinder<DIM>> reverseWalkOnStars(
         queries, absorbingBoundarySampler, reflectingBoundarySampler, domainSampler);

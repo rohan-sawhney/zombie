@@ -28,7 +28,7 @@ struct WalkSettings {
                  russianRouletteThreshold(0.0f),
                  splittingThreshold(std::numeric_limits<float>::max()),
                  maxWalkLength(maxWalkLength_),
-                 stepsBeforeApplyingTikhonov(maxWalkLength_),
+                 stepsBeforeApplyingTikhonov(0),
                  stepsBeforeUsingMaximalSpheres(maxWalkLength_),
                  solveDoubleSided(solveDoubleSided_),
                  useGradientControlVariates(true),

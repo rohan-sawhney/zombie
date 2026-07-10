@@ -2,33 +2,44 @@
 
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
+#include <functional>
+#include <iostream>
+#include <string>
 
-typedef std::chrono::high_resolution_clock Clock;
+namespace zombie {
 
 class ProgressBar {
 public:
+    // constructor
     ProgressBar(int totalWork, int displayWidth=80):
                 completedWork(0),
                 totalWork(totalWork),
-                displayWidth(displayWidth),
-                startTime(Clock::now()) {}
+                displayWidth(displayWidth) {
+        startTime = std::chrono::high_resolution_clock::now();
+    }
 
+    // reports progress
     void report(int newWorkCompleted, int threadId) {
         completedWork += newWorkCompleted;
         if (threadId == 0) draw();
     }
 
+    // finishes progress bar
     void finish() {
         completedWork = totalWork;
         draw();
         std::cout << std::endl;
-        int nSeconds = std::chrono::duration_cast<std::chrono::seconds>(Clock::now() - startTime).count();
+        auto endTime = std::chrono::high_resolution_clock::now();
+        int nSeconds = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
         std::cout << "Finished in " <<  nSeconds << " seconds." << std::endl;
     }
 
 protected:
+    // draws progress bar
     void draw() {
         float progress = std::min(completedWork / float(totalWork), 1.0f);
         int pos = displayWidth * progress;
@@ -38,6 +49,7 @@ protected:
         std::cout << std::flush;
     }
 
+    // members
     std::atomic_int completedWork;
     int totalWork;
     int displayWidth;
@@ -48,3 +60,5 @@ inline std::function<void(int, int)> getReportProgressCallback(ProgressBar& pb)
 {
     return [&pb](int i, int tid) -> void { pb.report(i, tid); };
 }
+
+} // zombie

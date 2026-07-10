@@ -1,9 +1,12 @@
-#include     "math.h"
+#pragma once
 
-#define ACC 40.0
-#define BIGNO 1.0e10
-#define BIGNI 1.0e-10
+#include "math.h"
 
+#define ZOMBIE_BESSEL_ACC 40.0
+#define ZOMBIE_BESSEL_BIGNO 1.0e10
+#define ZOMBIE_BESSEL_BIGNI 1.0e-10
+
+namespace zombie {
 namespace bessel {
 
 inline double bessj0( double x )
@@ -99,7 +102,7 @@ inline double bessj( int n, double x )
       ans=bj;
    } else {
       tox=2.0/ax;
-      m=2*((n+(int) sqrt(ACC*n))/2);
+      m=2*((n+(int) sqrt(ZOMBIE_BESSEL_ACC*n))/2);
       jsum=0;
       bjp=ans=sum=0.0;
       bj=1.0;
@@ -107,11 +110,11 @@ inline double bessj( int n, double x )
          bjm=j*tox*bj-bjp;
          bjp=bj;
          bj=bjm;
-         if (fabs(bj) > BIGNO) {
-            bj *= BIGNI;
-            bjp *= BIGNI;
-            ans *= BIGNI;
-            sum *= BIGNI;
+         if (fabs(bj) > ZOMBIE_BESSEL_BIGNO) {
+            bj *= ZOMBIE_BESSEL_BIGNI;
+            bjp *= ZOMBIE_BESSEL_BIGNI;
+            ans *= ZOMBIE_BESSEL_BIGNI;
+            sum *= ZOMBIE_BESSEL_BIGNI;
          }
          if (jsum) sum += bj;
          jsum=!jsum;
@@ -281,14 +284,14 @@ inline double bessi( int n, double x)
       tox=2.0/fabs(x);
       bip=ans=0.0;
       bi=1.0;
-      for (j=2*(n+(int) sqrt(ACC*n));j>0;j--) {
+      for (j=2*(n+(int) sqrt(ZOMBIE_BESSEL_ACC*n));j>0;j--) {
          bim=bip+j*tox*bi;
          bip=bi;
          bi=bim;
-         if (fabs(bi) > BIGNO) {
-            ans *= BIGNI;
-            bi *= BIGNI;
-            bip *= BIGNI;
+         if (fabs(bi) > ZOMBIE_BESSEL_BIGNO) {
+            ans *= ZOMBIE_BESSEL_BIGNI;
+            bi *= ZOMBIE_BESSEL_BIGNI;
+            bip *= ZOMBIE_BESSEL_BIGNI;
          }
          if (j == n) ans=bip;
       }
@@ -367,7 +370,8 @@ inline double bessk( int n, double x )
 }
 
 } // namespace bessel
+} // namespace zombie
 
-#undef ACC
-#undef BIGNO
-#undef BIGNI
+#undef ZOMBIE_BESSEL_ACC
+#undef ZOMBIE_BESSEL_BIGNO
+#undef ZOMBIE_BESSEL_BIGNI

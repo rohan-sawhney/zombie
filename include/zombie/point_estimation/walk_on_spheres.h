@@ -439,7 +439,7 @@ void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& pde,
         // initialize temporary variables for antithetic sampling
         float sourceRadius, sourcePdf, boundaryPdf;
         Vector<DIM> sourcePt, boundaryPt;
-        uint64_t seed = 0;
+        pcg32 savedRng;
 
         // compute control variates for the gradient estimate
         T boundaryGradientControlVariate(0.0f);
@@ -519,9 +519,11 @@ void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& pde,
             state.throughput *= greensFn->poissonKernel()/boundaryPdf;
             Vector<DIM> boundaryGradientDirection = greensFn->poissonKernelGradient(boundaryPt)/(boundaryPdf*state.throughput);
 
-            // reseed the rng for antithetic sampling
-            if (antitheticIter == 0) seed = samplePt.rng.state;
-            else samplePt.rng.seed(seed);
+            // save the rng so the antithetic walk replays the same random sequence;
+            // NOTE: copy the full generator (state and stream) rather than calling
+            // seed(), which would re-derive a different state and reset the stream
+            if (antitheticIter == 0) savedRng = samplePt.rng;
+            else samplePt.rng = savedRng;
 
             // add the state to the queue
             stateQueue.emplace(state);

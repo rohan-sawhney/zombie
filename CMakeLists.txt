@@ -67,6 +67,6 @@ endif()
 
 # build Python bindings
 if(ZOMBIE_BUILD_BINDINGS)
-    add_subdirectory(deps/nanobind)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/nanobind)
     add_subdirectory(python)
 endif()
