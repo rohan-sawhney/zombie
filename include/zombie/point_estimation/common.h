@@ -12,7 +12,7 @@
 #include <zombie/core/geometric_queries.h>
 #include <zombie/core/distributions.h>
 
-#define RADIUS_SHRINK_PERCENTAGE 0.99f
+#define ZOMBIE_RADIUS_SHRINK_PERCENTAGE 0.99f
 
 namespace zombie {
 

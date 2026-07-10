@@ -20,7 +20,7 @@ struct RobinLineSegmentBound {
         if (h > 0.0f) {
             float cosUpperBound = std::fabs((viewDirClosest/closestPtDist).dot(planeNormal));
             float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(planeNormal));
-            float cosLine = std::sqrt(h*maxRobinCoeff)/SQRT_2;
+            float cosLine = std::sqrt(h*maxRobinCoeff)/ZOMBIE_SQRT_2;
             float cosLineSegment = std::clamp(cosLine, cosLowerBound, cosUpperBound);
             float cosLineSegment2 = cosLineSegment*cosLineSegment;
             float lineSegmentRadius = (h/cosLineSegment)*std::exp(cosLineSegment2/(h*maxRobinCoeff));
@@ -58,7 +58,7 @@ struct RobinTriangleBound {
             float cosLowerBound = std::fabs((viewDirFarthest/farthestPtDist).dot(planeNormal));
             float maxCosForBound = std::sqrt(h*maxRobinCoeff);
             if (maxCosForBound >= cosLowerBound) {
-                float cosPlane = maxCosForBound/SQRT_3;
+                float cosPlane = maxCosForBound/ZOMBIE_SQRT_3;
                 float cosTriangle = std::clamp(cosPlane, cosLowerBound, cosUpperBound);
                 float cosTriangle2 = cosTriangle*cosTriangle;
                 float triangleRadius = h*h*maxRobinCoeff/(cosTriangle*(h*maxRobinCoeff - cosTriangle2));
@@ -169,7 +169,7 @@ void RobinLineSegmentBound::computeSquaredStarRadiusBound(const enokiVector2& sc
     FloatP<WIDTH> cosUpperBound = enoki::abs(enoki::dot(viewDirClosest*enoki::rcp(closestPtDist), planeNormal));
     FloatP<WIDTH> cosLowerBound = enoki::abs(enoki::dot(viewDirFarthest*enoki::rcp(farthestPtDist), planeNormal));
     FloatP<WIDTH> hMaxRobinCoeff = h*maxRobinCoeff;
-    FloatP<WIDTH> cosLine = enoki::sqrt(hMaxRobinCoeff)/SQRT_2;
+    FloatP<WIDTH> cosLine = enoki::sqrt(hMaxRobinCoeff)/ZOMBIE_SQRT_2;
     FloatP<WIDTH> cosLineSegment = enoki::clamp(cosLine, cosLowerBound, cosUpperBound);
     FloatP<WIDTH> cosLineSegment2 = cosLineSegment*cosLineSegment;
     FloatP<WIDTH> lineSegmentRadius = (h*enoki::rcp(cosLineSegment))*enoki::exp(cosLineSegment2*enoki::rcp(hMaxRobinCoeff));
@@ -191,7 +191,7 @@ void RobinTriangleBound::computeSquaredStarRadiusBound(const enokiVector3& sc, F
     FloatP<WIDTH> cosLowerBound = enoki::abs(enoki::dot(viewDirFarthest*enoki::rcp(farthestPtDist), planeNormal));
     FloatP<WIDTH> hMaxRobinCoeff = h*maxRobinCoeff;
     FloatP<WIDTH> maxCosForBound = enoki::sqrt(hMaxRobinCoeff);
-    FloatP<WIDTH> cosPlane = maxCosForBound/SQRT_3;
+    FloatP<WIDTH> cosPlane = maxCosForBound/ZOMBIE_SQRT_3;
     FloatP<WIDTH> cosTriangle = enoki::clamp(cosPlane, cosLowerBound, cosUpperBound);
     FloatP<WIDTH> cosTriangle2 = cosTriangle*cosTriangle;
     FloatP<WIDTH> triangleRadius = h*hMaxRobinCoeff*enoki::rcp(cosTriangle*(hMaxRobinCoeff - cosTriangle2));

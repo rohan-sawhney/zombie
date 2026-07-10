@@ -427,7 +427,7 @@ void WalkOnSpheres<T, DIM>::estimateSolutionAndGradient(const PDE<T, DIM>& pde,
     }
 
     // precompute the first sphere radius for all walks
-    samplePt.firstSphereRadius = RADIUS_SHRINK_PERCENTAGE*samplePt.distToAbsorbingBoundary;
+    samplePt.firstSphereRadius = ZOMBIE_RADIUS_SHRINK_PERCENTAGE*samplePt.distToAbsorbingBoundary;
 
     // generate stratified samples
     std::vector<float> stratifiedSamples;
