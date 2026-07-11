@@ -11,7 +11,7 @@ Monte Carlo methods. It is designed for problems where creating a volume mesh is
 awkward, expensive, or unnecessary: the solver queries the original boundary
 representation directly and estimates the solution only where values are needed.
 
-***NEW!*** For GPU implementations of these algorithms, see [WoSX](https://github.com/nv-tlabs/wosx),
+***NEW!*** For GPU implementations of these algorithms, check out [WoSX](https://github.com/nv-tlabs/wosx),
 which builds on Zombie with GPU support and additional 3D demo applications.
 
 Zombie is research software. The algorithms are still an active area of research,
