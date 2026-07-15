@@ -1,0 +1,10 @@
+name: CI                    # display name in the GitHub UI
+
+on: [push]                  # WHEN to run: every git push
+
+jobs:                       # WHAT to run
+  build:                    # a job id (your choice of name)
+    runs-on: ubuntu-latest  # which VM to rent
+    steps:                  # commands, executed top to bottom
+      - name: Say hello
+        run: echo "Hello from a GitHub VM"
