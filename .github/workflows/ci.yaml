@@ -15,7 +15,4 @@ jobs:                       # WHAT to run
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build code
-        run: cmake --build build -J
-      
-      - name: List
-        run: ls -la
+        run: cmake --build build -j
