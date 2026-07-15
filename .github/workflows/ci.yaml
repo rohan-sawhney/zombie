@@ -11,5 +11,8 @@ jobs:                       # WHAT to run
         with:
           submodules: recursive
       
-      - name: List
-        run: ls -la && ls deps/tbb
+      - name: Compile code
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build code
+        run: cmake --build build -J
