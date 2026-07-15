@@ -6,5 +6,10 @@ jobs:                       # WHAT to run
   build:                    # a job id (your choice of name)
     runs-on: ubuntu-latest  # which VM to rent
     steps:                  # commands, executed top to bottom
-      - name: Say hello
-        run: echo "Hello from a GitHub VM"
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: List
+        run: ls -la && ls deps/tbb
