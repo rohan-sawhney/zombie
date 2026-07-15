@@ -16,3 +16,6 @@ jobs:                       # WHAT to run
 
       - name: Build code
         run: cmake --build build -j
+
+      - name: List
+        run: ls -la
