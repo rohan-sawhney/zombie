@@ -2,23 +2,48 @@ name: CI                    # display name in the GitHub UI
 
 on: [push]                  # WHEN to run: every git push
 
-jobs:                       # WHAT to run
+jobs:
+  # ------------------------------------------------------------------------------------------------------
+  # C++ demo build - How a C++ developer uses the repo
+  # ------------------------------------------------------------------------------------------------------
   build:                   # a job id (your choice of name)
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] # VM to rent
-        python-version: ["3.9", "3.12"] # Python 3.9 is the base python vrsion used for the project and python 3.12 is the latest python version while testing the workflow 
-    
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] # VM to rent 
+  
     runs-on: ${{matrix.os}}
-    steps:                  # commands, executed top to bottom
+    steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
       
+      - name: Code compilation
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j --config Release
+  
+  # ------------------------------------------------------------------------------------------------------
+  # Python bindings - How a python develop uses the repo
+  # ------------------------------------------------------------------------------------------------------
+  python-bindings:
+    strategy:
+      fail-fast: false
+      matrix:
+          os: [ubuntu-22.04, ubuntu-latestm, macos-latest, windows-latest]
+          python-version: ["python3.9", "python3.12"]
+    runs-on: ${{matrix.os}}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
             python-version: ${{matrix.python-version}}
       
