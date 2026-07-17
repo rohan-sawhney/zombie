@@ -7,7 +7,8 @@ jobs:                       # WHAT to run
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] # which VM to rent
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] # VM to rent
+        python-version: ["3.9", "3.12"] # Python 3.9 is the base python vrsion used for the project and python 3.12 is the latest python version while testing the workflow 
     
     runs-on: ${{matrix.os}}
     steps:                  # commands, executed top to bottom
@@ -16,8 +17,13 @@ jobs:                       # WHAT to run
         with:
           submodules: recursive
       
-      - name: Compile code
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: ${{matrix.python-version}}
+      
+      - name: Install
+        run: pip install .
 
-      - name: Build code
-        run: cmake --build build -j
+      - name: Smoke test
+        run: python -c "import zombie; print(zombie.__file__)"
