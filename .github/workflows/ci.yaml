@@ -3,8 +3,13 @@ name: CI                    # display name in the GitHub UI
 on: [push]                  # WHEN to run: every git push
 
 jobs:                       # WHAT to run
-  build:                    # a job id (your choice of name)
-    runs-on: ubuntu-latest  # which VM to rent
+  build:                   # a job id (your choice of name)
+    startegy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] # which VM to rent
+    
+    runs-on: ${{matrix.os}}
     steps:                  # commands, executed top to bottom
       - name: Checkout code
         uses: actions/checkout@v4
@@ -16,6 +21,3 @@ jobs:                       # WHAT to run
 
       - name: Build code
         run: cmake --build build -j
-
-      - name: List
-        run: ls -la
