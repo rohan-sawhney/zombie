@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
           os: [ubuntu-22.04, ubuntu-latestm, macos-latest, windows-latest]
-          python-version: ["python3.9", "python3.12"]
+          python-version: ["3.9", "3.12"]
     runs-on: ${{matrix.os}}
 
     steps:
