@@ -4,7 +4,7 @@ on: [push]                  # WHEN to run: every git push
 
 jobs:                       # WHAT to run
   build:                   # a job id (your choice of name)
-    startegy:
+    strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] # which VM to rent
