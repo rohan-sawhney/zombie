@@ -52,3 +52,24 @@ jobs:
 
       - name: Smoke test
         run: python -c "import zombie; print(zombie.__file__)"
+
+  # ------------------------------------------------------------------------------------------------------
+  # Legacy build
+  # ------------------------------------------------------------------------------------------------------
+  legacy_build:
+    runs-on: ubuntu-latest
+    container: ubuntu:20.04
+    steps:
+      - name: Install toolchain
+        run: apt-get update && apt-get install -y build-essential cmake git
+      
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Code compilation
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j --config Release
