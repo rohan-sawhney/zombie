@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.27)
 project(zombie)
 
-# Find Threads package for ubuntu version (20.04). Ubuntu 20.04 comes with glibc-2.31.
-# pthreads is included in glibc only for glibc-2.34+/ubuntu:22.04+
-find_package(Threads)
-
 option(ZOMBIE_BUILD_DEMO "Build demo" ON)
 option(ZOMBIE_BUILD_BINDINGS "Build bindings" OFF)
 
@@ -60,7 +56,7 @@ list(APPEND ZOMBIE_DEPS_INCLUDES ${FCPW_ENOKI_INCLUDES})
 # build library
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include> ${ZOMBIE_DEPS_INCLUDES})
-target_link_libraries(${PROJECT_NAME} INTERFACE fcpw TBB::tbb Threads::Threads)
+target_link_libraries(${PROJECT_NAME} INTERFACE fcpw TBB::tbb)
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
 
 ################################################################################
