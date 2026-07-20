@@ -80,8 +80,8 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           test -s demo/model_problems/engine/solutions/wost.pfm && echo OK || echo MISSING
-          test -s demo/model_problems/engine/solutions/bvc.json && echo OK || echo MISSING
-          test -s demo/model_problems/engine/solutions/rws.json && echo OK || echo MISSING
+          test -s demo/model_problems/engine/solutions/bvc.pfm && echo OK || echo MISSING
+          test -s demo/model_problems/engine/solutions/rws.pfm && echo OK || echo MISSING
 
   # ------------------------------------------------------------------------------------------------------
   # Legacy build
@@ -118,8 +118,8 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           test -s demo/model_problems/engine/solutions/wost.pfm && echo OK || echo MISSING
-          test -s demo/model_problems/engine/solutions/bvc.json && echo OK || echo MISSING
-          test -s demo/model_problems/engine/solutions/rws.json && echo OK || echo MISSING
+          test -s demo/model_problems/engine/solutions/bvc.pfm && echo OK || echo MISSING
+          test -s demo/model_problems/engine/solutions/rws.pfm && echo OK || echo MISSING
 
       - name: Demo smoke tests (Python)
         if: runner.os != 'Windows'
@@ -133,5 +133,5 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           test -s demo/model_problems/engine/solutions/wost.pfm && echo OK || echo MISSING
-          test -s demo/model_problems/engine/solutions/bvc.json && echo OK || echo MISSING
-          test -s demo/model_problems/engine/solutions/rws.json && echo OK || echo MISSING
+          test -s demo/model_problems/engine/solutions/bvc.pfm && echo OK || echo MISSING
+          test -s demo/model_problems/engine/solutions/rws.pfm && echo OK || echo MISSING
