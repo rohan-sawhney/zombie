@@ -122,6 +122,17 @@ jobs:
           test -s demo/model_problems/engine/solutions/bvc.pfm && echo OK || echo MISSING
           test -s demo/model_problems/engine/solutions/rws.pfm && echo OK || echo MISSING
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+            python-version: ${{matrix.python-version}}
+      
+      - name: Install
+        run: pip install .
+
+      - name: Installation Smoke test
+        run: python -c "import zombie; print(zombie.__file__)"
+
       - name: Demo smoke tests (Python)
         if: runner.os != 'Windows'
         run: |
