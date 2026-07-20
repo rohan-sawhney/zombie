@@ -71,6 +71,7 @@ jobs:
       - name: Demo smoke tests (Python)
         if: runner.os != 'Windows'
         run: |
+          pip install matplotlib
           rm -r demo/model_problems/engine/solutions/*
           python demo/demo.py --config=demo/model_problems/engine/wost.json
           python demo/demo.py --config=demo/model_problems/engine/bvc.json
@@ -124,6 +125,7 @@ jobs:
       - name: Demo smoke tests (Python)
         if: runner.os != 'Windows'
         run: |
+          pip install matplotlib
           rm -r demo/model_problems/engine/solutions/*
           python demo/demo.py --config=demo/model_problems/engine/wost.json
           python demo/demo.py --config=demo/model_problems/engine/bvc.json
