@@ -1,11 +1,11 @@
 name: CI
 
-on: [push]
-  # push:
-  #   branches: [main]
-  #   paths-ignore: ['**.md','demo/imgs/*','imgs/*']
-  # pull_request:
-  #   paths-ignore: ['**.md','demo/imgs/*','imgs/*']
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md','demo/imgs/*','imgs/*']
+  pull_request:
+    paths-ignore: ['**.md','demo/imgs/*','imgs/*']
 
 jobs:
   # ------------------------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ jobs:
         with:
           submodules: recursive
       
-      - name: Code compilation
+      - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
