@@ -21,3 +21,13 @@ target_link_libraries(demo zombie)
 if(MSVC)
     target_compile_options(demo PRIVATE /bigobj)
 endif()
+
+# Copy runtime DLLs next to demo.exe on Windows so it can find TBB at runtime
+# (CMake ≥ 3.21 required for TARGET_RUNTIME_DLLS)
+if(WIN32)
+    add_custom_command(TARGET demo POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:demo> $<TARGET_FILE_DIR:demo>
+        COMMAND_EXPAND_LISTS
+    )
+endif()
