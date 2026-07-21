@@ -1,11 +1,11 @@
 name: CI
 
-on:
-  push:
-    branches: [main]
-    paths-ignore: ['**.md','demo/imgs/*','imgs/*']
-  pull_request:
-    paths-ignore: ['**.md','demo/imgs/*','imgs/*']
+on: [push]
+  # push:
+  #   branches: [main]
+  #   paths-ignore: ['**.md','demo/imgs/*','imgs/*']
+  # pull_request:
+  #   paths-ignore: ['**.md','demo/imgs/*','imgs/*']
 
 jobs:
   # ------------------------------------------------------------------------------------------------------
