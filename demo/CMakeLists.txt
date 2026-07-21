@@ -25,9 +25,15 @@ endif()
 # Copy runtime DLLs next to demo.exe on Windows so it can find TBB at runtime
 # (CMake ≥ 3.21 required for TARGET_RUNTIME_DLLS)
 if(WIN32)
-    add_custom_command(TARGET demo POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:demo> $<TARGET_FILE_DIR:demo>
-        COMMAND_EXPAND_LISTS
-    )
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.21")
+        add_custom_command(TARGET demo POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_RUNTIME_DLLS:demo> $<TARGET_FILE_DIR:demo>
+            COMMAND_EXPAND_LISTS
+        )
+    else()
+        message(WARNING
+            "Windows demo requires CMake ≥ 3.21 for automatic DLL staging; "
+            "on older CMake, tbb12.dll must be copied manually next to demo.exe.")
+    endif()
 endif()

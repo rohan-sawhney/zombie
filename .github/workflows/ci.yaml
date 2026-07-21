@@ -29,47 +29,25 @@ jobs:
 
       - name: Build
         run: cmake --build build -j --config Release
-
-      - name: Demo smoke tests (C++, Unix)
-        if: runner.os != 'Windows'
+      
+      - name: Demo smoke tests (C++)
+        shell: bash
         working-directory: build
         run: |
           mkdir -p ../demo/model_problems/engine/solutions
           rm -f ../demo/model_problems/engine/solutions/*.pfm
           rm -f ../demo/model_problems/engine/solutions/*.png
-          ./demo/demo ../demo/model_problems/engine/wost.json
-          ./demo/demo ../demo/model_problems/engine/bvc.json
-          ./demo/demo ../demo/model_problems/engine/rws.json
-      
-      - name: Windows debug 1 — mkdir
-        if: runner.os == 'Windows'
-        shell: bash
-        working-directory: build
-        run: mkdir -p ../demo/model_problems/engine/solutions
-
-      - name: Windows debug 2 — rm pfm
-        if: runner.os == 'Windows'
-        shell: bash
-        working-directory: build
-        run: rm -f ../demo/model_problems/engine/solutions/*.pfm
-
-      - name: Windows debug 3 — rm png
-        if: runner.os == 'Windows'
-        shell: bash
-        working-directory: build
-        run: rm -f ../demo/model_problems/engine/solutions/*.png
-
-      - name: Windows debug 4 — probe demo
-        if: runner.os == 'Windows'
-        shell: bash
-        working-directory: build
-        run: |
-          ls -la demo/Release/
-          ldd demo/Release/demo.exe 2>&1 || true
-          ./demo/Release/demo.exe ../demo/model_problems/engine/wost.json
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            DEMO=./demo/Release/demo.exe
+          else
+            DEMO=./demo/demo
+          fi
+          $DEMO ../demo/model_problems/engine/wost.json
+          $DEMO ../demo/model_problems/engine/bvc.json
+          $DEMO ../demo/model_problems/engine/rws.json
       
       - name: Check demo outputs (C++)
-        if: runner.os != 'Windows'
+        shell: bash
         run: |
           test -s demo/model_problems/engine/solutions/wost.pfm
           test -s demo/model_problems/engine/solutions/bvc.pfm
@@ -115,7 +93,7 @@ jobs:
           python demo/demo.py --config=demo/model_problems/engine/rws.json
       
       - name: Check demo outputs (Python)
-        if: runner.os != 'Windows'
+        shell: bash
         run: |
           test -s demo/model_problems/engine/solutions/wost.png
           test -s demo/model_problems/engine/solutions/bvc.png
