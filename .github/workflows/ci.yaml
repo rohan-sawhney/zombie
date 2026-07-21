@@ -40,6 +40,11 @@ jobs:
           ./demo/demo ../demo/model_problems/engine/wost.json
           ./demo/demo ../demo/model_problems/engine/bvc.json
           ./demo/demo ../demo/model_problems/engine/rws.json
+      
+      - name: DEBUG — locate demo.exe
+        if: runner.os == 'Windows'
+        shell: bash
+        run: find build -name 'demo.exe' -o -name 'demo'
 
       - name: Demo smoke tests (C++, Windows)
         if: runner.os == 'Windows'
