@@ -34,6 +34,9 @@ jobs:
         if: runner.os != 'Windows'
         working-directory: build
         run: |
+          mkdir -p ../demo/model_problems/engine/solutions
+          rm -f ../demo/model_problems/engine/solutions/*.pfm
+          rm -f ../demo/model_problems/engine/solutions/*.png
           ./demo/demo ../demo/model_problems/engine/wost.json
           ./demo/demo ../demo/model_problems/engine/bvc.json
           ./demo/demo ../demo/model_problems/engine/rws.json
@@ -73,43 +76,20 @@ jobs:
       - name: Installation Smoke test
         run: python -c "import zombie; print(zombie.__file__)"
 
-      - name: DEBUG — solutions folder at start
-        if: runner.os != 'Windows'
-        run: |
-          echo "== solutions/ at job start =="
-          ls -la demo/model_problems/engine/solutions/ 2>&1 || echo "(folder does not exist)"
-
       - name: Demo smoke tests (Python)
         if: runner.os != 'Windows'
         run: |
           pip install matplotlib
           mkdir -p demo/model_problems/engine/solutions
-          echo "== after mkdir =="
-          ls -la demo/model_problems/engine/solutions/
           rm -f demo/model_problems/engine/solutions/*.pfm
           rm -f demo/model_problems/engine/solutions/*.png
-          echo "== after cleanup =="
-          ls -la demo/model_problems/engine/solutions/
           python demo/demo.py --config=demo/model_problems/engine/wost.json
           python demo/demo.py --config=demo/model_problems/engine/bvc.json
           python demo/demo.py --config=demo/model_problems/engine/rws.json
-          echo "== after all three demos =="
-          ls -la demo/model_problems/engine/solutions/
-
-      # - name: Demo smoke tests (Python)
-      #   if: runner.os != 'Windows'
-      #   run: |
-      #     pip install matplotlib
-      #     mkdir -p demo/model_problems/engine/solutions
-      #     rm -f demo/model_problems/engine/solutions/*.pfm
-      #     rm -f demo/model_problems/engine/solutions/*.png
-      #     python demo/demo.py --config=demo/model_problems/engine/wost.json
-      #     python demo/demo.py --config=demo/model_problems/engine/bvc.json
-      #     python demo/demo.py --config=demo/model_problems/engine/rws.json
       
       - name: Check demo outputs (Python)
         if: runner.os != 'Windows'
         run: |
-          test -s demo/model_problems/engine/solutions/wost.pfm
-          test -s demo/model_problems/engine/solutions/bvc.pfm
-          test -s demo/model_problems/engine/solutions/rws.pfm
+          test -s demo/model_problems/engine/solutions/wost.png
+          test -s demo/model_problems/engine/solutions/bvc.png
+          test -s demo/model_problems/engine/solutions/rws.png
