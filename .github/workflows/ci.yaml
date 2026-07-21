@@ -30,7 +30,7 @@ jobs:
       - name: Build
         run: cmake --build build -j --config Release
 
-      - name: Demo smoke tests (C++)
+      - name: Demo smoke tests (C++, Unix)
         if: runner.os != 'Windows'
         working-directory: build
         run: |
@@ -40,6 +40,18 @@ jobs:
           ./demo/demo ../demo/model_problems/engine/wost.json
           ./demo/demo ../demo/model_problems/engine/bvc.json
           ./demo/demo ../demo/model_problems/engine/rws.json
+
+      - name: Demo smoke tests (C++, Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        working-directory: build
+        run: |
+          mkdir -p ../demo/model_problems/engine/solutions
+          rm -f ../demo/model_problems/engine/solutions/*.pfm
+          rm -f ../demo/model_problems/engine/solutions/*.png
+          ./demo/Release/demo.exe ../demo/model_problems/engine/wost.json
+          ./demo/Release/demo.exe ../demo/model_problems/engine/bvc.json
+          ./demo/Release/demo.exe ../demo/model_problems/engine/rws.json
       
       - name: Check demo outputs (C++)
         if: runner.os != 'Windows'
@@ -77,7 +89,7 @@ jobs:
         run: python -c "import zombie; print(zombie.__file__)"
 
       - name: Demo smoke tests (Python)
-        if: runner.os != 'Windows'
+        shell: bash
         run: |
           pip install matplotlib
           mkdir -p demo/model_problems/engine/solutions
