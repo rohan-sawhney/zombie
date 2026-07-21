@@ -1,16 +1,21 @@
-name: CI                    # display name in the GitHub UI
+name: CI
 
-on: [push]                  # WHEN to run: every git push
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md','demo/imgs/*','imgs/*']
+  pull_request:
+    paths-ignore: ['**.md','demo/imgs/*','imgs/*']
 
 jobs:
   # ------------------------------------------------------------------------------------------------------
   # C++ demo build - How a C++ developer uses the repo
   # ------------------------------------------------------------------------------------------------------
-  build:                   # a job id (your choice of name)
+  build:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] # VM to rent 
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] 
   
     runs-on: ${{matrix.os}}
     steps:
@@ -18,12 +23,6 @@ jobs:
         uses: actions/checkout@v5
         with:
           submodules: recursive
-
-      - name: Cache build tree
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: build-${{ runner.os }}-${{ hashFiles('.gitmodules', '.git/modules/**/HEAD') }}
       
       - name: Code compilation
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -47,13 +46,13 @@ jobs:
           test -s demo/model_problems/engine/solutions/rws.pfm
 
   # ------------------------------------------------------------------------------------------------------
-  # Python bindings - How a python develop uses the repo
+  # Python bindings - How a python developer uses the repo
   # ------------------------------------------------------------------------------------------------------
   python-bindings:
     strategy:
       fail-fast: false
       matrix:
-          os: [ubuntu-22.04, ubuntu-latest, macos-latest, windows-latest]
+          os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest]
           python-version: ["3.9", "3.12"]
     runs-on: ${{matrix.os}}
 
@@ -74,14 +73,39 @@ jobs:
       - name: Installation Smoke test
         run: python -c "import zombie; print(zombie.__file__)"
 
+      - name: DEBUG — solutions folder at start
+        if: runner.os != 'Windows'
+        run: |
+          echo "== solutions/ at job start =="
+          ls -la demo/model_problems/engine/solutions/ 2>&1 || echo "(folder does not exist)"
+
       - name: Demo smoke tests (Python)
         if: runner.os != 'Windows'
         run: |
           pip install matplotlib
-          rm -r demo/model_problems/engine/solutions/*
+          mkdir -p demo/model_problems/engine/solutions
+          echo "== after mkdir =="
+          ls -la demo/model_problems/engine/solutions/
+          rm -f demo/model_problems/engine/solutions/*.pfm
+          rm -f demo/model_problems/engine/solutions/*.png
+          echo "== after cleanup =="
+          ls -la demo/model_problems/engine/solutions/
           python demo/demo.py --config=demo/model_problems/engine/wost.json
           python demo/demo.py --config=demo/model_problems/engine/bvc.json
           python demo/demo.py --config=demo/model_problems/engine/rws.json
+          echo "== after all three demos =="
+          ls -la demo/model_problems/engine/solutions/
+
+      # - name: Demo smoke tests (Python)
+      #   if: runner.os != 'Windows'
+      #   run: |
+      #     pip install matplotlib
+      #     mkdir -p demo/model_problems/engine/solutions
+      #     rm -f demo/model_problems/engine/solutions/*.pfm
+      #     rm -f demo/model_problems/engine/solutions/*.png
+      #     python demo/demo.py --config=demo/model_problems/engine/wost.json
+      #     python demo/demo.py --config=demo/model_problems/engine/bvc.json
+      #     python demo/demo.py --config=demo/model_problems/engine/rws.json
       
       - name: Check demo outputs (Python)
         if: runner.os != 'Windows'
