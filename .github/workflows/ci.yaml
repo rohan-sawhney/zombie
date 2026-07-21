@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest] 
+        os: [ubuntu-latest, ubuntu-24.04-arm, ubuntu-22.04, ubuntu-22.04-arm, macos-latest, macos-13, windows-latest] 
   
     runs-on: ${{matrix.os}}
     steps:
@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest]
+          os: [ubuntu-latest, ubuntu-24.04-arm, ubuntu-22.04, ubuntu-22.04-arm, macos-latest, macos-13, windows-latest]
           python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ${{matrix.os}}
 
