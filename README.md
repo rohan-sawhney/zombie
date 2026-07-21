@@ -4,7 +4,7 @@
 <h1 align="center"><em></em></h1>
 
 <p align="center">
-<a href="https://github.com/rohan-sawhney/zombie/actions/workflows/ci.yaml"><img src="https://github.com/Aditya-tumcse/zombie/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
+<a href="https://github.com/rohan-sawhney/zombie/actions/workflows/ci.yaml"><img src="https://github.com/rohan-sawhney/zombie/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
 <img src="https://img.shields.io/badge/OS-Linux%20%7C%20macOS%20%7C%20Windows-blue" alt="OS">
 <img src="https://img.shields.io/badge/arch-x86__64%20%7C%20ARM64-blue" alt="Architecture">
 <img src="https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue" alt="Python versions">
