@@ -60,6 +60,12 @@ robinCoeff({}),
 hasReflectingBoundaryConditions({})
 {
     hasNonZeroRobinCoeff = [this](const Vector<DIM>& x) {
+        // the robin coefficient is zero everywhere for pure Neumann conditions,
+        // so skip evaluating it
+        if (this->areRobinConditionsPureNeumann) {
+            return false;
+        }
+
         if (this->robinCoeff) {
             Vector<DIM> n = Vector<DIM>::Zero();
             n(0) = 1.0f;
