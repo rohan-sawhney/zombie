@@ -238,7 +238,7 @@ void WalkOnStars<T, DIM>::computeReflectingBoundaryContribution(const PDE<T, DIM
                 !queries.intersectsWithReflectingBoundary(state.currentPt, boundarySample.pt,
                                                           state.currentNormal, boundarySampleNormal,
                                                           state.onReflectingBoundary, true)) {
-                float r = std::max(greensFn->rClamp, (boundarySample.pt - state.currentPt).norm());
+                float r = std::max(greensFn->rClamp, distToSample);
                 float G = greensFn->evaluate(r);
                 bool returnBoundaryNormalAlignedValue = walkSettings.solveDoubleSided &&
                                                         estimateBoundaryNormalAligned;
