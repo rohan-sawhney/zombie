@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md','demo/imgs/*','imgs/*']
+  pull_request:
+    paths-ignore: ['**.md','demo/imgs/*','imgs/*']
+
+jobs:
+  # ------------------------------------------------------------------------------------------------------
+  # C++ demo build - How a C++ developer uses the repo
+  # ------------------------------------------------------------------------------------------------------
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, ubuntu-22.04, ubuntu-22.04-arm, macos-latest, windows-latest] 
+  
+    runs-on: ${{matrix.os}}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j --config Release
+      
+      - name: Demo smoke tests (C++)
+        shell: bash
+        working-directory: build
+        run: |
+          mkdir -p ../demo/model_problems/engine/solutions
+          rm -f ../demo/model_problems/engine/solutions/*.pfm
+          rm -f ../demo/model_problems/engine/solutions/*.png
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            DEMO=./demo/Release/demo.exe
+          else
+            DEMO=./demo/demo
+          fi
+          $DEMO ../demo/model_problems/engine/wost.json
+          $DEMO ../demo/model_problems/engine/bvc.json
+          $DEMO ../demo/model_problems/engine/rws.json
+      
+      - name: Check demo outputs (C++)
+        shell: bash
+        run: |
+          test -s demo/model_problems/engine/solutions/wost.pfm
+          test -s demo/model_problems/engine/solutions/bvc.pfm
+          test -s demo/model_problems/engine/solutions/rws.pfm
+
+  # ------------------------------------------------------------------------------------------------------
+  # Python bindings - How a python developer uses the repo
+  # ------------------------------------------------------------------------------------------------------
+  python-bindings:
+    strategy:
+      fail-fast: false
+      matrix:
+          os: [ubuntu-latest, ubuntu-24.04-arm, ubuntu-22.04, ubuntu-22.04-arm, macos-latest, windows-latest]
+          python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    runs-on: ${{matrix.os}}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+            python-version: ${{matrix.python-version}}
+      
+      - name: Install
+        run: pip install .
+
+      - name: Installation Smoke test
+        run: python -c "import zombie; print(zombie.__file__)"
+
+      - name: Demo smoke tests (Python)
+        shell: bash
+        run: |
+          pip install matplotlib
+          mkdir -p demo/model_problems/engine/solutions
+          rm -f demo/model_problems/engine/solutions/*.pfm
+          rm -f demo/model_problems/engine/solutions/*.png
+          python demo/demo.py --config=demo/model_problems/engine/wost.json
+          python demo/demo.py --config=demo/model_problems/engine/bvc.json
+          python demo/demo.py --config=demo/model_problems/engine/rws.json
+      
+      - name: Check demo outputs (Python)
+        shell: bash
+        run: |
+          test -s demo/model_problems/engine/solutions/wost.png
+          test -s demo/model_problems/engine/solutions/bvc.png
+          test -s demo/model_problems/engine/solutions/rws.png

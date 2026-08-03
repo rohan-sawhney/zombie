@@ -3,6 +3,13 @@
 </p>
 <h1 align="center"><em></em></h1>
 
+<p align="center">
+<a href="https://github.com/rohan-sawhney/zombie/actions/workflows/ci.yaml"><img src="https://github.com/rohan-sawhney/zombie/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
+<img src="https://img.shields.io/badge/OS-Linux%20%7C%20macOS%20%7C%20Windows-blue" alt="OS">
+<img src="https://img.shields.io/badge/arch-x86__64%20%7C%20ARM64-blue" alt="Architecture">
+<img src="https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue" alt="Python versions">
+</p>
+
 <img src="imgs/WoS.png" width="270" height="200" align="right">
 
 Zombie is a C++17 header-only library with Python bindings for solving partial
@@ -68,6 +75,8 @@ for Dirichlet conditions, [Walk on Stars for Neumann](https://www.cs.cmu.edu/~km
 for noise reduction.
 
 ## Compiling from source on Mac & Linux
+
+Requires CMake ≥ 3.21 and a C++17 compiler. Tested on Linux, macOS, and Windows.
 
 ```
 git clone https://github.com/rohan-sawhney/zombie.git
