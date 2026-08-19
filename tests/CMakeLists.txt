@@ -1,0 +1,3 @@
+add_executable(physical_first_hit_tests physical_first_hit_tests.cpp)
+target_link_libraries(physical_first_hit_tests zombie)
+add_test(NAME physical_first_hit_tests COMMAND physical_first_hit_tests)

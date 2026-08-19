@@ -3,6 +3,7 @@ project(zombie)
 
 option(ZOMBIE_BUILD_DEMO "Build demo" ON)
 option(ZOMBIE_BUILD_BINDINGS "Build bindings" OFF)
+option(ZOMBIE_BUILD_TESTS "Build tests" OFF)
 
 ################################################################################
 if(ZOMBIE_BUILD_BINDINGS)
@@ -69,4 +70,9 @@ endif()
 if(ZOMBIE_BUILD_BINDINGS)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/nanobind)
     add_subdirectory(python)
+endif()
+
+if(ZOMBIE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()

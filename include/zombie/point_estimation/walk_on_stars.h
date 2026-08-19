@@ -424,15 +424,11 @@ WalkCompletionCode WalkOnStars<T, DIM>::walk(const PDE<T, DIM>& pde,
 
         // check if there is no intersection with the reflecting boundary
         if (!intersectedReflectingBoundary) {
-            // apply small offset to the current pt for numerical robustness if it on
-            // the reflecting boundary---the same offset is applied during ray intersections
-            Vector<DIM> currentPt = state.onReflectingBoundary ?
-                                    queries.offsetPointAlongDirection(state.currentPt, -state.currentNormal) :
-                                    state.currentPt;
-
-            // set intersectionPt to a point on the spherical arc of the ball
-            intersectionPt.pt = currentPt + starRadius*direction;
-            intersectionPt.dist = starRadius;
+            // set intersectionPt to a point on the spherical arc centered at the
+            // authoritative physical walk state
+            setBallBoundaryIntersection<DIM>(
+                state.currentPt, direction, starRadius, intersectionPt
+            );
         }
 
         // compute the contribution from the reflecting boundary

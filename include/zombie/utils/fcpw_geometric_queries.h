@@ -143,11 +143,13 @@ void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<D
 template <size_t DIM>
 void populateGeometricQueriesForNeumannBoundary(FcpwNeumannBoundaryHandler<DIM>& neumannBoundaryHandler,
                                                 std::function<float(float)> branchTraversalWeight,
-                                                GeometricQueries<DIM>& geometricQueries);
+                                                GeometricQueries<DIM>& geometricQueries,
+                                                float reflectingBoundaryRayTMin=ZOMBIE_RAY_OFFSET);
 template <size_t DIM>
 void populateGeometricQueriesForRobinBoundary(FcpwRobinBoundaryHandler<DIM>& robinBoundaryHandler,
                                               std::function<float(float)> branchTraversalWeight,
-                                              GeometricQueries<DIM>& geometricQueries);
+                                              GeometricQueries<DIM>& geometricQueries,
+                                              float reflectingBoundaryRayTMin=ZOMBIE_RAY_OFFSET);
 
 inline std::function<float(float)> getBranchTraversalWeightCallback(float minRadialDist=1e-2f);
 
@@ -1143,7 +1145,8 @@ void populateGeometricQueriesForDirichletBoundary(FcpwDirichletBoundaryHandler<D
 template <size_t DIM, typename ReflectingBoundaryAggregateType>
 void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggregateType *reflectingBoundaryAggregate,
                                                    std::function<float(float)> branchTraversalWeight,
-                                                   GeometricQueries<DIM>& geometricQueries)
+                                                   GeometricQueries<DIM>& geometricQueries,
+                                                   float reflectingBoundaryRayTMin)
 {
     if (reflectingBoundaryAggregate) {
         geometricQueries.hasNonEmptyReflectingBoundary = true;
@@ -1175,40 +1178,39 @@ void populateGeometricQueriesForReflectingBoundary(const ReflectingBoundaryAggre
 
             return true;
         };
-        geometricQueries.intersectReflectingBoundary = [&geometricQueries, reflectingBoundaryAggregate](
-                                                       const Vector<DIM>& origin, const Vector<DIM>& normal,
+        geometricQueries.intersectReflectingBoundary = [reflectingBoundaryAggregate, reflectingBoundaryRayTMin](
+                                                       const Vector<DIM>& origin, const Vector<DIM>& /*normal*/,
                                                        const Vector<DIM>& dir, float tMax, bool onReflectingBoundary,
                                                        IntersectionPoint<DIM>& intersectionPt) -> bool {
-            Vector<DIM> queryOrigin = onReflectingBoundary ?
-                                      geometricQueries.offsetPointAlongDirection(origin, -normal) :
-                                      origin;
-            Vector<DIM> queryDir = dir;
-            fcpw::Ray<DIM> queryRay(queryOrigin, queryDir, tMax);
+            float queryTMin = onReflectingBoundary ? reflectingBoundaryRayTMin : 0.0f;
+            fcpw::Ray<DIM> queryRay(origin, dir, tMax, queryTMin);
             fcpw::Interaction<DIM> queryInteraction;
             bool hit = reflectingBoundaryAggregate->intersect(queryRay, queryInteraction, false);
             if (!hit) return false;
 
-            intersectionPt.pt = queryInteraction.p;
+            intersectionPt.pt = onReflectingBoundary ?
+                                origin + queryInteraction.d*dir :
+                                queryInteraction.p;
             intersectionPt.normal = queryInteraction.n;
             intersectionPt.dist = queryInteraction.d;
 
             return true;
         };
-        geometricQueries.intersectReflectingBoundaryAllHits = [&geometricQueries, reflectingBoundaryAggregate](
-                                                              const Vector<DIM>& origin, const Vector<DIM>& normal,
+        geometricQueries.intersectReflectingBoundaryAllHits = [reflectingBoundaryAggregate, reflectingBoundaryRayTMin](
+                                                              const Vector<DIM>& origin, const Vector<DIM>& /*normal*/,
                                                               const Vector<DIM>& dir, float tMax, bool onReflectingBoundary,
                                                               std::vector<IntersectionPoint<DIM>>& intersectionPts) -> int {
-            Vector<DIM> queryOrigin = onReflectingBoundary ?
-                                      geometricQueries.offsetPointAlongDirection(origin, -normal) :
-                                      origin;
-            Vector<DIM> queryDir = dir;
-            fcpw::Ray<DIM> queryRay(queryOrigin, queryDir, tMax);
+            float queryTMin = onReflectingBoundary ? reflectingBoundaryRayTMin : 0.0f;
+            fcpw::Ray<DIM> queryRay(origin, dir, tMax, queryTMin);
             std::vector<fcpw::Interaction<DIM>> queryInteractions;
             int nIntersections = reflectingBoundaryAggregate->intersect(queryRay, queryInteractions, false, true);
 
             intersectionPts.clear();
             for (int i = 0; i < nIntersections; i++) {
-                intersectionPts.emplace_back(IntersectionPoint<DIM>(queryInteractions[i].p,
+                Vector<DIM> hitPt = onReflectingBoundary ?
+                                    origin + queryInteractions[i].d*dir :
+                                    queryInteractions[i].p;
+                intersectionPts.emplace_back(IntersectionPoint<DIM>(hitPt,
                                                                     queryInteractions[i].n,
                                                                     queryInteractions[i].d));
             }
@@ -1293,12 +1295,14 @@ void populateStarRadiusQueryForRobinBoundary(const RobinBoundaryAggregateType *r
 template <size_t DIM>
 void populateGeometricQueriesForNeumannBoundary(FcpwNeumannBoundaryHandler<DIM>& neumannBoundaryHandler,
                                                 std::function<float(float)> branchTraversalWeight,
-                                                GeometricQueries<DIM>& geometricQueries)
+                                                GeometricQueries<DIM>& geometricQueries,
+                                                float reflectingBoundaryRayTMin)
 {
     fcpw::Aggregate<DIM> *reflectingBoundaryAggregate =
         neumannBoundaryHandler.scene.getSceneData()->aggregate.get();
     populateGeometricQueriesForReflectingBoundary<DIM, fcpw::Aggregate<DIM>>(
-        reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
+        reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries,
+        reflectingBoundaryRayTMin);
     populateStarRadiusQueryForNeumannBoundary<DIM, fcpw::Aggregate<DIM>>(
         reflectingBoundaryAggregate, geometricQueries);
 }
@@ -1306,7 +1310,8 @@ void populateGeometricQueriesForNeumannBoundary(FcpwNeumannBoundaryHandler<DIM>&
 template <size_t DIM>
 void populateGeometricQueriesForRobinBoundary(FcpwRobinBoundaryHandler<DIM>& robinBoundaryHandler,
                                               std::function<float(float)> branchTraversalWeight,
-                                              GeometricQueries<DIM>& geometricQueries)
+                                              GeometricQueries<DIM>& geometricQueries,
+                                              float reflectingBoundaryRayTMin)
 {
     std::cerr << "populateGeometricQueriesForRobinBoundary: Unsupported dimension: " << DIM << std::endl;
     exit(EXIT_FAILURE);
@@ -1315,14 +1320,16 @@ void populateGeometricQueriesForRobinBoundary(FcpwRobinBoundaryHandler<DIM>& rob
 template <>
 inline void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler<2>& robinBoundaryHandler,
                                                         std::function<float(float)> branchTraversalWeight,
-                                                        GeometricQueries<2>& geometricQueries)
+                                                        GeometricQueries<2>& geometricQueries,
+                                                        float reflectingBoundaryRayTMin)
 {
     using PrimitiveBound = FcpwRobinBoundaryHandler<2>::PrimitiveBound;
     if (robinBoundaryHandler.baseline) {
         using RobinAggregateType = ReflectanceBaseline<2, ReflectanceLineSegment<PrimitiveBound>>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.baseline.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
-            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries,
+            reflectingBoundaryRayTMin);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 
@@ -1334,7 +1341,8 @@ inline void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler
                                                    FcpwRobinBoundaryHandler<2>::WideNodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.mbvh.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
-            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries,
+            reflectingBoundaryRayTMin);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 #endif
@@ -1344,7 +1352,8 @@ inline void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler
                                                   FcpwRobinBoundaryHandler<2>::NodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.bvh.get();
         populateGeometricQueriesForReflectingBoundary<2, RobinAggregateType>(
-            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries,
+            reflectingBoundaryRayTMin);
         populateStarRadiusQueryForRobinBoundary<2, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
     }
@@ -1353,14 +1362,16 @@ inline void populateGeometricQueriesForRobinBoundary<2>(FcpwRobinBoundaryHandler
 template <>
 inline void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler<3>& robinBoundaryHandler,
                                                         std::function<float(float)> branchTraversalWeight,
-                                                        GeometricQueries<3>& geometricQueries)
+                                                        GeometricQueries<3>& geometricQueries,
+                                                        float reflectingBoundaryRayTMin)
 {
     using PrimitiveBound = FcpwRobinBoundaryHandler<3>::PrimitiveBound;
     if (robinBoundaryHandler.baseline) {
         using RobinAggregateType = ReflectanceBaseline<3, ReflectanceTriangle<PrimitiveBound>>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.baseline.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
-            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries,
+            reflectingBoundaryRayTMin);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 
@@ -1372,7 +1383,8 @@ inline void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler
                                                    FcpwRobinBoundaryHandler<3>::WideNodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.mbvh.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
-            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries,
+            reflectingBoundaryRayTMin);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
 #endif
@@ -1382,7 +1394,8 @@ inline void populateGeometricQueriesForRobinBoundary<3>(FcpwRobinBoundaryHandler
                                                   FcpwRobinBoundaryHandler<3>::NodeBound>;
         RobinAggregateType *reflectingBoundaryAggregate = robinBoundaryHandler.bvh.get();
         populateGeometricQueriesForReflectingBoundary<3, RobinAggregateType>(
-            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries);
+            reflectingBoundaryAggregate, branchTraversalWeight, geometricQueries,
+            reflectingBoundaryRayTMin);
         populateStarRadiusQueryForRobinBoundary<3, RobinAggregateType>(
             reflectingBoundaryAggregate, geometricQueries);
     }

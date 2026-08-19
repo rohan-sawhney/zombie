@@ -16,6 +16,16 @@
 
 namespace zombie {
 
+template <size_t DIM>
+inline void setBallBoundaryIntersection(const Vector<DIM>& center,
+                                        const Vector<DIM>& direction,
+                                        float radius,
+                                        IntersectionPoint<DIM>& intersectionPt)
+{
+    intersectionPt.pt = center + radius*direction;
+    intersectionPt.dist = radius;
+}
+
 struct WalkSettings {
     // constructors
     WalkSettings(float epsilonShellForAbsorbingBoundary_,
