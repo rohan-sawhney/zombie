@@ -33,6 +33,9 @@ get_directory_property(hasParent PARENT_DIRECTORY)
 
 set(TBB_TEST          OFF CACHE BOOL " " FORCE)
 set(TBB_INSTALL       OFF CACHE BOOL " " FORCE)
+if(APPLE)
+    set(TCM_BUILD OFF CACHE BOOL "Disable unsupported oneTBB TCM on macOS" FORCE)
+endif()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/tbb)
 
 if(hasParent)
