@@ -37,3 +37,16 @@ wheel.py-api = "cp312"
 ZOMBIE_BUILD_TESTS = "OFF"
 ZOMBIE_BUILD_DEMO = "OFF"
 ZOMBIE_BUILD_BINDINGS = "ON"
+
+[tool.cibuildwheel]
+build-verbosity = 1
+build = "cp312-*"
+skip = "*-musllinux* pp*"
+archs = ["auto64"]
+test-command = "python -c \"import zombie\""
+
+[tool.cibuildwheel.macos]
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
+
+[tool.cibuildwheel.windows]
+repair-wheel-command = ""
